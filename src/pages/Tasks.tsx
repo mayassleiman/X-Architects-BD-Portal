@@ -65,11 +65,17 @@ export function Tasks() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Are you sure you want to delete this task?")) return;
+    
+    // Optimistic update
+    const previousTasks = [...tasks];
+    setTasks(tasks.filter(t => t.id !== id));
+
     try {
       await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
-      fetchTasks();
     } catch (error) {
       console.error("Error deleting task", error);
+      setTasks(previousTasks);
+      alert("Failed to delete task");
     }
   };
 

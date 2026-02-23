@@ -1,11 +1,18 @@
 import express from 'express';
 import db from '../db/index.ts';
+import path from 'path';
 
 const router = express.Router();
 
 // Health Check
 router.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Download Database
+router.get('/download-db', (req, res) => {
+  const dbPath = path.resolve(process.cwd(), 'bd-portal.db');
+  res.download(dbPath);
 });
 
 // Get Actions

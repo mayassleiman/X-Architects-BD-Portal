@@ -45,9 +45,13 @@ export function Settings() {
                   <p className="text-xs text-[var(--text-secondary)]">Download a copy of your local SQLite database.</p>
                 </div>
               </div>
-              <button className="text-xs font-mono uppercase border border-[var(--border)] px-3 py-1.5 text-[var(--text-primary)] hover:bg-[var(--text-primary)] hover:text-[var(--bg-primary)] transition-colors">
+              <a 
+                href="/api/download-db" 
+                download="bd-portal.db"
+                className="text-xs font-mono uppercase border border-[var(--border)] px-3 py-1.5 text-[var(--text-primary)] hover:bg-[var(--text-primary)] hover:text-[var(--bg-primary)] transition-colors"
+              >
                 Download
-              </button>
+              </a>
             </div>
           </div>
         </div>

@@ -80,11 +80,19 @@ export function Actions() {
   const handleDelete = async (id: number, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!confirm("Are you sure you want to delete this action?")) return;
+    
+    // Optimistic update
+    const previousActions = [...actions];
+    setActions(actions.filter(a => a.id !== id));
+
     try {
       await fetch(`/api/actions/${id}`, { method: 'DELETE' });
-      fetchActions();
+      // No need to fetchActions() if successful, as state is already updated
     } catch (error) {
       console.error("Error deleting action", error);
+      // Revert on error
+      setActions(previousActions);
+      alert("Failed to delete action");
     }
   };
 
@@ -150,9 +158,9 @@ export function Actions() {
                 <div className="col-span-2">
                   <span className={cn(
                     "text-[10px] uppercase tracking-wider px-2 py-1 rounded border",
-                    action.status === "Urgent" ? "border-rose-500/20 text-rose-400 bg-rose-500/5" :
                     action.status === "Pending" ? "border-amber-500/20 text-amber-400 bg-amber-500/5" :
-                    "border-[var(--border)] text-[var(--text-secondary)]"
+                    action.status === "In Progress" ? "border-blue-500/20 text-blue-400 bg-blue-500/5" :
+                    "border-emerald-500/20 text-emerald-400 bg-emerald-500/5"
                   )}>
                     {action.status}
                   </span>
@@ -225,8 +233,6 @@ export function Actions() {
                 >
                   <option value="Pending">Pending</option>
                   <option value="In Progress">In Progress</option>
-                  <option value="Review">Review</option>
-                  <option value="Urgent">Urgent</option>
                   <option value="Completed">Completed</option>
                 </select>
               </div>

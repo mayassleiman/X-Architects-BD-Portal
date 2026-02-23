@@ -1,5 +1,5 @@
 import React from "react";
-import { Plus, X, FileText, Trash2, Building2, User, Calendar } from "lucide-react";
+import { Plus, X, FileText, Trash2, Building2, User, Calendar, List, Grid } from "lucide-react";
 import { cn } from "../lib/utils";
 import { useSearch } from "../context/SearchContext";
 
@@ -18,6 +18,7 @@ interface Registration {
 export function Registrations() {
   const { searchQuery } = useSearch();
   const [registrations, setRegistrations] = React.useState<Registration[]>([]);
+  const [viewMode, setViewMode] = React.useState<'grid' | 'list'>('list');
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [formData, setFormData] = React.useState({
     client: "",
@@ -75,11 +76,17 @@ export function Registrations() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Are you sure you want to delete this registration?")) return;
+    
+    // Optimistic update
+    const previousRegistrations = [...registrations];
+    setRegistrations(registrations.filter(r => r.id !== id));
+
     try {
       await fetch(`/api/registrations/${id}`, { method: 'DELETE' });
-      fetchRegistrations();
     } catch (error) {
       console.error("Error deleting registration", error);
+      setRegistrations(previousRegistrations);
+      alert("Failed to delete registration");
     }
   };
 
@@ -90,89 +97,172 @@ export function Registrations() {
           <h1 className="text-4xl font-light tracking-tight text-[var(--text-primary)] mb-2">REGISTRATIONS</h1>
           <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Project Status & Follow-ups</p>
         </div>
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors"
-        >
-          <Plus size={16} /> New Registration
-        </button>
+        <div className="flex items-center gap-4">
+          <div className="flex bg-[var(--card-bg)] border border-[var(--border)] rounded-lg p-1">
+            <button 
+              onClick={() => setViewMode('list')}
+              className={cn("p-2 rounded transition-colors", viewMode === 'list' ? "bg-[var(--text-primary)] text-[var(--bg-primary)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]")}
+            >
+              <List size={16} />
+            </button>
+            <button 
+              onClick={() => setViewMode('grid')}
+              className={cn("p-2 rounded transition-colors", viewMode === 'grid' ? "bg-[var(--text-primary)] text-[var(--bg-primary)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]")}
+            >
+              <Grid size={16} />
+            </button>
+          </div>
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors"
+          >
+            <Plus size={16} /> New Registration
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredRegistrations.length === 0 ? (
-          <div className="col-span-full p-12 text-center border border-dashed border-[var(--border)] rounded-lg">
-            <p className="text-[var(--text-secondary)]">No registrations found.</p>
-          </div>
-        ) : (
-          filteredRegistrations.map((reg) => (
-            <div key={reg.id} className="bg-[var(--card-bg)] border border-[var(--border)] p-6 group hover:border-[var(--border-hover)] transition-colors relative">
-              <button 
-                onClick={() => handleDelete(reg.id)}
-                className="absolute top-4 right-4 text-[var(--text-secondary)] hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <Trash2 size={16} />
-              </button>
-              
-              <div className="flex justify-between items-start mb-4 pr-8">
-                <div className="p-2 bg-[var(--bg-tertiary)] rounded text-[var(--text-primary)]">
-                  <FileText size={20} />
-                </div>
-                <span className={cn(
-                  "text-[10px] uppercase tracking-wider px-2 py-1 rounded border",
-                  reg.status === "Pending" ? "border-amber-500/20 text-amber-400 bg-amber-500/5" :
-                  reg.status === "Ongoing" ? "border-blue-500/20 text-blue-400 bg-blue-500/5" :
-                  "border-emerald-500/20 text-emerald-400 bg-emerald-500/5"
-                )}>
-                  {reg.status}
-                </span>
-              </div>
-              
-              <h3 className="text-lg font-medium text-[var(--text-primary)] mb-2">{reg.client}</h3>
-              
-              <div className="space-y-2 mb-4">
-                {reg.contact_name && (
-                  <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-                    <User size={14} />
-                    <span>{reg.contact_name}</span>
-                  </div>
-                )}
-                {reg.registration_date && (
-                  <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-                    <Calendar size={14} />
-                    <span>Reg: {reg.registration_date}</span>
-                  </div>
-                )}
-                {reg.portal_link && (
-                  <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-                    <Building2 size={14} />
-                    <a href={reg.portal_link} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline truncate max-w-[200px]">
-                      Portal Link
-                    </a>
-                  </div>
-                )}
-              </div>
-              
-              <div className="space-y-3 pt-4 border-t border-[var(--border)]">
-                <div className="flex justify-between text-xs">
-                  <span className="text-[var(--text-secondary)] uppercase">Due Date</span>
-                  <span className="text-[var(--text-primary)] font-mono">{reg.due_date || "N/A"}</span>
-                </div>
-                {reg.last_week_follow_up && (
-                  <div className="bg-[var(--bg-tertiary)] p-2 rounded text-xs text-[var(--text-secondary)]">
-                    <span className="block text-[10px] uppercase text-[var(--text-tertiary)] mb-1">Last Week Follow-up</span>
-                    {reg.last_week_follow_up}
-                  </div>
-                )}
-                {reg.follow_up_log && (
-                  <div className="text-xs text-[var(--text-secondary)] italic">
-                    "{reg.follow_up_log}"
-                  </div>
-                )}
-              </div>
+      {viewMode === 'grid' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredRegistrations.length === 0 ? (
+            <div className="col-span-full p-12 text-center border border-dashed border-[var(--border)] rounded-lg">
+              <p className="text-[var(--text-secondary)]">No registrations found.</p>
             </div>
-          ))
-        )}
-      </div>
+          ) : (
+            filteredRegistrations.map((reg) => (
+              <div key={reg.id} className="bg-[var(--card-bg)] border border-[var(--border)] p-6 group hover:border-[var(--border-hover)] transition-colors relative">
+                <button 
+                  onClick={() => handleDelete(reg.id)}
+                  className="absolute top-4 right-4 text-[var(--text-secondary)] hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <Trash2 size={16} />
+                </button>
+                
+                <div className="flex justify-between items-start mb-4 pr-8">
+                  <div className="p-2 bg-[var(--bg-tertiary)] rounded text-[var(--text-primary)]">
+                    <FileText size={20} />
+                  </div>
+                  <span className={cn(
+                    "text-[10px] uppercase tracking-wider px-2 py-1 rounded border",
+                    reg.status === "Pending" ? "border-amber-500/20 text-amber-400 bg-amber-500/5" :
+                    reg.status === "Ongoing" ? "border-blue-500/20 text-blue-400 bg-blue-500/5" :
+                    "border-emerald-500/20 text-emerald-400 bg-emerald-500/5"
+                  )}>
+                    {reg.status}
+                  </span>
+                </div>
+                
+                <h3 className="text-lg font-medium text-[var(--text-primary)] mb-2">{reg.client}</h3>
+                
+                <div className="space-y-2 mb-4">
+                  {reg.contact_name && (
+                    <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+                      <User size={14} />
+                      <span>{reg.contact_name}</span>
+                    </div>
+                  )}
+                  {reg.registration_date && (
+                    <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+                      <Calendar size={14} />
+                      <span>Reg: {reg.registration_date}</span>
+                    </div>
+                  )}
+                  {reg.portal_link && (
+                    <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+                      <Building2 size={14} />
+                      <a href={reg.portal_link} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline truncate max-w-[200px]">
+                        Portal Link
+                      </a>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="space-y-3 pt-4 border-t border-[var(--border)]">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-[var(--text-secondary)] uppercase">Due Date</span>
+                    <span className="text-[var(--text-primary)] font-mono">{reg.due_date || "N/A"}</span>
+                  </div>
+                  {reg.last_week_follow_up && (
+                    <div className="bg-[var(--bg-tertiary)] p-2 rounded text-xs text-[var(--text-secondary)]">
+                      <span className="block text-[10px] uppercase text-[var(--text-tertiary)] mb-1">Last Week Follow-up</span>
+                      {reg.last_week_follow_up}
+                    </div>
+                  )}
+                  {reg.follow_up_log && (
+                    <div className="text-xs text-[var(--text-secondary)] italic">
+                      "{reg.follow_up_log}"
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {filteredRegistrations.length === 0 ? (
+            <div className="p-12 text-center border border-dashed border-[var(--border)] rounded-lg">
+              <p className="text-[var(--text-secondary)]">No registrations found.</p>
+            </div>
+          ) : (
+            filteredRegistrations.map((reg) => (
+              <div key={reg.id} className="bg-[var(--card-bg)] border border-[var(--border)] p-4 flex items-center justify-between group hover:border-[var(--border-hover)] transition-colors relative">
+                <div className="flex items-center gap-6 flex-1">
+                  <div className={cn(
+                    "w-1 h-12 rounded-full",
+                    reg.status === "Pending" ? "bg-amber-400" :
+                    reg.status === "Ongoing" ? "bg-blue-400" :
+                    "bg-emerald-400"
+                  )} />
+                  
+                  <div className="min-w-[200px]">
+                    <h3 className="text-sm font-medium text-[var(--text-primary)]">{reg.client}</h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className={cn(
+                        "text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded border",
+                        reg.status === "Pending" ? "border-amber-500/20 text-amber-400 bg-amber-500/5" :
+                        reg.status === "Ongoing" ? "border-blue-500/20 text-blue-400 bg-blue-500/5" :
+                        "border-emerald-500/20 text-emerald-400 bg-emerald-500/5"
+                      )}>
+                        {reg.status}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 grid grid-cols-3 gap-4 text-sm text-[var(--text-secondary)]">
+                    <div className="flex items-center gap-2">
+                      <User size={14} />
+                      <span className="truncate">{reg.contact_name || "-"}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Calendar size={14} />
+                      <span>Reg: {reg.registration_date || "-"}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs uppercase tracking-wider">Due:</span>
+                      <span className="font-mono text-[var(--text-primary)]">{reg.due_date || "-"}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 pl-4 border-l border-[var(--border)] ml-4">
+                  {reg.portal_link && (
+                    <a href={reg.portal_link} target="_blank" rel="noreferrer" className="text-[var(--text-secondary)] hover:text-blue-400 transition-colors" title="Portal Link">
+                      <Building2 size={16} />
+                    </a>
+                  )}
+                  <button 
+                    onClick={() => handleDelete(reg.id)}
+                    className="text-[var(--text-secondary)] hover:text-red-400 transition-colors"
+                    title="Delete"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">

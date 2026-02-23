@@ -377,10 +377,15 @@ export function Pipeline() {
 
                       <div className="flex justify-between items-start pr-16">
                         <div>
-                          <h5 className="text-sm font-medium text-[var(--text-primary)] group-hover:text-white transition-colors">{item.name}</h5>
+                          <h5 
+                            className="text-sm font-medium transition-colors"
+                            style={{ color: SECTOR_COLORS[item.sector] }}
+                          >
+                            {item.name}
+                          </h5>
                           {item.client && <p className="text-xs text-[var(--text-secondary)] mt-1">{item.client}</p>}
                           <div className="flex gap-4 mt-2 text-[10px] text-[var(--text-secondary)] font-mono uppercase tracking-wider">
-                             {item.submissionDate && <span>Due: {item.submissionDate}</span>}
+                             {item.submissionDate && <span>Submitted: {item.submissionDate}</span>}
                              {item.probability && (
                                <span className={cn(
                                  item.probability === "High" ? "text-emerald-400" : 

@@ -1,7 +1,8 @@
-import React from "react";
-import { Plus, X, Trash2, Calendar as CalendarIcon, Clock, User, List, Grid, Edit2 } from "lucide-react";
+import React, { useMemo } from "react";
+import { Plus, X, Trash2, Calendar as CalendarIcon, Clock, User, List, Grid, Edit2, BarChart2 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { useSearch } from "../context/SearchContext";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 interface Meeting {
   id: number;
@@ -22,7 +23,7 @@ const LEVELS = [
 export function Meetings() {
   const { searchQuery } = useSearch();
   const [meetings, setMeetings] = React.useState<Meeting[]>([]);
-  const [viewMode, setViewMode] = React.useState<'list' | 'calendar'>('list');
+  const [viewMode, setViewMode] = React.useState<'list' | 'calendar' | 'stats'>('list');
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [editingId, setEditingId] = React.useState<number | null>(null);
   const [formData, setFormData] = React.useState({
@@ -48,6 +49,73 @@ export function Meetings() {
     meeting.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     meeting.attendees.some(a => a.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+
+  // Statistics Calculations
+  const stats = useMemo(() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+
+    // Helper to get week number
+    const getWeek = (date: Date) => {
+      const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+      const dayNum = d.getUTCDay() || 7;
+      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+      return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    };
+
+    // Weekly Stats (Last 8 weeks)
+    const weeklyData = [];
+    for (let i = 7; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - (i * 7));
+      const weekNum = getWeek(d);
+      const year = d.getFullYear();
+      
+      const count = meetings.filter(m => {
+        const mDate = new Date(m.date);
+        return getWeek(mDate) === weekNum && mDate.getFullYear() === year;
+      }).length;
+
+      weeklyData.push({ name: `Week ${weekNum}`, count });
+    }
+
+    // Monthly Stats (Last 12 months)
+    const monthlyData = [];
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const monthIndex = d.getMonth();
+      const year = d.getFullYear();
+
+      const count = meetings.filter(m => {
+        const mDate = new Date(m.date);
+        return mDate.getMonth() === monthIndex && mDate.getFullYear() === year;
+      }).length;
+
+      monthlyData.push({ name: `${months[monthIndex]}`, count });
+    }
+
+    // Quarterly Stats (Current Year)
+    const quarterlyData = [
+      { name: "Q1", count: 0 },
+      { name: "Q2", count: 0 },
+      { name: "Q3", count: 0 },
+      { name: "Q4", count: 0 },
+    ];
+
+    meetings.forEach(m => {
+      const mDate = new Date(m.date);
+      if (mDate.getFullYear() === currentYear) {
+        const month = mDate.getMonth();
+        const quarter = Math.floor(month / 3);
+        quarterlyData[quarter].count++;
+      }
+    });
+
+    return { weeklyData, monthlyData, quarterlyData };
+  }, [meetings]);
 
   const handleEdit = (meeting: Meeting) => {
     setEditingId(meeting.id);
@@ -92,11 +160,17 @@ export function Meetings() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Are you sure you want to delete this meeting?")) return;
+    
+    // Optimistic update
+    const previousMeetings = [...meetings];
+    setMeetings(meetings.filter(m => m.id !== id));
+
     try {
       await fetch(`/api/meetings/${id}`, { method: 'DELETE' });
-      fetchMeetings();
     } catch (error) {
       console.error("Error deleting meeting", error);
+      setMeetings(previousMeetings);
+      alert("Failed to delete meeting");
     }
   };
 
@@ -127,18 +201,28 @@ export function Meetings() {
   const weekDates = getWeekDates();
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
+  const [dragOverDate, setDragOverDate] = React.useState<string | null>(null);
+
   const handleDragStart = (e: React.DragEvent, meetingId: number) => {
     e.dataTransfer.setData("meetingId", meetingId.toString());
+    e.dataTransfer.effectAllowed = "move";
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = (e: React.DragEvent, date: string) => {
     e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverDate(date);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverDate(null);
   };
 
   const handleDrop = async (e: React.DragEvent, date: string) => {
     e.preventDefault();
+    setDragOverDate(null);
     const meetingId = parseInt(e.dataTransfer.getData("meetingId"));
-    if (!meetingId) return;
+    if (!meetingId && meetingId !== 0) return;
 
     const meeting = meetings.find(m => m.id === meetingId);
     if (!meeting) return;
@@ -183,6 +267,12 @@ export function Meetings() {
             >
               <Grid size={16} />
             </button>
+            <button 
+              onClick={() => setViewMode('stats')}
+              className={cn("p-2 rounded transition-colors", viewMode === 'stats' ? "bg-[var(--text-primary)] text-[var(--bg-primary)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]")}
+            >
+              <BarChart2 size={16} />
+            </button>
           </div>
           <button 
             onClick={() => {
@@ -197,7 +287,69 @@ export function Meetings() {
         </div>
       </div>
 
-      {viewMode === 'list' ? (
+      {viewMode === 'stats' ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Weekly Stats */}
+          <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6">
+            <h3 className="text-sm font-medium text-[var(--text-primary)] mb-6">Weekly Meetings (Last 8 Weeks)</h3>
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stats.weeklyData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                  <XAxis dataKey="name" stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff' }}
+                    itemStyle={{ color: '#fff' }}
+                    cursor={{ fill: 'var(--bg-tertiary)' }}
+                  />
+                  <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Monthly Stats */}
+          <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6">
+            <h3 className="text-sm font-medium text-[var(--text-primary)] mb-6">Monthly Meetings (Last 12 Months)</h3>
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stats.monthlyData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                  <XAxis dataKey="name" stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff' }}
+                    itemStyle={{ color: '#fff' }}
+                    cursor={{ fill: 'var(--bg-tertiary)' }}
+                  />
+                  <Bar dataKey="count" fill="#10b981" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Quarterly Stats */}
+          <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6 lg:col-span-2">
+            <h3 className="text-sm font-medium text-[var(--text-primary)] mb-6">Quarterly Meetings (Current Year)</h3>
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stats.quarterlyData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                  <XAxis dataKey="name" stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff' }}
+                    itemStyle={{ color: '#fff' }}
+                    cursor={{ fill: 'var(--bg-tertiary)' }}
+                  />
+                  <Bar dataKey="count" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={60} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      ) : viewMode === 'list' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredMeetings.length === 0 ? (
             <div className="col-span-full p-12 text-center border border-dashed border-[var(--border)] rounded-lg">
@@ -268,8 +420,12 @@ export function Meetings() {
             {weekDates.map((date) => (
               <div 
                 key={date} 
-                className="min-h-[200px] border-r border-[var(--border)] last:border-r-0 p-2 space-y-2 transition-colors hover:bg-[var(--bg-tertiary)]"
-                onDragOver={handleDragOver}
+                className={cn(
+                  "min-h-[200px] border-r border-[var(--border)] last:border-r-0 p-2 space-y-2 transition-colors",
+                  dragOverDate === date ? "bg-[var(--bg-tertiary)]" : "hover:bg-[var(--bg-tertiary)]"
+                )}
+                onDragOver={(e) => handleDragOver(e, date)}
+                onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, date)}
               >
                 {meetingsByDate[date]?.map((meeting) => {

@@ -52,7 +52,6 @@ db.exec(`
     level INTEGER DEFAULT 1 -- 1: Lead, 2: Prospect, 3: Proposal, 4: Negotiation
   );
 
-  DROP TABLE IF EXISTS pipeline_items;
   CREATE TABLE IF NOT EXISTS pipeline_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,

@@ -35,6 +35,13 @@ export function Sidebar() {
     window.dispatchEvent(new PopStateEvent("popstate"));
   };
 
+  const handleLogout = () => {
+    if (confirm("Are you sure you want to logout?")) {
+      localStorage.removeItem("userProfile");
+      window.location.reload();
+    }
+  };
+
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-[var(--bg-primary)] border-r border-[var(--border)] flex flex-col z-50 transition-colors">
       <div className="p-6 border-b border-[var(--border)]">
@@ -75,7 +82,10 @@ export function Sidebar() {
           <SettingsIcon size={18} className="text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]" />
           <span className="tracking-wide uppercase text-xs font-semibold">Settings</span>
         </button>
-        <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-[var(--text-secondary)] hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors group">
+        <button 
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-[var(--text-secondary)] hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors group"
+        >
           <LogOut size={18} className="text-[var(--text-secondary)] group-hover:text-red-400" />
           <span className="tracking-wide uppercase text-xs font-semibold">Logout</span>
         </button>
