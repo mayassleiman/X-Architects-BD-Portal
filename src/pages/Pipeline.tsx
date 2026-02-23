@@ -23,6 +23,7 @@ interface PipelineItem {
   status: "Pending" | "Submitted" | "Won" | "Lost";
   submissionDate?: string;
   probability?: "High" | "Medium" | "Low";
+  rfpNumber?: string;
 }
 
 const SECTORS: Sector[] = [
@@ -96,7 +97,8 @@ export function Pipeline() {
       values: newItem.values || {},
       status: newItem.status as any || "Pending",
       submissionDate: newItem.submissionDate,
-      probability: newItem.probability
+      probability: newItem.probability,
+      rfpNumber: newItem.rfpNumber
     };
 
     try {
@@ -434,6 +436,7 @@ export function Pipeline() {
                             className="text-sm font-medium transition-colors"
                             style={{ color: SECTOR_COLORS[item.sector] }}
                           >
+                            {item.rfpNumber && <span className="font-mono text-xs opacity-70 mr-2">{item.rfpNumber}</span>}
                             {item.name}
                           </h5>
                           {item.client && <p className="text-xs text-[var(--text-secondary)] mt-1">{item.client}</p>}
@@ -523,6 +526,17 @@ export function Pipeline() {
                     {SECTORS.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono uppercase text-[var(--text-secondary)] mb-1">RFP No. (e.g. P12345)</label>
+                <input 
+                  type="text"
+                  value={newItem.rfpNumber || ""}
+                  onChange={(e) => setNewItem({...newItem, rfpNumber: e.target.value})}
+                  className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-[var(--text-primary)] focus:outline-none focus:border-[var(--text-primary)]"
+                  placeholder="P12345"
+                />
               </div>
 
               <div>

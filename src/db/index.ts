@@ -62,8 +62,16 @@ db.exec(`
     item_values TEXT, -- JSON string for { architecture, interior, cs, vo }
     status TEXT DEFAULT 'Pending',
     submission_date TEXT,
-    probability TEXT -- 'High', 'Medium', 'Low'
+    probability TEXT, -- 'High', 'Medium', 'Low'
+    rfp_number TEXT
   );
 `);
+
+// Migration: Add rfp_number column if it doesn't exist (for existing databases)
+try {
+  db.exec("ALTER TABLE pipeline_items ADD COLUMN rfp_number TEXT");
+} catch (error) {
+  // Column likely already exists, ignore
+}
 
 export default db;

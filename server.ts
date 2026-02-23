@@ -9,7 +9,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 async function startServer() {
   const app = express();
-  const PORT = Number(process.env.APP_PORT) || 1111;
+  const PORT = 3000;
 
   app.use(express.json());
 
