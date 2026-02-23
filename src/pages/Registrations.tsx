@@ -1,0 +1,279 @@
+import React from "react";
+import { Plus, X, FileText, Trash2, Building2, User, Calendar } from "lucide-react";
+import { cn } from "../lib/utils";
+import { useSearch } from "../context/SearchContext";
+
+interface Registration {
+  id: number;
+  client: string;
+  contact_name: string;
+  registration_date: string;
+  portal_link: string;
+  status: string;
+  due_date: string;
+  follow_up_log: string;
+  last_week_follow_up: string;
+}
+
+export function Registrations() {
+  const { searchQuery } = useSearch();
+  const [registrations, setRegistrations] = React.useState<Registration[]>([]);
+  const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const [formData, setFormData] = React.useState({
+    client: "",
+    contact_name: "",
+    registration_date: new Date().toISOString().split('T')[0],
+    portal_link: "",
+    status: "Pending",
+    due_date: "",
+    follow_up_log: "",
+    last_week_follow_up: ""
+  });
+
+  const fetchRegistrations = () => {
+    fetch('/api/registrations')
+      .then(res => res.json())
+      .then(data => setRegistrations(data))
+      .catch(err => console.error("Failed to fetch registrations", err));
+  };
+
+  React.useEffect(() => {
+    fetchRegistrations();
+  }, []);
+
+  const filteredRegistrations = registrations.filter(reg => 
+    reg.client.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (reg.contact_name && reg.contact_name.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/registrations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      if (res.ok) {
+        setIsModalOpen(false);
+        setFormData({ 
+          client: "", 
+          contact_name: "",
+          registration_date: new Date().toISOString().split('T')[0],
+          portal_link: "",
+          status: "Pending", 
+          due_date: "", 
+          follow_up_log: "",
+          last_week_follow_up: ""
+        });
+        fetchRegistrations();
+      }
+    } catch (error) {
+      console.error("Error creating registration", error);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this registration?")) return;
+    try {
+      await fetch(`/api/registrations/${id}`, { method: 'DELETE' });
+      fetchRegistrations();
+    } catch (error) {
+      console.error("Error deleting registration", error);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl font-light tracking-tight text-[var(--text-primary)] mb-2">REGISTRATIONS</h1>
+          <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Project Status & Follow-ups</p>
+        </div>
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors"
+        >
+          <Plus size={16} /> New Registration
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredRegistrations.length === 0 ? (
+          <div className="col-span-full p-12 text-center border border-dashed border-[var(--border)] rounded-lg">
+            <p className="text-[var(--text-secondary)]">No registrations found.</p>
+          </div>
+        ) : (
+          filteredRegistrations.map((reg) => (
+            <div key={reg.id} className="bg-[var(--card-bg)] border border-[var(--border)] p-6 group hover:border-[var(--border-hover)] transition-colors relative">
+              <button 
+                onClick={() => handleDelete(reg.id)}
+                className="absolute top-4 right-4 text-[var(--text-secondary)] hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <Trash2 size={16} />
+              </button>
+              
+              <div className="flex justify-between items-start mb-4 pr-8">
+                <div className="p-2 bg-[var(--bg-tertiary)] rounded text-[var(--text-primary)]">
+                  <FileText size={20} />
+                </div>
+                <span className={cn(
+                  "text-[10px] uppercase tracking-wider px-2 py-1 rounded border",
+                  reg.status === "Pending" ? "border-amber-500/20 text-amber-400 bg-amber-500/5" :
+                  reg.status === "Ongoing" ? "border-blue-500/20 text-blue-400 bg-blue-500/5" :
+                  "border-emerald-500/20 text-emerald-400 bg-emerald-500/5"
+                )}>
+                  {reg.status}
+                </span>
+              </div>
+              
+              <h3 className="text-lg font-medium text-[var(--text-primary)] mb-2">{reg.client}</h3>
+              
+              <div className="space-y-2 mb-4">
+                {reg.contact_name && (
+                  <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+                    <User size={14} />
+                    <span>{reg.contact_name}</span>
+                  </div>
+                )}
+                {reg.registration_date && (
+                  <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+                    <Calendar size={14} />
+                    <span>Reg: {reg.registration_date}</span>
+                  </div>
+                )}
+                {reg.portal_link && (
+                  <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+                    <Building2 size={14} />
+                    <a href={reg.portal_link} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline truncate max-w-[200px]">
+                      Portal Link
+                    </a>
+                  </div>
+                )}
+              </div>
+              
+              <div className="space-y-3 pt-4 border-t border-[var(--border)]">
+                <div className="flex justify-between text-xs">
+                  <span className="text-[var(--text-secondary)] uppercase">Due Date</span>
+                  <span className="text-[var(--text-primary)] font-mono">{reg.due_date || "N/A"}</span>
+                </div>
+                {reg.last_week_follow_up && (
+                  <div className="bg-[var(--bg-tertiary)] p-2 rounded text-xs text-[var(--text-secondary)]">
+                    <span className="block text-[10px] uppercase text-[var(--text-tertiary)] mb-1">Last Week Follow-up</span>
+                    {reg.last_week_follow_up}
+                  </div>
+                )}
+                {reg.follow_up_log && (
+                  <div className="text-xs text-[var(--text-secondary)] italic">
+                    "{reg.follow_up_log}"
+                  </div>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[var(--card-bg)] border border-[var(--border)] w-full max-w-md p-6 relative animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+            <button 
+              onClick={() => setIsModalOpen(false)}
+              className="absolute top-4 right-4 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+            >
+              <X size={20} />
+            </button>
+            <h2 className="text-xl font-light text-[var(--text-primary)] mb-6">NEW REGISTRATION</h2>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-mono uppercase text-[var(--text-secondary)] mb-1">Company Name</label>
+                <input 
+                  type="text" 
+                  required
+                  value={formData.client}
+                  onChange={e => setFormData({...formData, client: e.target.value})}
+                  className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-[var(--text-primary)] text-sm focus:border-[var(--text-primary)] focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-mono uppercase text-[var(--text-secondary)] mb-1">Contact Name</label>
+                <input 
+                  type="text" 
+                  value={formData.contact_name}
+                  onChange={e => setFormData({...formData, contact_name: e.target.value})}
+                  className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-[var(--text-primary)] text-sm focus:border-[var(--text-primary)] focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-mono uppercase text-[var(--text-secondary)] mb-1">Portal Link (Optional)</label>
+                <input 
+                  type="url" 
+                  value={formData.portal_link}
+                  onChange={e => setFormData({...formData, portal_link: e.target.value})}
+                  className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-[var(--text-primary)] text-sm focus:border-[var(--text-primary)] focus:outline-none"
+                  placeholder="https://..."
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-mono uppercase text-[var(--text-secondary)] mb-1">Reg. Date</label>
+                  <input 
+                    type="date" 
+                    value={formData.registration_date}
+                    onChange={e => setFormData({...formData, registration_date: e.target.value})}
+                    className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-[var(--text-primary)] text-sm focus:border-[var(--text-primary)] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono uppercase text-[var(--text-secondary)] mb-1">Due Date</label>
+                  <input 
+                    type="date" 
+                    value={formData.due_date}
+                    onChange={e => setFormData({...formData, due_date: e.target.value})}
+                    className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-[var(--text-primary)] text-sm focus:border-[var(--text-primary)] focus:outline-none"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-mono uppercase text-[var(--text-secondary)] mb-1">Status</label>
+                <select 
+                  value={formData.status}
+                  onChange={e => setFormData({...formData, status: e.target.value})}
+                  className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-[var(--text-primary)] text-sm focus:border-[var(--text-primary)] focus:outline-none"
+                >
+                  <option value="Pending">Pending</option>
+                  <option value="Ongoing">Ongoing</option>
+                  <option value="Completed">Completed</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-mono uppercase text-[var(--text-secondary)] mb-1">Last Week Follow-up</label>
+                <textarea 
+                  value={formData.last_week_follow_up}
+                  onChange={e => setFormData({...formData, last_week_follow_up: e.target.value})}
+                  className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-[var(--text-primary)] text-sm focus:border-[var(--text-primary)] focus:outline-none h-16"
+                  placeholder="What happened last week?"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-mono uppercase text-[var(--text-secondary)] mb-1">General Notes / Log</label>
+                <textarea 
+                  value={formData.follow_up_log}
+                  onChange={e => setFormData({...formData, follow_up_log: e.target.value})}
+                  className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-[var(--text-primary)] text-sm focus:border-[var(--text-primary)] focus:outline-none h-20"
+                  placeholder="Enter initial notes..."
+                />
+              </div>
+              <button 
+                type="submit"
+                className="w-full bg-[var(--text-primary)] text-[var(--bg-primary)] py-3 text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors mt-4"
+              >
+                Create Registration
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

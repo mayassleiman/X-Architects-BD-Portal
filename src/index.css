@@ -1,0 +1,128 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+:root {
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #111111;
+  --bg-tertiary: #161616;
+  --text-primary: #ffffff;
+  --text-secondary: #a3a3a3;
+  --text-tertiary: #737373;
+  --accent: #ffffff;
+  --border: rgba(255, 255, 255, 0.05);
+  --border-hover: rgba(255, 255, 255, 0.1);
+  --card-bg: #111111;
+  --card-bg-inner: #161616;
+}
+
+:root.light {
+  --bg-primary: #f5f5f5;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f0f0f0;
+  --text-primary: #171717;
+  --text-secondary: #525252;
+  --text-tertiary: #737373;
+  --accent: #171717;
+  --border: rgba(0, 0, 0, 0.1);
+  --border-hover: rgba(0, 0, 0, 0.2);
+  --card-bg: #ffffff;
+  --card-bg-inner: #f9f9f9;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  /* Abstract background */
+  background-image: 
+    radial-gradient(circle at 10% 20%, rgba(255, 255, 255, 0.03) 0%, transparent 20%),
+    radial-gradient(circle at 90% 80%, rgba(255, 255, 255, 0.03) 0%, transparent 20%),
+    linear-gradient(45deg, rgba(255, 255, 255, 0.01) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.01) 75%, rgba(255, 255, 255, 0.01)),
+    linear-gradient(45deg, rgba(255, 255, 255, 0.01) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.01) 75%, rgba(255, 255, 255, 0.01));
+  background-size: 100% 100%, 100% 100%, 60px 60px, 60px 60px;
+  background-position: 0 0, 0 0, 0 0, 30px 30px;
+}
+
+:root.light body {
+  background-image: 
+    radial-gradient(circle at 10% 20%, rgba(0, 0, 0, 0.03) 0%, transparent 20%),
+    radial-gradient(circle at 90% 80%, rgba(0, 0, 0, 0.03) 0%, transparent 20%),
+    linear-gradient(45deg, rgba(0, 0, 0, 0.01) 25%, transparent 25%, transparent 75%, rgba(0, 0, 0, 0.01) 75%, rgba(0, 0, 0, 0.01)),
+    linear-gradient(45deg, rgba(0, 0, 0, 0.01) 25%, transparent 25%, transparent 75%, rgba(0, 0, 0, 0.01) 75%, rgba(0, 0, 0, 0.01));
+}
+
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+    -webkit-print-color-adjust: exact;
+  }
+  
+  /* Hide sidebar and non-printable elements */
+  aside, button, .no-print {
+    display: none !important;
+  }
+
+  /* Reset main content layout */
+  main {
+    margin-left: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Ensure text is dark and readable */
+  h1, h2, h3, h4, p, span, div {
+    color: black !important;
+  }
+
+  /* Add borders for clarity in print */
+  .border, .border-white\/5, .border-white\/10, .border-white\/20 {
+    border-color: #ddd !important;
+  }
+
+  /* Remove dark backgrounds */
+  .bg-\[\#111\], .bg-\[\#161616\], .bg-neutral-800, .bg-black {
+    background-color: white !important;
+    border: 1px solid #eee !important;
+  }
+
+  /* Adjust grid for print */
+  .grid-cols-12 {
+    display: block !important;
+  }
+  .col-span-4, .col-span-8, .col-span-12 {
+    width: 100% !important;
+    margin-bottom: 20px !important;
+  }
+  
+  /* Force page breaks */
+  .page-break-before {
+    page-break-before: always;
+  }
+  .break-inside-avoid {
+    break-inside: avoid;
+  }
+}
+
+/* Custom Scrollbar for dark theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
