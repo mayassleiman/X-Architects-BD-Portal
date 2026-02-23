@@ -1,8 +1,13 @@
 import express from 'express';
 import db from '../db/index.ts';
 import path from 'path';
+import multer from 'multer';
+import fs from 'fs';
 
 const router = express.Router();
+
+// Configure multer for file upload
+const upload = multer({ dest: 'uploads/' });
 
 // Health Check
 router.get('/health', (req, res) => {
@@ -12,7 +17,39 @@ router.get('/health', (req, res) => {
 // Download Database
 router.get('/download-db', (req, res) => {
   const dbPath = path.resolve(process.cwd(), 'bd-portal.db');
-  res.download(dbPath);
+  if (fs.existsSync(dbPath)) {
+    res.download(dbPath);
+  } else {
+    res.status(404).send('Database file not found');
+  }
+});
+
+// Upload Database
+router.post('/upload-db', upload.single('database'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).send('No file uploaded');
+  }
+
+  const tempPath = req.file.path;
+  const targetPath = path.resolve(process.cwd(), 'bd-portal.db');
+
+  try {
+    // Overwrite the existing database file
+    fs.copyFileSync(tempPath, targetPath);
+    fs.unlinkSync(tempPath); // Remove temp file
+
+    res.json({ success: true, message: 'Database uploaded successfully. The server will restart to apply changes.' });
+    
+    // Trigger server restart after a short delay to allow response to be sent
+    setTimeout(() => {
+      console.log('Restarting server to apply database changes...');
+      process.exit(0); 
+    }, 1000);
+
+  } catch (error) {
+    console.error('Error uploading database:', error);
+    res.status(500).send('Failed to upload database');
+  }
 });
 
 // Get Actions

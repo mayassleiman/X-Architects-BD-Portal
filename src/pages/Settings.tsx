@@ -53,6 +53,50 @@ export function Settings() {
                 Download
               </a>
             </div>
+
+            <div className="flex items-center justify-between p-4 border border-[var(--border)] bg-[var(--card-bg-inner)]">
+              <div className="flex items-center gap-3">
+                <Database size={20} className="text-[var(--text-secondary)]" />
+                <div>
+                  <h4 className="text-sm font-medium text-[var(--text-primary)]">Restore Database</h4>
+                  <p className="text-xs text-[var(--text-secondary)]">Upload a database file to restore data. This will overwrite current data.</p>
+                </div>
+              </div>
+              <label className="cursor-pointer text-xs font-mono uppercase border border-[var(--border)] px-3 py-1.5 text-[var(--text-primary)] hover:bg-[var(--text-primary)] hover:text-[var(--bg-primary)] transition-colors">
+                Upload
+                <input 
+                  type="file" 
+                  accept=".db,.sqlite,.sqlite3"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    
+                    if (!confirm("This will overwrite your current database. Are you sure?")) return;
+
+                    const formData = new FormData();
+                    formData.append('database', file);
+
+                    try {
+                      const res = await fetch('/api/upload-db', {
+                        method: 'POST',
+                        body: formData
+                      });
+                      
+                      if (res.ok) {
+                        alert("Database uploaded successfully. The application will reload.");
+                        window.location.reload();
+                      } else {
+                        alert("Failed to upload database.");
+                      }
+                    } catch (error) {
+                      console.error("Error uploading database", error);
+                      alert("Error uploading database.");
+                    }
+                  }}
+                />
+              </label>
+            </div>
           </div>
         </div>
 

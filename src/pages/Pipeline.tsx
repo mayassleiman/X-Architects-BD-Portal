@@ -170,13 +170,28 @@ export function Pipeline() {
     const totalVO = items.filter(i => i.type === "VO").reduce((acc, curr) => acc + getFilteredValue(curr), 0);
     const totalPipeline = totalRFP + totalVO;
 
+    // Absolute totals for discipline breakdown (ignoring view filter)
+    const absoluteTotalPipeline = items.reduce((acc, curr) => {
+      return acc + (curr.values.architecture || 0) + (curr.values.interior || 0) + (curr.values.cs || 0) + (curr.values.vo || 0);
+    }, 0);
+
+    const totalArch = items.reduce((acc, curr) => acc + (curr.values.architecture || 0), 0);
+    const totalInt = items.reduce((acc, curr) => acc + (curr.values.interior || 0), 0);
+    const totalSupervision = items.reduce((acc, curr) => acc + (curr.values.cs || 0), 0);
+
+    const disciplineData = [
+      { name: "Architecture", value: totalArch, color: "#10b981" },
+      { name: "Interior", value: totalInt, color: "#3b82f6" },
+      { name: "Supervision", value: totalSupervision, color: "#f59e0b" },
+    ];
+
     const sectorData = SECTORS.map(sector => {
       const sectorItems = items.filter(i => i.sector === sector);
       const value = sectorItems.reduce((acc, curr) => acc + getFilteredValue(curr), 0);
       return { name: sector, value, color: SECTOR_COLORS[sector] };
     }).filter(d => d.value > 0);
 
-    return { totalRFP, totalVO, totalPipeline, sectorData };
+    return { totalRFP, totalVO, totalPipeline, sectorData, disciplineData, absoluteTotalPipeline };
   }, [items, viewFilter]);
 
   const filteredItems = items.filter(i => 
@@ -319,6 +334,44 @@ export function Pipeline() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Discipline Breakdown Chart */}
+        <div className="lg:col-span-1 bg-[var(--card-bg)] border border-[var(--border)] p-6">
+          <h3 className="text-sm font-medium text-[var(--text-primary)] mb-6 flex items-center gap-2">
+            <PieChart size={16} />
+            Revenue by Discipline
+          </h3>
+          <div className="space-y-6">
+            {metrics.disciplineData.map((d) => {
+              const percentage = metrics.absoluteTotalPipeline > 0 
+                ? (d.value / metrics.absoluteTotalPipeline) * 100 
+                : 0;
+              
+              return (
+                <div key={d.name}>
+                  <div className="flex justify-between text-xs mb-2">
+                    <span className="text-[var(--text-secondary)] font-medium">{d.name}</span>
+                    <span className="text-[var(--text-primary)] font-mono">{percentage.toFixed(1)}%</span>
+                  </div>
+                  <div className="w-full bg-[var(--bg-tertiary)] h-2 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full rounded-full transition-all duration-500" 
+                      style={{ width: `${percentage}%`, backgroundColor: d.color }} 
+                    />
+                  </div>
+                  <div className="text-right text-[10px] text-[var(--text-tertiary)] mt-1 font-mono">
+                    {d.value.toLocaleString()} SAR
+                  </div>
+                </div>
+              );
+            })}
+            
+            <div className="pt-4 border-t border-[var(--border)] flex justify-between items-center">
+              <span className="text-xs text-[var(--text-secondary)]">Total Revenue</span>
+              <span className="text-xs font-mono text-[var(--text-primary)]">{metrics.absoluteTotalPipeline.toLocaleString()} SAR</span>
+            </div>
           </div>
         </div>
 

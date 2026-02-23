@@ -1,5 +1,5 @@
 import React from "react";
-import { Plus, X, FileText, Trash2, Building2, User, Calendar, List, Grid } from "lucide-react";
+import { Plus, X, FileText, Trash2, Building2, User, Calendar, List, Grid, Edit2 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { useSearch } from "../context/SearchContext";
 
@@ -20,6 +20,7 @@ export function Registrations() {
   const [registrations, setRegistrations] = React.useState<Registration[]>([]);
   const [viewMode, setViewMode] = React.useState<'grid' | 'list'>('list');
   const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const [editingId, setEditingId] = React.useState<number | null>(null);
   const [formData, setFormData] = React.useState({
     client: "",
     contact_name: "",
@@ -47,16 +48,35 @@ export function Registrations() {
     (reg.contact_name && reg.contact_name.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  const handleEdit = (reg: Registration) => {
+    setEditingId(reg.id);
+    setFormData({
+      client: reg.client,
+      contact_name: reg.contact_name || "",
+      registration_date: reg.registration_date || new Date().toISOString().split('T')[0],
+      portal_link: reg.portal_link || "",
+      status: reg.status || "Pending",
+      due_date: reg.due_date || "",
+      follow_up_log: reg.follow_up_log || "",
+      last_week_follow_up: reg.last_week_follow_up || ""
+    });
+    setIsModalOpen(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/registrations', {
-        method: 'POST',
+      const url = editingId ? `/api/registrations/${editingId}` : '/api/registrations';
+      const method = editingId ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
       if (res.ok) {
         setIsModalOpen(false);
+        setEditingId(null);
         setFormData({ 
           client: "", 
           contact_name: "",
@@ -70,7 +90,7 @@ export function Registrations() {
         fetchRegistrations();
       }
     } catch (error) {
-      console.error("Error creating registration", error);
+      console.error("Error saving registration", error);
     }
   };
 
@@ -113,7 +133,20 @@ export function Registrations() {
             </button>
           </div>
           <button 
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => {
+              setEditingId(null);
+              setFormData({ 
+                client: "", 
+                contact_name: "",
+                registration_date: new Date().toISOString().split('T')[0],
+                portal_link: "",
+                status: "Pending", 
+                due_date: "", 
+                follow_up_log: "",
+                last_week_follow_up: ""
+              });
+              setIsModalOpen(true);
+            }}
             className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors"
           >
             <Plus size={16} /> New Registration
@@ -130,12 +163,20 @@ export function Registrations() {
           ) : (
             filteredRegistrations.map((reg) => (
               <div key={reg.id} className="bg-[var(--card-bg)] border border-[var(--border)] p-6 group hover:border-[var(--border-hover)] transition-colors relative">
-                <button 
-                  onClick={() => handleDelete(reg.id)}
-                  className="absolute top-4 right-4 text-[var(--text-secondary)] hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <Trash2 size={16} />
-                </button>
+                <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button 
+                    onClick={() => handleEdit(reg)}
+                    className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                  >
+                    <Edit2 size={16} />
+                  </button>
+                  <button 
+                    onClick={() => handleDelete(reg.id)}
+                    className="text-[var(--text-secondary)] hover:text-red-400 transition-colors"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
                 
                 <div className="flex justify-between items-start mb-4 pr-8">
                   <div className="p-2 bg-[var(--bg-tertiary)] rounded text-[var(--text-primary)]">
@@ -251,6 +292,13 @@ export function Registrations() {
                     </a>
                   )}
                   <button 
+                    onClick={() => handleEdit(reg)}
+                    className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                    title="Edit"
+                  >
+                    <Edit2 size={16} />
+                  </button>
+                  <button 
                     onClick={() => handleDelete(reg.id)}
                     className="text-[var(--text-secondary)] hover:text-red-400 transition-colors"
                     title="Delete"
@@ -273,7 +321,7 @@ export function Registrations() {
             >
               <X size={20} />
             </button>
-            <h2 className="text-xl font-light text-[var(--text-primary)] mb-6">NEW REGISTRATION</h2>
+            <h2 className="text-xl font-light text-[var(--text-primary)] mb-6">{editingId ? "EDIT REGISTRATION" : "NEW REGISTRATION"}</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-mono uppercase text-[var(--text-secondary)] mb-1">Company Name</label>
@@ -358,7 +406,7 @@ export function Registrations() {
                 type="submit"
                 className="w-full bg-[var(--text-primary)] text-[var(--bg-primary)] py-3 text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors mt-4"
               >
-                Create Registration
+                {editingId ? "Update Registration" : "Create Registration"}
               </button>
             </form>
           </div>
