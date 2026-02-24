@@ -1,5 +1,5 @@
 import React from "react";
-import { Plus, X, Trash2, Pencil } from "lucide-react";
+import { Plus, X, Trash2, Pencil, Filter } from "lucide-react";
 import { cn } from "../lib/utils";
 import { useSearch } from "../context/SearchContext";
 
@@ -25,6 +25,9 @@ export function Actions() {
     status: "Pending"
   });
 
+  // Filter state
+  const [statusFilter, setStatusFilter] = React.useState<string[]>([]);
+
   const fetchActions = () => {
     fetch('/api/actions')
       .then(res => res.json())
@@ -36,11 +39,23 @@ export function Actions() {
     fetchActions();
   }, []);
 
-  const filteredActions = actions.filter(action => 
-    action.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    action.responsible.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (action.description && action.description.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredActions = actions.filter(action => {
+    const matchesSearch = action.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      action.responsible.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (action.description && action.description.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    const matchesStatus = statusFilter.length === 0 || statusFilter.includes(action.status);
+
+    return matchesSearch && matchesStatus;
+  });
+
+  const toggleStatus = (status: string) => {
+    setStatusFilter(prev => 
+      prev.includes(status) 
+        ? prev.filter(s => s !== status)
+        : [...prev, status]
+    );
+  };
 
   const handleEdit = (action: Action) => {
     setEditingId(action.id);
@@ -109,12 +124,41 @@ export function Actions() {
           <h1 className="text-4xl font-light tracking-tight text-[var(--text-primary)] mb-2">ACTION LIST</h1>
           <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Manage Tasks & Responsibilities</p>
         </div>
-        <button 
-          onClick={openNewModal}
-          className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors"
-        >
-          <Plus size={16} /> Add Action
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 mr-4">
+            <span className="text-xs font-mono uppercase text-[var(--text-secondary)] mr-2">Filter:</span>
+            {["Pending", "In Progress", "Completed"].map(status => (
+              <button
+                key={status}
+                onClick={() => toggleStatus(status)}
+                className={cn(
+                  "px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider border transition-colors rounded-full",
+                  statusFilter.includes(status) 
+                    ? "bg-[var(--text-primary)] text-[var(--bg-primary)] border-[var(--text-primary)]" 
+                    : "bg-transparent text-[var(--text-secondary)] border-[var(--border)] hover:border-[var(--text-primary)] hover:text-[var(--text-primary)]"
+                )}
+              >
+                {status}
+              </button>
+            ))}
+            {statusFilter.length > 0 && (
+              <button
+                onClick={() => setStatusFilter([])}
+                className="ml-2 p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                title="Clear filters"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+          
+          <button 
+            onClick={openNewModal}
+            className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors"
+          >
+            <Plus size={16} /> Add Action
+          </button>
+        </div>
       </div>
 
       <div className="bg-[var(--card-bg)] border border-[var(--border)]">

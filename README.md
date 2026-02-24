@@ -7,7 +7,67 @@ This is a Business Development Portal application built with React, Express, and
 - Node.js (v18 or higher recommended)
 - npm (Node Package Manager)
 
-## Installation
+## Docker Installation (Recommended for Mac/Windows)
+
+Running with Docker ensures the application runs in a consistent environment and makes it easy to manage.
+
+### Prerequisites
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running.
+
+### Steps
+
+1.  **Open Terminal** and navigate to the project directory.
+
+2.  **Build and Start** the container:
+
+    ```bash
+    docker compose up --build
+    ```
+
+    *Note: If you are using an older version of Docker, you might need to use `docker-compose up --build` instead.*
+
+3.  **Access the App**:
+    Open your browser and go to `http://localhost:3001`.
+
+    *Note: The default port is set to 3001 to avoid conflicts with other applications running on port 3000.*
+
+    **Changing the Port:**
+    If you want to use a different port (e.g., 8080), open `docker-compose.yml` and change the ports section:
+    ```yaml
+    ports:
+      - "8080:3000" # Maps host port 8080 to container port 3000
+    ```
+
+4.  **Stop the App**:
+    Press `Ctrl+C` in the terminal, or run:
+    ```bash
+    docker compose down
+    ```
+
+### Data Persistence
+
+The database file `bd-portal.db` is mounted from your local machine to the container. This means:
+- Your data is saved locally in the project folder.
+- If you delete the container, your data persists.
+- You can back up `bd-portal.db` just like any other file.
+
+### Troubleshooting
+
+**Error: `zsh: command not found: docker`**
+1.  **Install Docker:** Ensure you have installed [Docker Desktop for Mac](https://www.docker.com/products/docker-desktop/).
+2.  **Start Docker:** Open the "Docker" application in your Applications folder. It must be running in the background for the commands to work. You should see the whale icon in your menu bar.
+3.  **Check PATH:** If it's running but still not found, try restarting your terminal.
+
+**Error: `zsh: command not found: docker-compose`**
+- Use `docker compose` (with a space) instead of `docker-compose`.
+
+**Error: `failed to solve: failed to read dockerfile: open Dockerfile: no such file or directory`**
+- This means you are running the command from the wrong directory.
+- Make sure you are in the root folder of the project (where `package.json` and `Dockerfile` are located).
+- Run `ls` (Mac/Linux) or `dir` (Windows) to check if `Dockerfile` is in the current folder.
+
+## Manual Installation (Without Docker)
 
 1.  Clone the repository or download the source code.
 2.  Navigate to the project directory in your terminal.
