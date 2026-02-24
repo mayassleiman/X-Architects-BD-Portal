@@ -15,7 +15,6 @@ interface Action {
 export function Actions() {
   const { searchQuery } = useSearch();
   const [actions, setActions] = React.useState<Action[]>([]);
-  const [filterStatus, setFilterStatus] = React.useState("All");
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [editingId, setEditingId] = React.useState<number | null>(null);
   const [formData, setFormData] = React.useState({
@@ -38,10 +37,9 @@ export function Actions() {
   }, []);
 
   const filteredActions = actions.filter(action => 
-    (filterStatus === "All" || action.status === filterStatus) &&
-    (action.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    action.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     action.responsible.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (action.description && action.description.toLowerCase().includes(searchQuery.toLowerCase())))
+    (action.description && action.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const handleEdit = (action: Action) => {
@@ -111,30 +109,12 @@ export function Actions() {
           <h1 className="text-4xl font-light tracking-tight text-[var(--text-primary)] mb-2">ACTION LIST</h1>
           <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Manage Tasks & Responsibilities</p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex bg-[var(--card-bg)] border border-[var(--border)] rounded-lg p-1">
-            {["All", "Pending", "In Progress", "Completed"].map((status) => (
-              <button
-                key={status}
-                onClick={() => setFilterStatus(status)}
-                className={cn(
-                  "px-3 py-1.5 text-xs font-medium rounded transition-colors",
-                  filterStatus === status 
-                    ? "bg-[var(--text-primary)] text-[var(--bg-primary)]" 
-                    : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                )}
-              >
-                {status}
-              </button>
-            ))}
-          </div>
-          <button 
-            onClick={openNewModal}
-            className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors"
-          >
-            <Plus size={16} /> Add Action
-          </button>
-        </div>
+        <button 
+          onClick={openNewModal}
+          className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors"
+        >
+          <Plus size={16} /> Add Action
+        </button>
       </div>
 
       <div className="bg-[var(--card-bg)] border border-[var(--border)]">

@@ -1,7 +1,0 @@
-node_modules
-dist
-.git
-.gitignore
-bd-portal.db
-.env
-.DS_Store

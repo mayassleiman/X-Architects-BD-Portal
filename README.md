@@ -7,52 +7,7 @@ This is a Business Development Portal application built with React, Express, and
 - Node.js (v18 or higher recommended)
 - npm (Node Package Manager)
 
-## Docker Installation (Recommended for Mac/Windows)
-
-Running with Docker ensures the application runs in a consistent environment and makes it easy to manage.
-
-### Prerequisites
-
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running.
-
-### Steps
-
-1.  **Open Terminal** and navigate to the project directory.
-
-2.  **Build and Start** the container:
-
-    ```bash
-    docker-compose up --build
-    ```
-
-    *Note: This command builds the image and starts the server. It might take a few minutes the first time.*
-
-3.  **Access the App**:
-    Open your browser and go to `http://localhost:3001`.
-
-    *Note: The default port is set to 3001 to avoid conflicts with other applications running on port 3000.*
-
-    **Changing the Port:**
-    If you want to use a different port (e.g., 8080), open `docker-compose.yml` and change the ports section:
-    ```yaml
-    ports:
-      - "8080:3000" # Maps host port 8080 to container port 3000
-    ```
-
-4.  **Stop the App**:
-    Press `Ctrl+C` in the terminal, or run:
-    ```bash
-    docker-compose down
-    ```
-
-### Data Persistence
-
-The database file `bd-portal.db` is mounted from your local machine to the container. This means:
-- Your data is saved locally in the project folder.
-- If you delete the container, your data persists.
-- You can back up `bd-portal.db` just like any other file.
-
-## Manual Installation (Without Docker)
+## Installation
 
 1.  Clone the repository or download the source code.
 2.  Navigate to the project directory in your terminal.

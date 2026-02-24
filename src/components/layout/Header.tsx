@@ -12,7 +12,7 @@ export function Header() {
   });
 
   return (
-    <header className="h-16 border-b border-[var(--border)] bg-[var(--bg-primary)]/80 backdrop-blur-md flex items-center justify-between px-8 sticky top-0 z-40 ml-[500px] w-[calc(100%-500px)] transition-colors">
+    <header className="h-16 border-b border-[var(--border)] bg-[var(--bg-primary)]/80 backdrop-blur-md flex items-center justify-between px-8 sticky top-0 z-40 ml-64 w-[calc(100%-16rem)] transition-colors">
       <div className="flex items-center gap-4 text-[var(--text-secondary)]">
         <CalendarIcon size={16} />
         <span className="text-xs font-mono tracking-wider uppercase">{today}</span>
