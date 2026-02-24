@@ -43,8 +43,8 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-64 bg-[var(--bg-primary)] border-r border-[var(--border)] flex flex-col z-50 transition-colors">
-      <div className="p-6 border-b border-[var(--border)]">
+    <aside className="fixed left-0 top-0 h-screen w-[500px] bg-[var(--bg-primary)] border-r border-[var(--border)] flex flex-col z-50 transition-colors">
+      <div className="p-6 border-b border-[var(--border)] overflow-hidden">
         <Logo />
       </div>
 
