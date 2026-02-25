@@ -1,5 +1,5 @@
 import React from "react";
-import { Plus, X, Trash2, Layers } from "lucide-react";
+import { Plus, X, Trash2, Layers, Edit2 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { useSearch } from "../context/SearchContext";
 
@@ -22,7 +22,7 @@ export function Tasks() {
   const { searchQuery } = useSearch();
   const [tasks, setTasks] = React.useState<Task[]>([]);
   const [isModalOpen, setIsModalOpen] = React.useState(false);
-  const [formData, setFormData] = React.useState({
+  const [formData, setFormData] = React.useState<{id?: number, title: string, level: number, status: string, description: string}>({
     title: "",
     level: 1,
     status: "Pending",
@@ -48,8 +48,11 @@ export function Tasks() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/tasks', {
-        method: 'POST',
+      const url = formData.id ? `/api/tasks/${formData.id}` : '/api/tasks';
+      const method = formData.id ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method: method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
@@ -59,7 +62,7 @@ export function Tasks() {
         fetchTasks();
       }
     } catch (error) {
-      console.error("Error creating task", error);
+      console.error("Error saving task", error);
     }
   };
 
@@ -79,6 +82,11 @@ export function Tasks() {
     }
   };
 
+  const handleEdit = (task: Task) => {
+    setFormData(task);
+    setIsModalOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -87,7 +95,10 @@ export function Tasks() {
           <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Business Development Pipeline</p>
         </div>
         <button 
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setFormData({ title: "", level: 1, status: "Pending", description: "" });
+            setIsModalOpen(true);
+          }}
           className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors"
         >
           <Plus size={16} /> New Task
@@ -103,13 +114,21 @@ export function Tasks() {
             <div className="flex-1 p-4 space-y-3 overflow-y-auto custom-scrollbar">
               {filteredTasks.filter(t => t.level === level.id).map(task => (
                 <div key={task.id} className="bg-[var(--bg-tertiary)] p-3 border border-[var(--border)] group hover:border-[var(--border-hover)] transition-colors relative">
-                  <button 
-                    onClick={() => handleDelete(task.id)}
-                    className="absolute top-2 right-2 text-[var(--text-secondary)] hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                  <h4 className="text-sm font-medium text-[var(--text-primary)] pr-6">{task.title}</h4>
+                  <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button 
+                      onClick={() => handleEdit(task)}
+                      className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                    >
+                      <Edit2 size={14} />
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(task.id)}
+                      className="text-[var(--text-secondary)] hover:text-red-400"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                  <h4 className="text-sm font-medium text-[var(--text-primary)] pr-12">{task.title}</h4>
                   {task.description && (
                     <p className="text-xs text-[var(--text-secondary)] mt-2 line-clamp-2">{task.description}</p>
                   )}
@@ -132,7 +151,7 @@ export function Tasks() {
             >
               <X size={20} />
             </button>
-            <h2 className="text-xl font-light text-[var(--text-primary)] mb-6">NEW TASK</h2>
+            <h2 className="text-xl font-light text-[var(--text-primary)] mb-6">{formData.id ? "EDIT TASK" : "NEW TASK"}</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-mono uppercase text-[var(--text-secondary)] mb-1">Task Title</label>
@@ -168,7 +187,7 @@ export function Tasks() {
                 type="submit"
                 className="w-full bg-[var(--text-primary)] text-[var(--bg-primary)] py-3 text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors mt-4"
               >
-                Create Task
+                {formData.id ? "Save Changes" : "Create Task"}
               </button>
             </form>
           </div>

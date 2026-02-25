@@ -331,8 +331,8 @@ router.get('/engagements/search', (req, res) => {
 
   query += ` ORDER BY e.date DESC`;
   
-  // If no filters, limit to 50
-  if (!q && !startDate && !endDate) {
+  // If no filters and not requesting all, limit to 50
+  if (!q && !startDate && !endDate && req.query.all !== 'true') {
     query += ` LIMIT 50`;
   }
 

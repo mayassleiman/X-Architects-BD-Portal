@@ -1,9 +1,55 @@
 import React from "react";
-import { Database } from "lucide-react";
+import { Database, Download, FileSpreadsheet } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
+import * as XLSX from 'xlsx';
 
 export function Settings() {
   const { theme, toggleTheme } = useTheme();
+
+  const handleExportAll = async () => {
+    try {
+      const [
+        contactsRes, 
+        engagementsRes, 
+        actionsRes, 
+        registrationsRes, 
+        pipelineRes,
+        tasksRes,
+        meetingsRes
+      ] = await Promise.all([
+        fetch('/api/contacts'),
+        fetch('/api/engagements/search?all=true'),
+        fetch('/api/actions'),
+        fetch('/api/registrations'),
+        fetch('/api/pipeline'),
+        fetch('/api/tasks'),
+        fetch('/api/meetings')
+      ]);
+
+      const contacts = await contactsRes.json();
+      const engagements = await engagementsRes.json();
+      const actions = await actionsRes.json();
+      const registrations = await registrationsRes.json();
+      const pipeline = await pipelineRes.json();
+      const tasks = await tasksRes.json();
+      const meetings = await meetingsRes.json();
+
+      const wb = XLSX.utils.book_new();
+
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(contacts), "Contacts");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(engagements), "Engagements");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(actions), "Actions");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(registrations), "Registrations");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(pipeline), "Pipeline");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(tasks), "Tasks");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(meetings), "Meetings");
+
+      XLSX.writeFile(wb, "BD_Portal_Full_Export.xlsx");
+    } catch (error) {
+      console.error("Error exporting data:", error);
+      alert("Failed to export data.");
+    }
+  };
 
   return (
     <div className="max-w-3xl space-y-8">
@@ -37,6 +83,22 @@ export function Settings() {
         <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6">
           <h3 className="text-lg font-medium text-[var(--text-primary)] mb-4">Data Management</h3>
           <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 border border-[var(--border)] bg-[var(--card-bg-inner)]">
+              <div className="flex items-center gap-3">
+                <FileSpreadsheet size={20} className="text-[var(--text-secondary)]" />
+                <div>
+                  <h4 className="text-sm font-medium text-[var(--text-primary)]">Export All Data (Excel)</h4>
+                  <p className="text-xs text-[var(--text-secondary)]">Download all system data (Contacts, Engagements, Actions, etc.) as a multi-sheet Excel file.</p>
+                </div>
+              </div>
+              <button 
+                onClick={handleExportAll}
+                className="text-xs font-mono uppercase border border-[var(--border)] px-3 py-1.5 text-[var(--text-primary)] hover:bg-[var(--text-primary)] hover:text-[var(--bg-primary)] transition-colors"
+              >
+                Export
+              </button>
+            </div>
+
             <div className="flex items-center justify-between p-4 border border-[var(--border)] bg-[var(--card-bg-inner)]">
               <div className="flex items-center gap-3">
                 <Database size={20} className="text-[var(--text-secondary)]" />
