@@ -12,6 +12,8 @@ import { Tasks } from "./pages/Tasks";
 
 import { Meetings } from "./pages/Meetings";
 import { Pipeline } from "./pages/Pipeline";
+import { MasterDirectory } from "./pages/MasterDirectory";
+import { FollowUpReminder } from "./components/features/FollowUpReminder";
 import { SearchProvider } from "./context/SearchContext";
 import { UserProvider } from "./context/UserContext";
 
@@ -58,6 +60,7 @@ export default function App() {
         <AppLayout>
           {path === "/" && <Dashboard />}
           {path === "/actions" && <Actions />}
+          {path === "/directory" && <MasterDirectory />}
           {path === "/registrations" && <Registrations />}
           {path === "/meetings" && <Meetings />}
           {path === "/pipeline" && <Pipeline />}
@@ -65,6 +68,7 @@ export default function App() {
           {path === "/settings" && <Settings />}
           {path === "/profile" && <Profile />}
           {path === "/report" && <FullReport />}
+          <FollowUpReminder />
         </AppLayout>
       </SearchProvider>
     </UserProvider>

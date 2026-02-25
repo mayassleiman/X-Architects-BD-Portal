@@ -230,4 +230,177 @@ router.delete('/pipeline/:id', (req, res) => {
   res.json({ success: true });
 });
 
+// ... existing imports
+
+// --- Contacts API ---
+
+// Get Contacts
+router.get('/contacts', (req, res) => {
+  const stmt = db.prepare('SELECT * FROM contacts ORDER BY client_organization ASC');
+  const contacts = stmt.all();
+  res.json(contacts);
+});
+
+// Create Contact
+router.post('/contacts', (req, res) => {
+  const { client_organization, location, client_contact, position, phone, email, category } = req.body;
+  const stmt = db.prepare('INSERT INTO contacts (client_organization, location, client_contact, position, phone, email, category) VALUES (?, ?, ?, ?, ?, ?, ?)');
+  const info = stmt.run(client_organization, location, client_contact, position, phone, email, category);
+  res.json({ id: info.lastInsertRowid });
+});
+
+// Update Contact
+router.put('/contacts/:id', (req, res) => {
+  const { id } = req.params;
+  const { client_organization, location, client_contact, position, phone, email, category } = req.body;
+  const stmt = db.prepare('UPDATE contacts SET client_organization = ?, location = ?, client_contact = ?, position = ?, phone = ?, email = ?, category = ? WHERE id = ?');
+  stmt.run(client_organization, location, client_contact, position, phone, email, category, id);
+  res.json({ success: true });
+});
+
+// Delete Contact
+router.delete('/contacts/:id', (req, res) => {
+  const { id } = req.params;
+  const stmt = db.prepare('DELETE FROM contacts WHERE id = ?');
+  stmt.run(id);
+  res.json({ success: true });
+});
+
+// --- Engagements API ---
+
+// Get Engagements for Contact
+router.get('/contacts/:id/engagements', (req, res) => {
+  const { id } = req.params;
+  const stmt = db.prepare('SELECT * FROM engagements WHERE contact_id = ? ORDER BY date DESC');
+  const engagements = stmt.all(id);
+  res.json(engagements);
+});
+
+// Add Engagement
+router.post('/contacts/:id/engagements', (req, res) => {
+  const { id } = req.params;
+  const { date, discussion } = req.body;
+  const stmt = db.prepare('INSERT INTO engagements (contact_id, date, discussion) VALUES (?, ?, ?)');
+  const info = stmt.run(id, date, discussion);
+  res.json({ id: info.lastInsertRowid });
+});
+
+// Update Engagement
+router.put('/engagements/:id', (req, res) => {
+  const { id } = req.params;
+  const { date, discussion } = req.body;
+  const stmt = db.prepare('UPDATE engagements SET date = ?, discussion = ? WHERE id = ?');
+  stmt.run(date, discussion, id);
+  res.json({ success: true });
+});
+
+// Delete Engagement
+router.delete('/engagements/:id', (req, res) => {
+  const { id } = req.params;
+  const stmt = db.prepare('DELETE FROM engagements WHERE id = ?');
+  stmt.run(id);
+  res.json({ success: true });
+});
+
+// Get Recent or Searched Engagements (Global)
+router.get('/engagements/search', (req, res) => {
+  const { q, startDate, endDate } = req.query;
+  
+  let query = `
+    SELECT e.*, c.client_contact, c.client_organization 
+    FROM engagements e 
+    JOIN contacts c ON e.contact_id = c.id 
+    WHERE 1=1
+  `;
+  const params = [];
+
+  if (q) {
+    query += ` AND e.discussion LIKE ?`;
+    params.push(`%${q}%`);
+  }
+
+  if (startDate) {
+    query += ` AND e.date >= ?`;
+    params.push(startDate);
+  }
+
+  if (endDate) {
+    query += ` AND e.date <= ?`;
+    params.push(endDate);
+  }
+
+  query += ` ORDER BY e.date DESC`;
+  
+  // If no filters, limit to 50
+  if (!q && !startDate && !endDate) {
+    query += ` LIMIT 50`;
+  }
+
+  const stmt = db.prepare(query);
+  const results = stmt.all(...params);
+  res.json(results);
+});
+
+// --- Follow-ups API ---
+
+// Get Follow-ups for Contact
+router.get('/contacts/:id/follow-ups', (req, res) => {
+  const { id } = req.params;
+  const stmt = db.prepare('SELECT * FROM follow_ups WHERE contact_id = ? ORDER BY date ASC');
+  const followUps = stmt.all(id);
+  res.json(followUps);
+});
+
+// Add Follow-up
+router.post('/contacts/:id/follow-ups', (req, res) => {
+  const { id } = req.params;
+  const { date, description, status } = req.body;
+  const stmt = db.prepare('INSERT INTO follow_ups (contact_id, date, description, status) VALUES (?, ?, ?, ?)');
+  const info = stmt.run(id, date, description, status || 'Pending');
+  res.json({ id: info.lastInsertRowid });
+});
+
+// Update Follow-up
+router.put('/follow-ups/:id', (req, res) => {
+  const { id } = req.params;
+  const { date, description, status } = req.body;
+  
+  // Build query dynamically based on provided fields
+  const updates = [];
+  const params = [];
+  
+  if (date) { updates.push('date = ?'); params.push(date); }
+  if (description) { updates.push('description = ?'); params.push(description); }
+  if (status) { updates.push('status = ?'); params.push(status); }
+  
+  if (updates.length === 0) return res.json({ success: true });
+  
+  params.push(id);
+  const stmt = db.prepare(`UPDATE follow_ups SET ${updates.join(', ')} WHERE id = ?`);
+  stmt.run(...params);
+  res.json({ success: true });
+});
+
+// Delete Follow-up
+router.delete('/follow-ups/:id', (req, res) => {
+  const { id } = req.params;
+  const stmt = db.prepare('DELETE FROM follow_ups WHERE id = ?');
+  stmt.run(id);
+  res.json({ success: true });
+});
+
+// Get Due Follow-ups (Global)
+router.get('/follow-ups/due', (req, res) => {
+  const today = new Date().toISOString().split('T')[0];
+  const stmt = db.prepare(`
+    SELECT f.*, c.client_contact, c.client_organization 
+    FROM follow_ups f 
+    JOIN contacts c ON f.contact_id = c.id 
+    WHERE f.status = 'Pending' AND f.date <= ?
+    ORDER BY f.date ASC
+  `);
+  const dueFollowUps = stmt.all(today);
+  res.json(dueFollowUps);
+});
+
 export default router;

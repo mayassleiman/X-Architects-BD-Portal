@@ -8,6 +8,7 @@ import {
   Settings as SettingsIcon,
   LogOut,
   User,
+  Users,
   BarChart3,
   PanelLeftClose,
   PanelLeftOpen,
@@ -19,6 +20,7 @@ import { useUser } from "../../context/UserContext";
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/" },
   { icon: CheckSquare, label: "Action List", href: "/actions" },
+  { icon: Users, label: "Master Directory", href: "/directory" },
   { icon: FileText, label: "Registrations", href: "/registrations" },
   { icon: Calendar, label: "Meetings", href: "/meetings" },
   { icon: BarChart3, label: "Pipeline", href: "/pipeline" },
