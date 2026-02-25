@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { Plus, X, Trash2, Calendar as CalendarIcon, Clock, User, List, Grid, Edit2, BarChart2 } from "lucide-react";
+import { Plus, X, Trash2, Calendar as CalendarIcon, Clock, User, List, Grid, Edit2, BarChart2, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "../lib/utils";
 import { useSearch } from "../context/SearchContext";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -24,6 +24,7 @@ export function Meetings() {
   const { searchQuery } = useSearch();
   const [meetings, setMeetings] = React.useState<Meeting[]>([]);
   const [viewMode, setViewMode] = React.useState<'list' | 'calendar' | 'stats'>('list');
+  const [currentDate, setCurrentDate] = React.useState(new Date());
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [editingId, setEditingId] = React.useState<number | null>(null);
   const [formData, setFormData] = React.useState({
@@ -47,7 +48,8 @@ export function Meetings() {
 
   const filteredMeetings = meetings.filter(meeting => 
     meeting.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    meeting.attendees.some(a => a.toLowerCase().includes(searchQuery.toLowerCase()))
+    meeting.attendees.some(a => a.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    meeting.date.includes(searchQuery) // Allow searching by date
   );
 
   // Statistics Calculations
@@ -182,13 +184,13 @@ export function Meetings() {
     return acc;
   }, {} as Record<string, Meeting[]>);
 
-  // Get current week dates
+  // Get current week dates based on currentDate state
   const getWeekDates = () => {
     const dates = [];
-    const today = new Date();
-    const currentDay = today.getDay(); // 0 is Sunday
-    const diff = today.getDate() - currentDay + (currentDay === 0 ? -6 : 1); // Adjust to Monday
-    const monday = new Date(today.setDate(diff));
+    const baseDate = new Date(currentDate);
+    const currentDay = baseDate.getDay(); // 0 is Sunday
+    const diff = baseDate.getDate() - currentDay + (currentDay === 0 ? -6 : 1); // Adjust to Monday
+    const monday = new Date(baseDate.setDate(diff));
 
     for (let i = 0; i < 7; i++) {
       const date = new Date(monday);
@@ -200,6 +202,22 @@ export function Meetings() {
 
   const weekDates = getWeekDates();
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  const handlePrevWeek = () => {
+    const newDate = new Date(currentDate);
+    newDate.setDate(newDate.getDate() - 7);
+    setCurrentDate(newDate);
+  };
+
+  const handleNextWeek = () => {
+    const newDate = new Date(currentDate);
+    newDate.setDate(newDate.getDate() + 7);
+    setCurrentDate(newDate);
+  };
+
+  const handleToday = () => {
+    setCurrentDate(new Date());
+  };
 
   const [dragOverDate, setDragOverDate] = React.useState<string | null>(null);
 
@@ -251,7 +269,25 @@ export function Meetings() {
       <div className="flex items-center justify-between no-print">
         <div>
           <h1 className="text-4xl font-light tracking-tight text-[var(--text-primary)] mb-2">MEETINGS</h1>
-          <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Schedule & Coordination</p>
+          <div className="flex items-center gap-4">
+            <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Schedule & Coordination</p>
+            {viewMode === 'calendar' && (
+              <div className="flex items-center gap-2 ml-4 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg p-1">
+                <button onClick={handlePrevWeek} className="p-1 hover:bg-[var(--bg-tertiary)] rounded transition-colors">
+                  <ChevronLeft size={14} className="text-[var(--text-secondary)]" />
+                </button>
+                <span className="text-xs font-mono text-[var(--text-primary)] px-2 min-w-[140px] text-center">
+                  {new Date(weekDates[0]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(weekDates[6]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </span>
+                <button onClick={handleNextWeek} className="p-1 hover:bg-[var(--bg-tertiary)] rounded transition-colors">
+                  <ChevronRight size={14} className="text-[var(--text-secondary)]" />
+                </button>
+                <button onClick={handleToday} className="text-[10px] font-bold uppercase px-2 py-1 hover:bg-[var(--bg-tertiary)] rounded text-[var(--text-secondary)] ml-1">
+                  Today
+                </button>
+              </div>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-4">
           <div className="flex bg-[var(--card-bg)] border border-[var(--border)] rounded-lg p-1">
