@@ -8,8 +8,9 @@ import {
   Settings as SettingsIcon,
   LogOut,
   User,
-  Cpu,
   BarChart3,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { Logo } from "../ui/Logo";
 import { cn } from "../../lib/utils";
@@ -24,14 +25,18 @@ const navItems = [
   { icon: Briefcase, label: "Tasks", href: "/tasks" },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  isCollapsed: boolean;
+  onToggle: () => void;
+}
+
+export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   const { profile } = useUser();
   const [active, setActive] = React.useState(window.location.pathname);
 
   const handleNavigation = (href: string) => {
     window.history.pushState({}, "", href);
     setActive(href);
-    // Dispatch a popstate event so App.tsx detects it
     window.dispatchEvent(new PopStateEvent("popstate"));
   };
 
@@ -43,66 +48,105 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-[500px] bg-[var(--bg-primary)] border-r border-[var(--border)] flex flex-col z-50 transition-colors">
-      <div className="p-6 border-b border-[var(--border)] overflow-hidden">
-        <Logo />
+    <aside 
+      className={cn(
+        "fixed left-0 top-0 h-screen bg-[var(--bg-primary)] border-r border-[var(--border)] flex flex-col z-50 transition-all duration-300 ease-in-out",
+        isCollapsed ? "w-20" : "w-64"
+      )}
+    >
+      <div className={cn(
+        "flex items-center border-b border-[var(--border)] h-20 transition-all",
+        isCollapsed ? "justify-center px-0" : "justify-between px-6"
+      )}>
+        {!isCollapsed && <Logo />}
+        {isCollapsed && (
+             <div className="font-bold text-xl text-[var(--text-primary)]">X</div>
+        )}
+        <button 
+          onClick={onToggle}
+          className={cn(
+            "text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors",
+            !isCollapsed && "ml-auto"
+          )}
+          title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+        >
+          {isCollapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
+        </button>
       </div>
 
-      <nav className="flex-1 py-6 px-3 space-y-1">
+      <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto overflow-x-hidden">
         {navItems.map((item) => (
           <button
             key={item.href}
             onClick={() => handleNavigation(item.href)}
             className={cn(
-              "w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors rounded-lg group",
+              "w-full flex items-center gap-3 px-3 py-3 text-sm font-medium transition-colors rounded-lg group relative",
               active === item.href
                 ? "bg-[var(--text-primary)] text-[var(--bg-primary)]"
-                : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--border)]"
+                : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--border)]",
+              isCollapsed && "justify-center px-2"
             )}
+            title={isCollapsed ? item.label : undefined}
           >
             <item.icon
-              size={18}
+              size={20}
               className={cn(
-                "transition-colors",
+                "transition-colors shrink-0",
                 active === item.href ? "text-[var(--bg-primary)]" : "text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]"
               )}
             />
-            <span className="tracking-wide uppercase text-xs font-semibold">
-              {item.label}
-            </span>
+            {!isCollapsed && (
+              <span className="tracking-wide uppercase text-xs font-semibold whitespace-nowrap overflow-hidden text-ellipsis">
+                {item.label}
+              </span>
+            )}
           </button>
         ))}
       </nav>
 
-      <div className="p-4 border-t border-[var(--border)] space-y-1">
+      <div className="p-3 border-t border-[var(--border)] space-y-1">
         <button 
           onClick={() => handleNavigation("/settings")}
-          className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--border)] rounded-lg transition-colors group"
+          className={cn(
+            "w-full flex items-center gap-3 px-3 py-3 text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--border)] rounded-lg transition-colors group",
+            isCollapsed && "justify-center px-2"
+          )}
+          title={isCollapsed ? "Settings" : undefined}
         >
-          <SettingsIcon size={18} className="text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]" />
-          <span className="tracking-wide uppercase text-xs font-semibold">Settings</span>
+          <SettingsIcon size={20} className="text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] shrink-0" />
+          {!isCollapsed && <span className="tracking-wide uppercase text-xs font-semibold whitespace-nowrap">Settings</span>}
         </button>
         <button 
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-[var(--text-secondary)] hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors group"
+          className={cn(
+            "w-full flex items-center gap-3 px-3 py-3 text-sm font-medium text-[var(--text-secondary)] hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors group",
+            isCollapsed && "justify-center px-2"
+          )}
+          title={isCollapsed ? "Logout" : undefined}
         >
-          <LogOut size={18} className="text-[var(--text-secondary)] group-hover:text-red-400" />
-          <span className="tracking-wide uppercase text-xs font-semibold">Logout</span>
+          <LogOut size={20} className="text-[var(--text-secondary)] group-hover:text-red-400 shrink-0" />
+          {!isCollapsed && <span className="tracking-wide uppercase text-xs font-semibold whitespace-nowrap">Logout</span>}
         </button>
       </div>
 
       <div className="p-4 border-t border-[var(--border)]">
         <button 
           onClick={() => handleNavigation("/profile")}
-          className="flex items-center gap-3 px-2 w-full hover:bg-[var(--border)] rounded-lg p-2 transition-colors text-left"
+          className={cn(
+            "flex items-center gap-3 w-full hover:bg-[var(--border)] rounded-lg p-2 transition-colors",
+            isCollapsed ? "justify-center" : "text-left"
+          )}
+          title={isCollapsed ? profile.name : undefined}
         >
-          <div className="w-8 h-8 rounded-full bg-[var(--bg-tertiary)] flex items-center justify-center border border-[var(--border)]">
+          <div className="w-8 h-8 rounded-full bg-[var(--bg-tertiary)] flex items-center justify-center border border-[var(--border)] shrink-0">
             <User size={14} className="text-[var(--text-secondary)]" />
           </div>
-          <div className="flex flex-col">
-            <span className="text-xs font-medium text-[var(--text-primary)]">{profile.name}</span>
-            <span className="text-[10px] text-[var(--text-secondary)]">{profile.email}</span>
-          </div>
+          {!isCollapsed && (
+            <div className="flex flex-col overflow-hidden">
+              <span className="text-xs font-medium text-[var(--text-primary)] truncate">{profile.name}</span>
+              <span className="text-[10px] text-[var(--text-secondary)] truncate">{profile.email}</span>
+            </div>
+          )}
         </button>
       </div>
     </aside>
