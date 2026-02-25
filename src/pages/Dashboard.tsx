@@ -83,17 +83,43 @@ export function Dashboard() {
       .catch(err => console.log("Failed to fetch meetings"));
   }, []);
 
-  const displayActions = apiActions.length > 0 ? apiActions : actions;
+  const now = new Date();
+
+  // Filter Actions (Pending or In Progress)
+  const pendingActions = (apiActions.length > 0 ? apiActions : actions).filter((a: any) => 
+    ['Pending', 'In Progress'].includes(a.status)
+  );
+  
+  const displayActions = pendingActions.slice(0, 5);
+
+  // Filter Meetings (Future only)
+  const futureMeetings = (apiMeetings.length > 0 ? apiMeetings : meetings).filter((m: any) => {
+    // Handle "Today" / "Tomorrow" for mock data if needed, though we prioritize API data
+    if (m.date === 'Today') return true;
+    if (m.date === 'Tomorrow') return true;
+    
+    const meetingDate = new Date(`${m.date}T${m.time || '00:00'}`);
+    return meetingDate >= now;
+  });
+
+  // Sort and limit meetings
+  const displayMeetings = futureMeetings
+    .sort((a: any, b: any) => {
+      const dateA = new Date(`${a.date}T${a.time || '00:00'}`);
+      const dateB = new Date(`${b.date}T${b.time || '00:00'}`);
+      return dateA.getTime() - dateB.getTime();
+    })
+    .slice(0, 5);
   
   // Calculate metrics
-  const totalActions = apiActions.length;
-  const pendingRegs = apiRegistrations.filter((r: any) => r.status === 'Pending').length;
-  const meetingsThisWeek = apiMeetings.length; // Simplified for now
+  const pendingActionsCount = pendingActions.length;
+  const pendingRegsCount = apiRegistrations.filter((r: any) => r.status === 'Pending').length;
+  const upcomingMeetingsCount = futureMeetings.length;
 
   const realMetrics = [
-    { label: "Total Actions", value: totalActions.toString(), change: "Live", icon: CheckCircle2, color: "text-emerald-400", href: "/actions" },
-    { label: "Pending Regs", value: pendingRegs.toString(), change: "Live", icon: Clock, color: "text-amber-400", href: "/registrations" },
-    { label: "Total Meetings", value: meetingsThisWeek.toString(), change: "Live", icon: CalendarDays, color: "text-blue-400", href: "/meetings" },
+    { label: "Pending Actions", value: pendingActionsCount.toString(), change: "Live", icon: CheckCircle2, color: "text-emerald-400", href: "/actions" },
+    { label: "Pending Regs", value: pendingRegsCount.toString(), change: "Live", icon: Clock, color: "text-amber-400", href: "/registrations" },
+    { label: "Upcoming Meetings", value: upcomingMeetingsCount.toString(), change: "Live", icon: CalendarDays, color: "text-blue-400", href: "/meetings" },
   ];
 
   return (
@@ -173,22 +199,32 @@ export function Dashboard() {
         <Card title="Upcoming Meetings" action={<MoreHorizontal size={16} />} href="/meetings">
           <div className="space-y-6 relative">
             <div className="absolute left-1.5 top-2 bottom-2 w-px bg-[var(--border)]" />
-            {meetings.map((meeting) => (
-              <div key={meeting.id} className="relative pl-6 group">
-                <div className="absolute left-0 top-1.5 w-3 h-3 rounded-full bg-[var(--card-bg)] border border-[var(--border)] group-hover:border-[var(--text-primary)] group-hover:bg-[var(--text-primary)] transition-colors z-10" />
-                <div className="flex flex-col gap-1">
-                  <span className="text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">{meeting.date} • {meeting.time}</span>
-                  <h4 className="text-sm font-medium text-[var(--text-primary)] transition-colors">{meeting.title}</h4>
-                  <div className="flex -space-x-2 mt-2">
-                    {meeting.attendees.map((attendee, i) => (
-                      <div key={i} className="w-6 h-6 rounded-full bg-neutral-800 border border-[var(--card-bg)] flex items-center justify-center text-[8px] text-neutral-400 font-mono uppercase" title={attendee}>
-                        {attendee.charAt(0)}
-                      </div>
-                    ))}
+            {displayMeetings.map((meeting: any) => {
+              // Format date if it's a standard date string
+              let dateDisplay = meeting.date;
+              if (meeting.date && !['Today', 'Tomorrow'].includes(meeting.date)) {
+                try {
+                  dateDisplay = new Date(meeting.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                } catch (e) {}
+              }
+              
+              return (
+                <div key={meeting.id} className="relative pl-6 group">
+                  <div className="absolute left-0 top-1.5 w-3 h-3 rounded-full bg-[var(--card-bg)] border border-[var(--border)] group-hover:border-[var(--text-primary)] group-hover:bg-[var(--text-primary)] transition-colors z-10" />
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">{dateDisplay} • {meeting.time}</span>
+                    <h4 className="text-sm font-medium text-[var(--text-primary)] transition-colors">{meeting.title}</h4>
+                    <div className="flex -space-x-2 mt-2">
+                      {meeting.attendees && meeting.attendees.map((attendee: string, i: number) => (
+                        <div key={i} className="w-6 h-6 rounded-full bg-neutral-800 border border-[var(--card-bg)] flex items-center justify-center text-[8px] text-neutral-400 font-mono uppercase" title={attendee}>
+                          {attendee.charAt(0)}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </Card>
       </div>
