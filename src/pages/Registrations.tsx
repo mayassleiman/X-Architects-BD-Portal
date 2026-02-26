@@ -44,7 +44,7 @@ export function Registrations() {
   }, []);
 
   const filteredRegistrations = registrations.filter(reg => 
-    reg.client.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (reg.client || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
     (reg.contact_name && reg.contact_name.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 

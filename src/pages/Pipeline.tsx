@@ -198,7 +198,7 @@ export function Pipeline() {
 
   const filteredItems = items.filter(i => 
     i.type === activeTab &&
-    (i.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    ((i.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
      (i.client && i.client.toLowerCase().includes(searchQuery.toLowerCase()))) &&
     (viewFilter === "All" || (i.type === "RFP" && i.disciplines && i.disciplines.some(d => {
       if (viewFilter === "Architecture") return d === "Architecture";

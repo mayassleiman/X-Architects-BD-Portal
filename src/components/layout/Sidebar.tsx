@@ -12,6 +12,7 @@ import {
   BarChart3,
   PanelLeftClose,
   PanelLeftOpen,
+  Mail,
 } from "lucide-react";
 import { Logo } from "../ui/Logo";
 import { cn } from "../../lib/utils";

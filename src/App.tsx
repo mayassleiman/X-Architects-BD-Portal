@@ -13,6 +13,7 @@ import { Tasks } from "./pages/Tasks";
 import { Meetings } from "./pages/Meetings";
 import { Pipeline } from "./pages/Pipeline";
 import { MasterDirectory } from "./pages/MasterDirectory";
+import { EmailGun } from "./pages/EmailGun";
 import { FollowUpReminder } from "./components/features/FollowUpReminder";
 import { SearchProvider } from "./context/SearchContext";
 import { UserProvider } from "./context/UserContext";
@@ -61,6 +62,7 @@ export default function App() {
           {path === "/" && <Dashboard />}
           {path === "/actions" && <Actions />}
           {path === "/directory" && <MasterDirectory />}
+          {path === "/email-gun" && <EmailGun />}
           {path === "/registrations" && <Registrations />}
           {path === "/meetings" && <Meetings />}
           {path === "/pipeline" && <Pipeline />}

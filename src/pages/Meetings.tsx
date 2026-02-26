@@ -47,9 +47,9 @@ export function Meetings() {
   }, []);
 
   const filteredMeetings = meetings.filter(meeting => 
-    meeting.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    meeting.attendees.some(a => a.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    meeting.date.includes(searchQuery) // Allow searching by date
+    (meeting.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (meeting.attendees || []).some(a => (a || "").toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (meeting.date || "").includes(searchQuery) // Allow searching by date
   );
 
   // Statistics Calculations
@@ -133,7 +133,7 @@ export function Meetings() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const attendeesList = formData.attendees.split(',').map(s => s.trim()).filter(Boolean);
+    const attendeesList = (formData.attendees || "").split(',').map(s => s.trim()).filter(Boolean);
     
     try {
       const url = editingId ? `/api/meetings/${editingId}` : '/api/meetings';

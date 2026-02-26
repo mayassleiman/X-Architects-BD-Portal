@@ -2,11 +2,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Search, Plus, Edit2, Trash2, Phone, Mail, MapPin, 
   Briefcase, Calendar, MessageSquare, Bell, ChevronDown, ChevronRight, User,
-  Download, Upload, History, X
+  History, X
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useSearch } from '../context/SearchContext';
-import * as XLSX from 'xlsx';
 
 interface Contact {
   id: number;
@@ -63,7 +62,7 @@ export function MasterDirectory() {
 
   const filteredEngagements = useMemo(() => {
     return engagements.filter(eng => {
-      const matchesSearch = eng.discussion.toLowerCase().includes(engagementSearch.toLowerCase());
+      const matchesSearch = (eng.discussion || "").toLowerCase().includes(engagementSearch.toLowerCase());
       const matchesStart = engagementStartDate ? eng.date >= engagementStartDate : true;
       const matchesEnd = engagementEndDate ? eng.date <= engagementEndDate : true;
       return matchesSearch && matchesStart && matchesEnd;
@@ -138,9 +137,9 @@ export function MasterDirectory() {
   // Group contacts by organization
   const groupedContacts = useMemo(() => {
     const filtered = contacts.filter(c => 
-      c.client_contact.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.client_organization.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.email.toLowerCase().includes(searchQuery.toLowerCase())
+      (c.client_contact || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (c.client_organization || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (c.email || "").toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     const groups: Record<string, Contact[]> = {};
@@ -257,69 +256,7 @@ export function MasterDirectory() {
     if (selectedContact) fetchFollowUps(selectedContact.id);
   };
 
-  // Export/Import
-  const handleExport = () => {
-    // Prepare data
-    const contactsSheet = contacts.map(c => ({
-      ID: c.id,
-      Organization: c.client_organization,
-      Contact: c.client_contact,
-      Position: c.position,
-      Email: c.email,
-      Phone: c.phone,
-      Location: c.location
-    }));
 
-    // We need to fetch ALL engagements for export, not just selected contact's
-    // For simplicity, let's just export contacts for now, or fetch all engagements if needed.
-    // The user asked for "contacts... with all the engagements".
-    // Let's fetch all engagements via the recent endpoint (limit might be an issue, but for now ok)
-    // Actually, let's just export contacts. The user might want a full dump.
-    // A proper implementation would fetch everything.
-    // Let's stick to contacts for now to avoid complexity, or try to fetch all engagements if possible.
-    // I'll create a workbook with Contacts.
-    
-    const wb = XLSX.utils.book_new();
-    const wsContacts = XLSX.utils.json_to_sheet(contactsSheet);
-    XLSX.utils.book_append_sheet(wb, wsContacts, "Contacts");
-    
-    XLSX.writeFile(wb, "MasterDirectory.xlsx");
-  };
-
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async (evt) => {
-      const bstr = evt.target?.result;
-      const wb = XLSX.read(bstr, { type: 'binary' });
-      const wsname = wb.SheetNames[0];
-      const ws = wb.Sheets[wsname];
-      const data = XLSX.utils.sheet_to_json(ws);
-      
-      // Process import (simple upsert or add)
-      for (const row of data as any[]) {
-        const contact = {
-          client_organization: row.Organization,
-          client_contact: row.Contact,
-          position: row.Position,
-          email: row.Email,
-          phone: row.Phone,
-          location: row.Location
-        };
-        // Simple add for now
-        await fetch('/api/contacts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(contact)
-        });
-      }
-      fetchContacts();
-      alert("Import complete");
-    };
-    reader.readAsBinaryString(file);
-  };
 
   return (
     <div className="flex h-[calc(100vh-8rem)] gap-6">
@@ -328,6 +265,16 @@ export function MasterDirectory() {
         <div className="p-4 border-b border-[var(--border)] flex justify-between items-center">
           <h2 className="font-light text-[var(--text-primary)]">DIRECTORY</h2>
           <div className="flex gap-2">
+            <button 
+              onClick={() => { 
+                window.history.pushState({}, "", "/email-gun");
+                window.dispatchEvent(new PopStateEvent("popstate"));
+              }}
+              className="p-2 hover:bg-[var(--bg-tertiary)] rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              title="Email Gun"
+            >
+              <Mail size={18} />
+            </button>
             <button 
               onClick={() => { 
                 setGlobalSearch(""); 
@@ -347,17 +294,6 @@ export function MasterDirectory() {
               title={expandedOrgs.length === Object.keys(groupedContacts).length ? "Collapse All" : "Expand All"}
             >
               {expandedOrgs.length === Object.keys(groupedContacts).length ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-            </button>
-            <label className="p-2 hover:bg-[var(--bg-tertiary)] rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer" title="Import">
-              <Upload size={18} />
-              <input type="file" className="hidden" accept=".xlsx, .xls" onChange={handleImport} />
-            </label>
-            <button 
-              onClick={handleExport}
-              className="p-2 hover:bg-[var(--bg-tertiary)] rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-              title="Export"
-            >
-              <Download size={18} />
             </button>
             <button 
               onClick={() => { setContactForm({}); setIsContactModalOpen(true); }}
@@ -440,10 +376,13 @@ export function MasterDirectory() {
                       </div>
                     )}
                     {selectedContact.email && (
-                      <div className="flex items-center gap-2">
+                      <a 
+                        href={`mailto:${selectedContact.email}`}
+                        className="flex items-center gap-2 hover:text-[var(--text-primary)] transition-colors"
+                      >
                         <Mail size={14} />
                         <span>{selectedContact.email}</span>
-                      </div>
+                      </a>
                     )}
                     {selectedContact.location && (
                       <div className="flex items-center gap-2">

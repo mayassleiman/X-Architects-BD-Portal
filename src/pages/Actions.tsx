@@ -40,8 +40,8 @@ export function Actions() {
   }, []);
 
   const filteredActions = actions.filter(action => {
-    const matchesSearch = action.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      action.responsible.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    const matchesSearch = (action.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (action.responsible || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (action.description && action.description.toLowerCase().includes(searchQuery.toLowerCase()));
     
     const matchesStatus = statusFilter.length === 0 || statusFilter.includes(action.status);

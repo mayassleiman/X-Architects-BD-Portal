@@ -41,7 +41,7 @@ export function Tasks() {
   }, []);
 
   const filteredTasks = tasks.filter(t => 
-    t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (t.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
     (t.description && t.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 

@@ -1,5 +1,5 @@
 import React from "react";
-import { Database, Download, FileSpreadsheet } from "lucide-react";
+import { Database, Download, FileSpreadsheet, Upload } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
 import * as XLSX from 'xlsx';
 
@@ -34,13 +34,20 @@ export function Settings() {
       const tasks = await tasksRes.json();
       const meetings = await meetingsRes.json();
 
+      // Format Pipeline data for Excel
+      const formattedPipeline = pipeline.map((item: any) => ({
+        ...item,
+        disciplines: Array.isArray(item.disciplines) ? item.disciplines.join(", ") : item.disciplines,
+        values: item.values ? Object.entries(item.values).map(([k, v]) => `${k}: ${v}`).join(", ") : ""
+      }));
+
       const wb = XLSX.utils.book_new();
 
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(contacts), "Contacts");
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(engagements), "Engagements");
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(actions), "Actions");
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(registrations), "Registrations");
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(pipeline), "Pipeline");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(formattedPipeline), "Pipeline");
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(tasks), "Tasks");
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(meetings), "Meetings");
 
@@ -49,6 +56,77 @@ export function Settings() {
       console.error("Error exporting data:", error);
       alert("Failed to export data.");
     }
+  };
+
+  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!confirm("This will append data from the Excel file to your database. Continue?")) {
+      e.target.value = ''; // Reset input
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const data = evt.target?.result;
+        const wb = XLSX.read(data, { type: 'array' });
+
+        // Import Contacts
+        const contactsSheet = wb.Sheets["Contacts"];
+        if (contactsSheet) {
+          const contacts = XLSX.utils.sheet_to_json(contactsSheet);
+          for (const contact of contacts) {
+            await fetch('/api/contacts', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(contact)
+            });
+          }
+        }
+
+        // Import Pipeline
+        const pipelineSheet = wb.Sheets["Pipeline"];
+        if (pipelineSheet) {
+          const pipelineItems = XLSX.utils.sheet_to_json(pipelineSheet);
+          for (const rawItem of pipelineItems) {
+            const item = rawItem as any;
+            // Parse disciplines
+            if (typeof item.disciplines === 'string') {
+              item.disciplines = item.disciplines.split(',').map((s: string) => s.trim());
+            }
+            
+            // Parse values
+            if (typeof item.values === 'string') {
+              const valuesObj: any = {};
+              (item.values || "").split(',').forEach((pair: string) => {
+                const parts = pair.split(':');
+                if (parts.length === 2) {
+                  const k = parts[0].trim();
+                  const v = parts[1].trim();
+                  if (k && v) valuesObj[k] = v;
+                }
+              });
+              item.values = valuesObj;
+            }
+
+            await fetch('/api/pipeline', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(item)
+            });
+          }
+        }
+
+        alert("Import complete! Page will reload.");
+        window.location.reload();
+      } catch (error) {
+        console.error("Error importing data:", error);
+        alert("Failed to import data. Please check the file format.");
+      }
+    };
+    reader.readAsArrayBuffer(file);
   };
 
   return (
@@ -87,16 +165,27 @@ export function Settings() {
               <div className="flex items-center gap-3">
                 <FileSpreadsheet size={20} className="text-[var(--text-secondary)]" />
                 <div>
-                  <h4 className="text-sm font-medium text-[var(--text-primary)]">Export All Data (Excel)</h4>
-                  <p className="text-xs text-[var(--text-secondary)]">Download all system data (Contacts, Engagements, Actions, etc.) as a multi-sheet Excel file.</p>
+                  <h4 className="text-sm font-medium text-[var(--text-primary)]">Export / Import Data (Excel)</h4>
+                  <p className="text-xs text-[var(--text-secondary)]">Manage system data via Excel. Supports Contacts and Pipeline.</p>
                 </div>
               </div>
-              <button 
-                onClick={handleExportAll}
-                className="text-xs font-mono uppercase border border-[var(--border)] px-3 py-1.5 text-[var(--text-primary)] hover:bg-[var(--text-primary)] hover:text-[var(--bg-primary)] transition-colors"
-              >
-                Export
-              </button>
+              <div className="flex gap-2">
+                <button 
+                  onClick={handleExportAll}
+                  className="flex items-center gap-2 text-xs font-mono uppercase border border-[var(--border)] px-3 py-1.5 text-[var(--text-primary)] hover:bg-[var(--text-primary)] hover:text-[var(--bg-primary)] transition-colors"
+                >
+                  <Download size={14} /> Export
+                </button>
+                <label className="cursor-pointer flex items-center gap-2 text-xs font-mono uppercase border border-[var(--border)] px-3 py-1.5 text-[var(--text-primary)] hover:bg-[var(--text-primary)] hover:text-[var(--bg-primary)] transition-colors">
+                  <Upload size={14} /> Import
+                  <input 
+                    type="file" 
+                    accept=".xlsx, .xls"
+                    className="hidden"
+                    onChange={handleImportExcel}
+                  />
+                </label>
+              </div>
             </div>
 
             <div className="flex items-center justify-between p-4 border border-[var(--border)] bg-[var(--card-bg-inner)]">
