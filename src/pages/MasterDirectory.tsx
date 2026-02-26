@@ -2,10 +2,12 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Search, Plus, Edit2, Trash2, Phone, Mail, MapPin, 
   Briefcase, Calendar, MessageSquare, Bell, ChevronDown, ChevronRight, User,
-  History, X
+  History, X, Download
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useSearch } from '../context/SearchContext';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface Contact {
   id: number;
@@ -257,6 +259,54 @@ export function MasterDirectory() {
   };
 
 
+
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    
+    // Title
+    doc.setFontSize(18);
+    doc.text("Engagement Report", 14, 22);
+    
+    // Metadata
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    const dateStr = new Date().toLocaleDateString();
+    doc.text(`Generated on: ${dateStr}`, 14, 28);
+    
+    // Filters info
+    if (globalSearch || globalStartDate || globalEndDate) {
+      let filterText = "Filters: ";
+      if (globalSearch) filterText += `Search: "${globalSearch}" `;
+      if (globalStartDate) filterText += `From: ${globalStartDate} `;
+      if (globalEndDate) filterText += `To: ${globalEndDate}`;
+      doc.text(filterText, 14, 34);
+    }
+
+    // Table Data
+    const tableBody = recentEngagements.map(eng => [
+      eng.date,
+      eng.client_contact || "N/A",
+      eng.client_organization || "N/A",
+      eng.discussion
+    ]);
+
+    // Generate Table
+    autoTable(doc, {
+      head: [['Date', 'Contact', 'Organization', 'Discussion']],
+      body: tableBody,
+      startY: 40,
+      styles: { fontSize: 9, cellPadding: 3 },
+      headStyles: { fillColor: [40, 40, 40], textColor: 255, fontStyle: 'bold' },
+      columnStyles: {
+        0: { cellWidth: 25 }, // Date
+        1: { cellWidth: 35 }, // Contact
+        2: { cellWidth: 40 }, // Organization
+        3: { cellWidth: 'auto' } // Discussion
+      }
+    });
+
+    doc.save("engagement_report.pdf");
+  };
 
   return (
     <div className="flex h-[calc(100vh-8rem)] gap-6">
@@ -686,9 +736,19 @@ export function MasterDirectory() {
           <div className="bg-[var(--card-bg)] border border-[var(--border)] w-full max-w-2xl p-6 h-[80vh] flex flex-col">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-light">GLOBAL ENGAGEMENT SEARCH</h2>
-              <button onClick={() => setIsRecentModalOpen(false)} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
-                <X size={20} />
-              </button>
+              <div className="flex items-center gap-4">
+                <button 
+                  onClick={handleExportPDF}
+                  disabled={recentEngagements.length === 0}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider rounded hover:bg-[var(--text-secondary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Export to PDF"
+                >
+                  <Download size={14} /> Export PDF
+                </button>
+                <button onClick={() => setIsRecentModalOpen(false)} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
+                  <X size={20} />
+                </button>
+              </div>
             </div>
             
             <div className="relative mb-4 space-y-2">
