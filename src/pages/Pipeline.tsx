@@ -42,6 +42,13 @@ const SECTOR_COLORS: Record<Sector, string> = {
   "Retail": "#f97316", // orange-500
 };
 
+const DISCIPLINE_COLORS: Record<string, string> = {
+  "Architecture": "#06b6d4", // Cyan
+  "Interior": "#d946ef", // Fuchsia
+  "Construction Supervision": "#84cc16", // Lime
+  "VO": "#f43f5e", // Rose
+};
+
 const DISCIPLINES: Discipline[] = ["Architecture", "Interior", "Construction Supervision"];
 
 export function Pipeline() {
@@ -168,27 +175,30 @@ export function Pipeline() {
 
   // Calculations
   const metrics = useMemo(() => {
-    const totalRFP = items.filter(i => i.type === "RFP").reduce((acc, curr) => acc + getFilteredValue(curr), 0);
-    const totalVO = items.filter(i => i.type === "VO").reduce((acc, curr) => acc + getFilteredValue(curr), 0);
+    // Filter out Achieved and Approved items from calculations
+    const activeItems = items.filter(i => i.status !== "Achieved" && i.status !== "Approved");
+
+    const totalRFP = activeItems.filter(i => i.type === "RFP").reduce((acc, curr) => acc + getFilteredValue(curr), 0);
+    const totalVO = activeItems.filter(i => i.type === "VO").reduce((acc, curr) => acc + getFilteredValue(curr), 0);
     const totalPipeline = totalRFP + totalVO;
 
     // Absolute totals for discipline breakdown (ignoring view filter)
-    const absoluteTotalPipeline = items.reduce((acc, curr) => {
+    const absoluteTotalPipeline = activeItems.reduce((acc, curr) => {
       return acc + (curr.values.architecture || 0) + (curr.values.interior || 0) + (curr.values.cs || 0) + (curr.values.vo || 0);
     }, 0);
 
-    const totalArch = items.reduce((acc, curr) => acc + (curr.values.architecture || 0), 0);
-    const totalInt = items.reduce((acc, curr) => acc + (curr.values.interior || 0), 0);
-    const totalSupervision = items.reduce((acc, curr) => acc + (curr.values.cs || 0), 0);
+    const totalArch = activeItems.reduce((acc, curr) => acc + (curr.values.architecture || 0), 0);
+    const totalInt = activeItems.reduce((acc, curr) => acc + (curr.values.interior || 0), 0);
+    const totalSupervision = activeItems.reduce((acc, curr) => acc + (curr.values.cs || 0), 0);
 
     const disciplineData = [
-      { name: "Architecture", value: totalArch, color: "#10b981" },
-      { name: "Interior", value: totalInt, color: "#3b82f6" },
-      { name: "Supervision", value: totalSupervision, color: "#f59e0b" },
+      { name: "Architecture", value: totalArch, color: DISCIPLINE_COLORS["Architecture"] },
+      { name: "Interior", value: totalInt, color: DISCIPLINE_COLORS["Interior"] },
+      { name: "Supervision", value: totalSupervision, color: DISCIPLINE_COLORS["Construction Supervision"] },
     ];
 
     const sectorData = SECTORS.map(sector => {
-      const sectorItems = items.filter(i => i.sector === sector);
+      const sectorItems = activeItems.filter(i => i.sector === sector);
       const value = sectorItems.reduce((acc, curr) => acc + getFilteredValue(curr), 0);
       return { name: sector, value, color: SECTOR_COLORS[sector] };
     }).filter(d => d.value > 0);

@@ -24,9 +24,10 @@ const SECTOR_COLORS: Record<string, string> = {
 };
 
 const DISCIPLINE_COLORS: Record<string, string> = {
-  "Architecture": "#8b5cf6",
-  "Interior": "#ec4899",
-  "Construction Supervision": "#f59e0b",
+  "Architecture": "#06b6d4", // Cyan
+  "Interior": "#d946ef", // Fuchsia
+  "Construction Supervision": "#84cc16", // Lime
+  "VO": "#f43f5e", // Rose
 };
 
 export function AchievedTarget({ isReportView = false }: { isReportView?: boolean }) {
@@ -127,13 +128,14 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
         const dateStr = item.achieved_date || item.submission_date;
         if (!dateStr) return false;
         const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return false;
         const month = date.getMonth();
         return Math.floor(month / 3) + 1 === q;
       });
 
       const achieved = quarterItems.reduce((acc, item) => {
         const vals = item.item_values || {};
-        const total = (vals.architecture || 0) + (vals.interior || 0) + (vals.cs || 0) + (vals.vo || 0);
+        const total = (Number(vals.architecture) || 0) + (Number(vals.interior) || 0) + (Number(vals.cs) || 0) + (Number(vals.vo) || 0);
         return acc + total;
       }, 0);
 
@@ -162,17 +164,20 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
     const sectorMap: Record<string, number> = {};
     data.items.forEach(item => {
       const dateStr = item.achieved_date || item.submission_date;
-      if (!dateStr) return; // Skip items without date to match quarterly logic
+      if (!dateStr) return; 
+
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return;
 
       const vals = item.item_values || {};
-      const total = (vals.architecture || 0) + (vals.interior || 0) + (vals.cs || 0) + (vals.vo || 0);
+      const total = (Number(vals.architecture) || 0) + (Number(vals.interior) || 0) + (Number(vals.cs) || 0) + (Number(vals.vo) || 0);
       sectorMap[item.sector] = (sectorMap[item.sector] || 0) + total;
     });
 
     const sectorData = Object.entries(sectorMap).map(([name, value]) => ({
       name,
       value,
-      percent: totalAchieved > 0 ? (value / totalAchieved) * 100 : 0,
+      share: totalAchieved > 0 ? (value / totalAchieved) * 100 : 0,
       color: SECTOR_COLORS[name] || '#ccc'
     })).sort((a, b) => b.value - a.value);
 
@@ -180,23 +185,28 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
     const disciplineMap: Record<string, number> = {
       "Architecture": 0,
       "Interior": 0,
-      "Construction Supervision": 0
+      "Construction Supervision": 0,
+      "VO": 0
     };
     
     data.items.forEach(item => {
       const dateStr = item.achieved_date || item.submission_date;
-      if (!dateStr) return; // Skip items without date to match quarterly logic
+      if (!dateStr) return;
+
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return;
 
       const vals = item.item_values || {};
-      disciplineMap["Architecture"] += (vals.architecture || 0);
-      disciplineMap["Interior"] += (vals.interior || 0);
-      disciplineMap["Construction Supervision"] += (vals.cs || 0);
+      disciplineMap["Architecture"] += (Number(vals.architecture) || 0);
+      disciplineMap["Interior"] += (Number(vals.interior) || 0);
+      disciplineMap["Construction Supervision"] += (Number(vals.cs) || 0);
+      disciplineMap["VO"] += (Number(vals.vo) || 0);
     });
 
     const disciplineData = Object.entries(disciplineMap).map(([name, value]) => ({
       name,
       value,
-      percent: totalAchieved > 0 ? (value / totalAchieved) * 100 : 0,
+      share: totalAchieved > 0 ? (value / totalAchieved) * 100 : 0,
       color: DISCIPLINE_COLORS[name] || '#ccc'
     })).filter(d => d.value > 0);
 
@@ -261,7 +271,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
         
         q.items.forEach(item => {
           const vals = item.item_values || {};
-          const totalValue = (vals.architecture || 0) + (vals.interior || 0) + (vals.cs || 0) + (vals.vo || 0);
+          const totalValue = (Number(vals.architecture) || 0) + (Number(vals.interior) || 0) + (Number(vals.cs) || 0) + (Number(vals.vo) || 0);
           detailsBody.push([
             item.rfpNumber || "No #",
             item.name,
@@ -405,7 +415,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
                   {/* Items Rows */}
                   {expandedQuarters.includes(q.quarterNum) && q.items.map(item => {
                     const vals = item.item_values || {};
-                    const totalValue = (vals.architecture || 0) + (vals.interior || 0) + (vals.cs || 0) + (vals.vo || 0);
+                    const totalValue = (Number(vals.architecture) || 0) + (Number(vals.interior) || 0) + (Number(vals.cs) || 0) + (Number(vals.vo) || 0);
                     
                     return (
                       <tr key={item.id} className="bg-[var(--card-bg)] hover:bg-[var(--bg-tertiary)]/20 transition-colors border-b border-[var(--border)] border-dashed">
@@ -540,8 +550,8 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
                   contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff' }}
                   itemStyle={{ color: '#fff' }}
                   formatter={(value: number, name: string, props: any) => {
-                    const percent = props.payload.percent;
-                    return [`${value.toLocaleString()} SAR (${percent.toFixed(1)}%)`, name];
+                    const share = props.payload.share;
+                    return [`${value.toLocaleString()} SAR (${share.toFixed(1)}%)`, name];
                   }}
                 />
                 <Legend />
@@ -573,8 +583,8 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
                   cursor={{ fill: 'rgba(255,255,255,0.05)' }}
                   contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff' }}
                   formatter={(value: number, name: string, props: any) => {
-                    const percent = props.payload.percent;
-                    return [`${value.toLocaleString()} SAR (${percent.toFixed(1)}%)`, 'Value'];
+                    const share = props.payload.share;
+                    return [`${value.toLocaleString()} SAR (${share.toFixed(1)}%)`, 'Value'];
                   }}
                 />
                 <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={30}>
@@ -582,7 +592,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                   <LabelList 
-                    dataKey="percent" 
+                    dataKey="share" 
                     position="right" 
                     formatter={(val: number) => `${val.toFixed(1)}%`}
                     style={{ fill: '#888', fontSize: 12 }}
