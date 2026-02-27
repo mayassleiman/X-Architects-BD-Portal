@@ -1,4 +1,5 @@
 import React from "react";
+import { Routes, Route } from "react-router-dom";
 import { AppLayout } from "./components/layout/AppLayout";
 import { Dashboard } from "./pages/Dashboard";
 
@@ -11,6 +12,7 @@ import { FullReport } from "./pages/FullReport";
 import { Tasks } from "./pages/Tasks";
 
 import { Meetings } from "./pages/Meetings";
+import { AchievedTarget } from "./pages/AchievedTarget";
 import { Pipeline } from "./pages/Pipeline";
 import { MasterDirectory } from "./pages/MasterDirectory";
 import { EmailGun } from "./pages/EmailGun";
@@ -30,46 +32,24 @@ const Placeholder = ({ title }: { title: string }) => (
 );
 
 export default function App() {
-  // Simple client-side routing for demo purposes
-  const [path, setPath] = React.useState(window.location.pathname);
-
-  React.useEffect(() => {
-    const handlePopState = () => setPath(window.location.pathname);
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
-
-  // Intercept link clicks for SPA navigation
-  React.useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      const target = (e.target as HTMLElement).closest("a");
-      if (target && target.getAttribute("href")?.startsWith("/")) {
-        e.preventDefault();
-        const href = target.getAttribute("href")!;
-        window.history.pushState({}, "", href);
-        setPath(href);
-        // Dispatch event for Sidebar
-        window.dispatchEvent(new PopStateEvent("popstate"));
-      }
-    };
-    // We rely on Sidebar's click handler mostly, but this handles other links
-  }, []);
-  
   return (
     <UserProvider>
       <SearchProvider>
         <AppLayout>
-          {path === "/" && <Dashboard />}
-          {path === "/actions" && <Actions />}
-          {path === "/directory" && <MasterDirectory />}
-          {path === "/email-gun" && <EmailGun />}
-          {path === "/registrations" && <Registrations />}
-          {path === "/meetings" && <Meetings />}
-          {path === "/pipeline" && <Pipeline />}
-          {path === "/tasks" && <Tasks />}
-          {path === "/settings" && <Settings />}
-          {path === "/profile" && <Profile />}
-          {path === "/report" && <FullReport />}
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/achieved-target" element={<AchievedTarget />} />
+            <Route path="/actions" element={<Actions />} />
+            <Route path="/directory" element={<MasterDirectory />} />
+            <Route path="/email-gun" element={<EmailGun />} />
+            <Route path="/registrations" element={<Registrations />} />
+            <Route path="/meetings" element={<Meetings />} />
+            <Route path="/pipeline" element={<Pipeline />} />
+            <Route path="/tasks" element={<Tasks />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/report" element={<FullReport />} />
+          </Routes>
           <FollowUpReminder />
         </AppLayout>
       </SearchProvider>

@@ -20,10 +20,10 @@ const LEVELS = [
   { id: 4, label: "Negotiation", color: "text-emerald-400 border-emerald-500/50 bg-emerald-900/20" },
 ];
 
-export function Meetings() {
+export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { isReportView?: boolean, defaultViewMode?: 'list' | 'calendar' | 'stats' }) {
   const { searchQuery } = useSearch();
   const [meetings, setMeetings] = React.useState<Meeting[]>([]);
-  const [viewMode, setViewMode] = React.useState<'list' | 'calendar' | 'stats'>('list');
+  const [viewMode, setViewMode] = React.useState<'list' | 'calendar' | 'stats'>(defaultViewMode);
   const [currentDate, setCurrentDate] = React.useState(new Date());
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [editingId, setEditingId] = React.useState<number | null>(null);
@@ -45,6 +45,14 @@ export function Meetings() {
   React.useEffect(() => {
     fetchMeetings();
   }, []);
+
+  React.useEffect(() => {
+    if (isReportView && defaultViewMode === 'list') {
+      setViewMode('calendar'); // Default report view is calendar (weekly)
+    } else if (defaultViewMode) {
+      setViewMode(defaultViewMode);
+    }
+  }, [isReportView, defaultViewMode]);
 
   const filteredMeetings = meetings.filter(meeting => 
     (meeting.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -289,38 +297,40 @@ export function Meetings() {
             )}
           </div>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex bg-[var(--card-bg)] border border-[var(--border)] rounded-lg p-1">
+        {!isReportView && (
+          <div className="flex items-center gap-4">
+            <div className="flex bg-[var(--card-bg)] border border-[var(--border)] rounded-lg p-1">
+              <button 
+                onClick={() => setViewMode('list')}
+                className={cn("p-2 rounded transition-colors", viewMode === 'list' ? "bg-[var(--text-primary)] text-[var(--bg-primary)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]")}
+              >
+                <List size={16} />
+              </button>
+              <button 
+                onClick={() => setViewMode('calendar')}
+                className={cn("p-2 rounded transition-colors", viewMode === 'calendar' ? "bg-[var(--text-primary)] text-[var(--bg-primary)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]")}
+              >
+                <Grid size={16} />
+              </button>
+              <button 
+                onClick={() => setViewMode('stats')}
+                className={cn("p-2 rounded transition-colors", viewMode === 'stats' ? "bg-[var(--text-primary)] text-[var(--bg-primary)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]")}
+              >
+                <BarChart2 size={16} />
+              </button>
+            </div>
             <button 
-              onClick={() => setViewMode('list')}
-              className={cn("p-2 rounded transition-colors", viewMode === 'list' ? "bg-[var(--text-primary)] text-[var(--bg-primary)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]")}
+              onClick={() => {
+                setEditingId(null);
+                setFormData({ title: "", date: new Date().toISOString().split('T')[0], time: "10:00", attendees: "", level: 1 });
+                setIsModalOpen(true);
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors"
             >
-              <List size={16} />
-            </button>
-            <button 
-              onClick={() => setViewMode('calendar')}
-              className={cn("p-2 rounded transition-colors", viewMode === 'calendar' ? "bg-[var(--text-primary)] text-[var(--bg-primary)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]")}
-            >
-              <Grid size={16} />
-            </button>
-            <button 
-              onClick={() => setViewMode('stats')}
-              className={cn("p-2 rounded transition-colors", viewMode === 'stats' ? "bg-[var(--text-primary)] text-[var(--bg-primary)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]")}
-            >
-              <BarChart2 size={16} />
+              <Plus size={16} /> Schedule
             </button>
           </div>
-          <button 
-            onClick={() => {
-              setEditingId(null);
-              setFormData({ title: "", date: new Date().toISOString().split('T')[0], time: "10:00", attendees: "", level: 1 });
-              setIsModalOpen(true);
-            }}
-            className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors"
-          >
-            <Plus size={16} /> Schedule
-          </button>
-        </div>
+        )}
       </div>
 
       {viewMode === 'stats' ? (
@@ -396,20 +406,22 @@ export function Meetings() {
               const levelInfo = LEVELS.find(l => l.id === meeting.level) || LEVELS[0];
               return (
                 <div key={meeting.id} className="bg-[var(--card-bg)] border border-[var(--border)] p-6 group hover:border-[var(--border-hover)] transition-colors relative flex flex-col break-inside-avoid">
-                  <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity no-print">
-                    <button 
-                      onClick={() => handleEdit(meeting)}
-                      className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-                    >
-                      <Edit2 size={16} />
-                    </button>
-                    <button 
-                      onClick={() => handleDelete(meeting.id)}
-                      className="text-[var(--text-secondary)] hover:text-red-400 transition-colors"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
+                  {!isReportView && (
+                    <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity no-print">
+                      <button 
+                        onClick={() => handleEdit(meeting)}
+                        className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(meeting.id)}
+                        className="text-[var(--text-secondary)] hover:text-red-400 transition-colors"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  )}
                   
                   <div className="flex items-center gap-2 mb-4">
                     <span className={cn("text-[10px] uppercase tracking-wider px-2 py-1 rounded border", levelInfo.color)}>
@@ -564,4 +576,8 @@ export function Meetings() {
       )}
     </div>
   );
+}
+
+export function MeetingsWrapperForStats() {
+  return <Meetings isReportView={true} defaultViewMode="stats" />;
 }

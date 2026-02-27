@@ -15,7 +15,7 @@ interface Registration {
   last_week_follow_up: string;
 }
 
-export function Registrations() {
+export function Registrations({ isReportView = false }: { isReportView?: boolean }) {
   const { searchQuery } = useSearch();
   const [registrations, setRegistrations] = React.useState<Registration[]>([]);
   const [viewMode, setViewMode] = React.useState<'grid' | 'list'>('list');
@@ -43,10 +43,16 @@ export function Registrations() {
     fetchRegistrations();
   }, []);
 
-  const filteredRegistrations = registrations.filter(reg => 
-    (reg.client || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (reg.contact_name && reg.contact_name.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredRegistrations = registrations.filter(reg => {
+    const matchesSearch = (reg.client || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (reg.contact_name && reg.contact_name.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    if (isReportView) {
+      return matchesSearch && (reg.last_week_follow_up && reg.last_week_follow_up.trim() !== "");
+    }
+    
+    return matchesSearch;
+  });
 
   const handleEdit = (reg: Registration) => {
     setEditingId(reg.id);
@@ -117,41 +123,43 @@ export function Registrations() {
           <h1 className="text-4xl font-light tracking-tight text-[var(--text-primary)] mb-2">REGISTRATIONS</h1>
           <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Project Status & Follow-ups</p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex bg-[var(--card-bg)] border border-[var(--border)] rounded-lg p-1">
+        {!isReportView && (
+          <div className="flex items-center gap-4">
+            <div className="flex bg-[var(--card-bg)] border border-[var(--border)] rounded-lg p-1">
+              <button 
+                onClick={() => setViewMode('list')}
+                className={cn("p-2 rounded transition-colors", viewMode === 'list' ? "bg-[var(--text-primary)] text-[var(--bg-primary)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]")}
+              >
+                <List size={16} />
+              </button>
+              <button 
+                onClick={() => setViewMode('grid')}
+                className={cn("p-2 rounded transition-colors", viewMode === 'grid' ? "bg-[var(--text-primary)] text-[var(--bg-primary)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]")}
+              >
+                <Grid size={16} />
+              </button>
+            </div>
             <button 
-              onClick={() => setViewMode('list')}
-              className={cn("p-2 rounded transition-colors", viewMode === 'list' ? "bg-[var(--text-primary)] text-[var(--bg-primary)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]")}
+              onClick={() => {
+                setEditingId(null);
+                setFormData({ 
+                  client: "", 
+                  contact_name: "",
+                  registration_date: new Date().toISOString().split('T')[0],
+                  portal_link: "",
+                  status: "Pending", 
+                  due_date: "", 
+                  follow_up_log: "",
+                  last_week_follow_up: ""
+                });
+                setIsModalOpen(true);
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors"
             >
-              <List size={16} />
-            </button>
-            <button 
-              onClick={() => setViewMode('grid')}
-              className={cn("p-2 rounded transition-colors", viewMode === 'grid' ? "bg-[var(--text-primary)] text-[var(--bg-primary)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]")}
-            >
-              <Grid size={16} />
+              <Plus size={16} /> New Registration
             </button>
           </div>
-          <button 
-            onClick={() => {
-              setEditingId(null);
-              setFormData({ 
-                client: "", 
-                contact_name: "",
-                registration_date: new Date().toISOString().split('T')[0],
-                portal_link: "",
-                status: "Pending", 
-                due_date: "", 
-                follow_up_log: "",
-                last_week_follow_up: ""
-              });
-              setIsModalOpen(true);
-            }}
-            className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors"
-          >
-            <Plus size={16} /> New Registration
-          </button>
-        </div>
+        )}
       </div>
 
       {viewMode === 'grid' ? (
@@ -163,20 +171,22 @@ export function Registrations() {
           ) : (
             filteredRegistrations.map((reg) => (
               <div key={reg.id} className="bg-[var(--card-bg)] border border-[var(--border)] p-6 group hover:border-[var(--border-hover)] transition-colors relative">
-                <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button 
-                    onClick={() => handleEdit(reg)}
-                    className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-                  >
-                    <Edit2 size={16} />
-                  </button>
-                  <button 
-                    onClick={() => handleDelete(reg.id)}
-                    className="text-[var(--text-secondary)] hover:text-red-400 transition-colors"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
+                {!isReportView && (
+                  <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button 
+                      onClick={() => handleEdit(reg)}
+                      className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                    >
+                      <Edit2 size={16} />
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(reg.id)}
+                      className="text-[var(--text-secondary)] hover:text-red-400 transition-colors"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                )}
                 
                 <div className="flex justify-between items-start mb-4 pr-8">
                   <div className="p-2 bg-[var(--bg-tertiary)] rounded text-[var(--text-primary)]">
@@ -219,7 +229,7 @@ export function Registrations() {
                 
                 <div className="space-y-3 pt-4 border-t border-[var(--border)]">
                   <div className="flex justify-between text-xs">
-                    <span className="text-[var(--text-secondary)] uppercase">Due Date</span>
+                    <span className="text-[var(--text-secondary)] uppercase">{isReportView ? "Follow Up" : "Due Date"}</span>
                     <span className="text-[var(--text-primary)] font-mono">{reg.due_date || "N/A"}</span>
                   </div>
                   {reg.last_week_follow_up && (
@@ -279,33 +289,35 @@ export function Registrations() {
                       <span>Reg: {reg.registration_date || "-"}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs uppercase tracking-wider">Due:</span>
+                      <span className="text-xs uppercase tracking-wider">{isReportView ? "Follow Up:" : "Due:"}</span>
                       <span className="font-mono text-[var(--text-primary)]">{reg.due_date || "-"}</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4 pl-4 border-l border-[var(--border)] ml-4">
-                  {reg.portal_link && (
-                    <a href={reg.portal_link} target="_blank" rel="noreferrer" className="text-[var(--text-secondary)] hover:text-blue-400 transition-colors" title="Portal Link">
-                      <Building2 size={16} />
-                    </a>
-                  )}
-                  <button 
-                    onClick={() => handleEdit(reg)}
-                    className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-                    title="Edit"
-                  >
-                    <Edit2 size={16} />
-                  </button>
-                  <button 
-                    onClick={() => handleDelete(reg.id)}
-                    className="text-[var(--text-secondary)] hover:text-red-400 transition-colors"
-                    title="Delete"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
+                {!isReportView && (
+                  <div className="flex items-center gap-4 pl-4 border-l border-[var(--border)] ml-4">
+                    {reg.portal_link && (
+                      <a href={reg.portal_link} target="_blank" rel="noreferrer" className="text-[var(--text-secondary)] hover:text-blue-400 transition-colors" title="Portal Link">
+                        <Building2 size={16} />
+                      </a>
+                    )}
+                    <button 
+                      onClick={() => handleEdit(reg)}
+                      className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                      title="Edit"
+                    >
+                      <Edit2 size={16} />
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(reg.id)}
+                      className="text-[var(--text-secondary)] hover:text-red-400 transition-colors"
+                      title="Delete"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                )}
               </div>
             ))
           )}

@@ -91,7 +91,13 @@ db.exec(`
     status TEXT DEFAULT 'Pending',
     submission_date TEXT,
     probability TEXT, -- 'High', 'Medium', 'Low'
-    rfp_number TEXT
+    rfp_number TEXT,
+    achieved_date TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS targets (
+    year INTEGER PRIMARY KEY,
+    amount REAL DEFAULT 0
   );
 `);
 
@@ -105,6 +111,13 @@ try {
 // Migration: Add rfp_number column if it doesn't exist (for existing databases)
 try {
   db.exec("ALTER TABLE pipeline_items ADD COLUMN rfp_number TEXT");
+} catch (error) {
+  // Column likely already exists, ignore
+}
+
+// Migration: Add achieved_date column if it doesn't exist
+try {
+  db.exec("ALTER TABLE pipeline_items ADD COLUMN achieved_date TEXT");
 } catch (error) {
   // Column likely already exists, ignore
 }

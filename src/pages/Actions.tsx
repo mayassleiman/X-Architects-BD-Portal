@@ -12,7 +12,7 @@ interface Action {
   responsible: string;
 }
 
-export function Actions() {
+export function Actions({ isReportView = false }: { isReportView?: boolean }) {
   const { searchQuery } = useSearch();
   const [actions, setActions] = React.useState<Action[]>([]);
   const [isModalOpen, setIsModalOpen] = React.useState(false);
@@ -124,41 +124,43 @@ export function Actions() {
           <h1 className="text-4xl font-light tracking-tight text-[var(--text-primary)] mb-2">ACTION LIST</h1>
           <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Manage Tasks & Responsibilities</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 mr-4">
-            <span className="text-xs font-mono uppercase text-[var(--text-secondary)] mr-2">Filter:</span>
-            {["Pending", "In Progress", "Completed"].map(status => (
-              <button
-                key={status}
-                onClick={() => toggleStatus(status)}
-                className={cn(
-                  "px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider border transition-colors rounded-full",
-                  statusFilter.includes(status) 
-                    ? "bg-[var(--text-primary)] text-[var(--bg-primary)] border-[var(--text-primary)]" 
-                    : "bg-transparent text-[var(--text-secondary)] border-[var(--border)] hover:border-[var(--text-primary)] hover:text-[var(--text-primary)]"
-                )}
-              >
-                {status}
-              </button>
-            ))}
-            {statusFilter.length > 0 && (
-              <button
-                onClick={() => setStatusFilter([])}
-                className="ml-2 p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-                title="Clear filters"
-              >
-                <X size={14} />
-              </button>
-            )}
+        {!isReportView && (
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 mr-4">
+              <span className="text-xs font-mono uppercase text-[var(--text-secondary)] mr-2">Filter:</span>
+              {["Pending", "In Progress", "Completed"].map(status => (
+                <button
+                  key={status}
+                  onClick={() => toggleStatus(status)}
+                  className={cn(
+                    "px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider border transition-colors rounded-full",
+                    statusFilter.includes(status) 
+                      ? "bg-[var(--text-primary)] text-[var(--bg-primary)] border-[var(--text-primary)]" 
+                      : "bg-transparent text-[var(--text-secondary)] border-[var(--border)] hover:border-[var(--text-primary)] hover:text-[var(--text-primary)]"
+                  )}
+                >
+                  {status}
+                </button>
+              ))}
+              {statusFilter.length > 0 && (
+                <button
+                  onClick={() => setStatusFilter([])}
+                  className="ml-2 p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                  title="Clear filters"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+            
+            <button 
+              onClick={openNewModal}
+              className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors"
+            >
+              <Plus size={16} /> Add Action
+            </button>
           </div>
-          
-          <button 
-            onClick={openNewModal}
-            className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors"
-          >
-            <Plus size={16} /> Add Action
-          </button>
-        </div>
+        )}
       </div>
 
       <div className="bg-[var(--card-bg)] border border-[var(--border)]">
@@ -176,22 +178,24 @@ export function Actions() {
               <div key={action.id} className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-[var(--border)] transition-colors group relative">
                 <div className="col-span-5 flex flex-col gap-1">
                   <div className="font-medium text-[var(--text-primary)] group-hover:text-[var(--text-primary)] flex items-center gap-3">
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button 
-                        onClick={() => handleEdit(action)}
-                        className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1"
-                        title="Edit Action"
-                      >
-                        <Pencil size={14} />
-                      </button>
-                      <button 
-                        onClick={(e) => handleDelete(action.id, e)}
-                        className="text-[var(--text-secondary)] hover:text-red-400 p-1"
-                        title="Delete Action"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
+                    {!isReportView && (
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => handleEdit(action)}
+                          className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1"
+                          title="Edit Action"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button 
+                          onClick={(e) => handleDelete(action.id, e)}
+                          className="text-[var(--text-secondary)] hover:text-red-400 p-1"
+                          title="Delete Action"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    )}
                     {action.title}
                   </div>
                   {action.description && (

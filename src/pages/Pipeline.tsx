@@ -196,11 +196,43 @@ export function Pipeline() {
     return { totalRFP, totalVO, totalPipeline, sectorData, disciplineData, absoluteTotalPipeline };
   }, [items, viewFilter]);
 
+  const [achievingItem, setAchievingItem] = useState<{ item: PipelineItem, status: "Achieved" | "Approved" } | null>(null);
+  const [achievementDate, setAchievementDate] = useState(new Date().toISOString().split('T')[0]);
+
+  const handleStatusUpdate = async () => {
+    if (!achievingItem) return;
+    
+    const { item, status } = achievingItem;
+    
+    try {
+      const updatedItem = { 
+        ...item, 
+        status: status,
+        achievedDate: achievementDate
+      };
+      
+      await fetch(`/api/pipeline/${item.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedItem)
+      });
+      
+      setItems(items.filter(i => i.id !== item.id));
+      setAchievingItem(null);
+    } catch (err) {
+      console.error('Failed to update item status:', err);
+      alert('Failed to update status. Please try again.');
+    }
+  };
+
+  // Filter out Achieved/Approved items from the main pipeline view
   const filteredItems = items.filter(i => 
     i.type === activeTab &&
+    i.status !== "Achieved" && 
+    i.status !== "Approved" &&
     ((i.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
      (i.client && i.client.toLowerCase().includes(searchQuery.toLowerCase()))) &&
-    (viewFilter === "All" || (i.type === "RFP" && i.disciplines && i.disciplines.some(d => {
+    (viewFilter === "All" || (i.type === "RFP" && Array.isArray(i.disciplines) && i.disciplines.some(d => {
       if (viewFilter === "Architecture") return d === "Architecture";
       if (viewFilter === "Interior") return d === "Interior";
       if (viewFilter === "CS") return d === "Construction Supervision";
@@ -418,13 +450,13 @@ export function Pipeline() {
                       <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button 
                           onClick={() => handleEdit(item)}
-                          className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                          className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1"
                         >
                           <Edit2 size={14} />
                         </button>
                         <button 
                           onClick={() => handleDelete(item.id)}
-                          className="text-[var(--text-secondary)] hover:text-red-400"
+                          className="text-[var(--text-secondary)] hover:text-red-400 p-1"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -452,15 +484,28 @@ export function Pipeline() {
                              )}
                           </div>
                         </div>
-                        <div className="text-right">
-                          <span className="text-sm font-mono text-[var(--text-primary)] block">{getFilteredValue(item).toLocaleString()} SAR</span>
-                          {viewFilter !== "All" && (
-                            <span className="text-[10px] text-[var(--text-secondary)]">of {getTotalValue(item).toLocaleString()} Total</span>
-                          )}
+                        <div className="text-right flex flex-col items-end gap-2">
+                          <div>
+                            <span className="text-sm font-mono text-[var(--text-primary)] block">{getFilteredValue(item).toLocaleString()} SAR</span>
+                            {viewFilter !== "All" && (
+                              <span className="text-[10px] text-[var(--text-secondary)]">of {getTotalValue(item).toLocaleString()} Total</span>
+                            )}
+                          </div>
+                          <button 
+                            onClick={() => {
+                              setAchievingItem({ item, status: item.type === "RFP" ? "Achieved" : "Approved" });
+                              setAchievementDate(new Date().toISOString().split('T')[0]);
+                            }}
+                            className="flex items-center gap-1 px-2 py-1 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white rounded text-[10px] font-bold uppercase tracking-wider transition-colors"
+                            title={item.type === "RFP" ? "Mark as Achieved" : "Mark as Approved"}
+                          >
+                            <Check size={12} />
+                            {item.type === "RFP" ? "Achieved" : "Approved"}
+                          </button>
                         </div>
                       </div>
                       
-                      {item.type === "RFP" && item.disciplines && (
+                      {item.type === "RFP" && Array.isArray(item.disciplines) && (
                         <div className="mt-3 flex flex-wrap gap-2">
                           {item.disciplines.map((d) => (
                             <span key={d} className={cn(
@@ -491,6 +536,45 @@ export function Pipeline() {
           </div>
         </div>
       </div>
+
+      {/* Achievement Date Modal */}
+      {achievingItem && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[var(--card-bg)] border border-[var(--border)] w-full max-w-sm p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <h2 className="text-lg font-light text-[var(--text-primary)] mb-4">
+              Mark as {achievingItem.status}
+            </h2>
+            <p className="text-sm text-[var(--text-secondary)] mb-4">
+              Please confirm the date this was {achievingItem.status.toLowerCase()}. This will determine the quarter it is allocated to.
+            </p>
+            
+            <div className="mb-6">
+              <label className="block text-xs font-mono uppercase text-[var(--text-secondary)] mb-1">Date</label>
+              <input 
+                type="date"
+                value={achievementDate}
+                onChange={(e) => setAchievementDate(e.target.value)}
+                className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-[var(--text-primary)] focus:outline-none focus:border-[var(--text-primary)]"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setAchievingItem(null)}
+                className="flex-1 py-2 text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)] hover:border-[var(--text-primary)] transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleStatusUpdate}
+                className="flex-1 py-2 text-sm font-bold uppercase tracking-wider bg-emerald-500 text-white hover:bg-emerald-600 transition-colors"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add/Edit Item Modal */}
       {isModalOpen && (

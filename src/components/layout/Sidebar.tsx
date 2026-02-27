@@ -1,4 +1,5 @@
 import React from "react";
+import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   CheckSquare,
@@ -13,6 +14,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Mail,
+  TrendingUp,
 } from "lucide-react";
 import { Logo } from "../ui/Logo";
 import { cn } from "../../lib/utils";
@@ -20,6 +22,7 @@ import { useUser } from "../../context/UserContext";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/" },
+  { icon: TrendingUp, label: "Yearly Target", href: "/achieved-target" },
   { icon: CheckSquare, label: "Action List", href: "/actions" },
   { icon: Users, label: "Master Directory", href: "/directory" },
   { icon: FileText, label: "Registrations", href: "/registrations" },
@@ -35,13 +38,7 @@ interface SidebarProps {
 
 export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   const { profile } = useUser();
-  const [active, setActive] = React.useState(window.location.pathname);
-
-  const handleNavigation = (href: string) => {
-    window.history.pushState({}, "", href);
-    setActive(href);
-    window.dispatchEvent(new PopStateEvent("popstate"));
-  };
+  const navigate = useNavigate();
 
   const handleLogout = () => {
     if (confirm("Are you sure you want to logout?")) {
@@ -79,46 +76,60 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
 
       <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto overflow-x-hidden">
         {navItems.map((item) => (
-          <button
+          <NavLink
             key={item.href}
-            onClick={() => handleNavigation(item.href)}
-            className={cn(
+            to={item.href}
+            className={({ isActive }) => cn(
               "w-full flex items-center gap-3 px-3 py-3 text-sm font-medium transition-colors rounded-lg group relative",
-              active === item.href
+              isActive
                 ? "bg-[var(--text-primary)] text-[var(--bg-primary)]"
                 : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--border)]",
               isCollapsed && "justify-center px-2"
             )}
             title={isCollapsed ? item.label : undefined}
           >
-            <item.icon
-              size={20}
-              className={cn(
-                "transition-colors shrink-0",
-                active === item.href ? "text-[var(--bg-primary)]" : "text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]"
-              )}
-            />
-            {!isCollapsed && (
-              <span className="tracking-wide uppercase text-xs font-semibold whitespace-nowrap overflow-hidden text-ellipsis">
-                {item.label}
-              </span>
+            {({ isActive }) => (
+              <>
+                <item.icon
+                  size={20}
+                  className={cn(
+                    "transition-colors shrink-0",
+                    isActive ? "text-[var(--bg-primary)]" : "text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]"
+                  )}
+                />
+                {!isCollapsed && (
+                  <span className="tracking-wide uppercase text-xs font-semibold whitespace-nowrap overflow-hidden text-ellipsis">
+                    {item.label}
+                  </span>
+                )}
+              </>
             )}
-          </button>
+          </NavLink>
         ))}
       </nav>
 
       <div className="p-3 border-t border-[var(--border)] space-y-1">
-        <button 
-          onClick={() => handleNavigation("/settings")}
-          className={cn(
-            "w-full flex items-center gap-3 px-3 py-3 text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--border)] rounded-lg transition-colors group",
+        <NavLink 
+          to="/settings"
+          className={({ isActive }) => cn(
+            "w-full flex items-center gap-3 px-3 py-3 text-sm font-medium transition-colors rounded-lg group relative",
+            isActive
+              ? "bg-[var(--text-primary)] text-[var(--bg-primary)]"
+              : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--border)]",
             isCollapsed && "justify-center px-2"
           )}
           title={isCollapsed ? "Settings" : undefined}
         >
-          <SettingsIcon size={20} className="text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] shrink-0" />
-          {!isCollapsed && <span className="tracking-wide uppercase text-xs font-semibold whitespace-nowrap">Settings</span>}
-        </button>
+          {({ isActive }) => (
+            <>
+              <SettingsIcon size={20} className={cn(
+                "transition-colors shrink-0",
+                isActive ? "text-[var(--bg-primary)]" : "text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]"
+              )} />
+              {!isCollapsed && <span className="tracking-wide uppercase text-xs font-semibold whitespace-nowrap">Settings</span>}
+            </>
+          )}
+        </NavLink>
         <button 
           onClick={handleLogout}
           className={cn(
@@ -133,8 +144,8 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       </div>
 
       <div className="p-4 border-t border-[var(--border)]">
-        <button 
-          onClick={() => handleNavigation("/profile")}
+        <NavLink 
+          to="/profile"
           className={cn(
             "flex items-center gap-3 w-full hover:bg-[var(--border)] rounded-lg p-2 transition-colors",
             isCollapsed ? "justify-center" : "text-left"
@@ -150,7 +161,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
               <span className="text-[10px] text-[var(--text-secondary)] truncate">{profile.email}</span>
             </div>
           )}
-        </button>
+        </NavLink>
       </div>
     </aside>
   );

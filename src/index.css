@@ -56,6 +56,18 @@ body {
 }
 
 @media print {
+  :root {
+    --bg-primary: #ffffff !important;
+    --bg-secondary: #ffffff !important;
+    --bg-tertiary: #f0f0f0 !important;
+    --text-primary: #000000 !important;
+    --text-secondary: #333333 !important;
+    --text-tertiary: #666666 !important;
+    --card-bg: #ffffff !important;
+    --card-bg-inner: #f9f9f9 !important;
+    --border: #dddddd !important;
+  }
+
   body {
     background: white !important;
     color: black !important;

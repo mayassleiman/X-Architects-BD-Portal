@@ -1,5 +1,6 @@
 import React from "react";
-import { ArrowUpRight, CheckCircle2, Clock, CalendarDays, MoreHorizontal } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ArrowUpRight, CheckCircle2, Clock, CalendarDays, MoreHorizontal, TrendingUp } from "lucide-react";
 import { cn } from "../lib/utils";
 
 const metrics = [
@@ -48,10 +49,10 @@ const Card: React.FC<CardProps> = ({ children, className, title, action, href })
 
   if (href) {
     return (
-      <a href={href} className={cn("block h-full", className)}>
+      <Link to={href} className={cn("block h-full", className)}>
         {/* Pass empty className to inner div because we applied it to the link */}
         {React.cloneElement(Content, { className: "" })}
-      </a>
+      </Link>
     );
   }
 
@@ -62,6 +63,7 @@ export function Dashboard() {
   const [apiActions, setApiActions] = React.useState<any[]>([]);
   const [apiRegistrations, setApiRegistrations] = React.useState<any[]>([]);
   const [apiMeetings, setApiMeetings] = React.useState<any[]>([]);
+  const [targetData, setTargetData] = React.useState<{ target: number, achieved: number }>({ target: 0, achieved: 0 });
 
   React.useEffect(() => {
     // Fetch Actions
@@ -81,6 +83,22 @@ export function Dashboard() {
       .then(res => res.ok ? res.json() : [])
       .then(data => setApiMeetings(data))
       .catch(err => console.log("Failed to fetch meetings"));
+
+    // Fetch Target Data
+    const currentYear = new Date().getFullYear();
+    fetch(`/api/achieved-targets?year=${currentYear}`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data) {
+          const achieved = data.items.reduce((acc: number, item: any) => {
+            const vals = item.item_values || {};
+            const total = (vals.architecture || 0) + (vals.interior || 0) + (vals.cs || 0) + (vals.vo || 0);
+            return acc + total;
+          }, 0);
+          setTargetData({ target: data.target, achieved });
+        }
+      })
+      .catch(err => console.log("Failed to fetch target data"));
   }, []);
 
   const now = new Date();
@@ -116,10 +134,22 @@ export function Dashboard() {
   const pendingRegsCount = apiRegistrations.filter((r: any) => r.status === 'Pending').length;
   const upcomingMeetingsCount = futureMeetings.length;
 
+  const targetPercentage = targetData.target > 0 ? (targetData.achieved / targetData.target) * 100 : 0;
+
   const realMetrics = [
     { label: "Pending Actions", value: pendingActionsCount.toString(), change: "Live", icon: CheckCircle2, color: "text-emerald-400", href: "/actions" },
     { label: "Pending Regs", value: pendingRegsCount.toString(), change: "Live", icon: Clock, color: "text-amber-400", href: "/registrations" },
     { label: "Upcoming Meetings", value: upcomingMeetingsCount.toString(), change: "Live", icon: CalendarDays, color: "text-blue-400", href: "/meetings" },
+    { 
+      label: "Yearly Target", 
+      value: `${targetPercentage.toFixed(1)}%`, 
+      subValue: `${(targetData.achieved / 1000000).toFixed(1)}M / ${(targetData.target / 1000000).toFixed(1)}M`,
+      change: "YTD", 
+      icon: TrendingUp, 
+      color: "text-purple-400", 
+      href: "/achieved-target",
+      isProgress: true
+    },
   ];
 
   return (
@@ -130,42 +160,54 @@ export function Dashboard() {
           <h1 className="text-4xl font-light tracking-tight text-[var(--text-primary)] mb-2">DASHBOARD</h1>
           <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Overview & Status Report</p>
         </div>
-        <button 
-          onClick={() => {
-            window.history.pushState({}, "", "/report");
-            window.dispatchEvent(new PopStateEvent("popstate"));
-          }}
+        <Link 
+          to="/report"
           className="hidden md:flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors print:hidden"
         >
           View Full Report
-        </button>
+        </Link>
       </div>
 
       {/* Metrics */}
       {realMetrics.map((metric, i) => (
-        <div key={i} className="col-span-4">
+        <div key={i} className="col-span-12 sm:col-span-6 lg:col-span-3">
           <Card href={metric.href}>
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-mono uppercase text-[var(--text-secondary)] mb-1">{metric.label}</p>
                 <h2 className="text-3xl font-medium text-[var(--text-primary)]">{metric.value}</h2>
+                {metric.subValue && (
+                  <p className="text-xs text-[var(--text-secondary)] mt-1 font-mono">{metric.subValue}</p>
+                )}
               </div>
               <div className={cn("p-2 rounded-full bg-[var(--border)]", metric.color)}>
                 <metric.icon size={20} />
               </div>
             </div>
-            <div className="mt-4 flex items-center gap-2 text-xs font-mono">
-              <span className={metric.change.startsWith("+") ? "text-emerald-400" : "text-rose-400"}>
-                {metric.change}
-              </span>
-              <span className="text-[var(--text-tertiary)]">vs last week</span>
-            </div>
+            
+            {metric.isProgress ? (
+              <div className="mt-4">
+                <div className="w-full bg-[var(--bg-tertiary)] h-1.5 rounded-full overflow-hidden">
+                  <div 
+                    className={cn("h-full rounded-full transition-all duration-500", metric.color.replace('text-', 'bg-'))} 
+                    style={{ width: `${Math.min(parseFloat(metric.value), 100)}%` }} 
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="mt-4 flex items-center gap-2 text-xs font-mono">
+                <span className={metric.change.startsWith("+") ? "text-emerald-400" : "text-rose-400"}>
+                  {metric.change}
+                </span>
+                <span className="text-[var(--text-tertiary)]">vs last week</span>
+              </div>
+            )}
           </Card>
         </div>
       ))}
 
       {/* Action List */}
-      <div className="col-span-8">
+      <div className="col-span-12 lg:col-span-8">
         <Card title="Action List" action={<ArrowUpRight size={16} />} href="/actions">
           <div className="space-y-4">
             {displayActions.map((action) => (
@@ -195,7 +237,7 @@ export function Dashboard() {
       </div>
 
       {/* Meeting Tracker */}
-      <div className="col-span-4">
+      <div className="col-span-12 lg:col-span-4">
         <Card title="Upcoming Meetings" action={<MoreHorizontal size={16} />} href="/meetings">
           <div className="space-y-6 relative">
             <div className="absolute left-1.5 top-2 bottom-2 w-px bg-[var(--border)]" />
