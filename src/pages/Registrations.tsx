@@ -121,7 +121,7 @@ export function Registrations({ isReportView = false }: { isReportView?: boolean
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-4xl font-light tracking-tight text-[var(--text-primary)] mb-2">REGISTRATIONS</h1>
-          <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Project Status & Follow-ups</p>
+          <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Reg Status & Follow-Ups</p>
         </div>
         {!isReportView && (
           <div className="flex items-center gap-4">
@@ -375,7 +375,7 @@ export function Registrations({ isReportView = false }: { isReportView?: boolean
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-mono uppercase text-[var(--text-secondary)] mb-1">Due Date</label>
+                  <label className="block text-xs font-mono uppercase text-[var(--text-secondary)] mb-1">Follow up date</label>
                   <input 
                     type="date" 
                     value={formData.due_date}
