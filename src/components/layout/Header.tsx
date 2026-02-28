@@ -2,6 +2,7 @@ import React from "react";
 import { Search, Bell, Calendar as CalendarIcon } from "lucide-react";
 import { useSearch } from "../../context/SearchContext";
 import { cn } from "../../lib/utils";
+import { useLocation } from "react-router-dom";
 
 interface HeaderProps {
   isSidebarCollapsed: boolean;
@@ -9,12 +10,17 @@ interface HeaderProps {
 
 export function Header({ isSidebarCollapsed }: HeaderProps) {
   const { searchQuery, setSearchQuery } = useSearch();
+  const location = useLocation();
+  const isReportPage = location.pathname === '/report';
+
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
     month: "long",
     day: "numeric",
   });
+
+  if (isReportPage) return null;
 
   return (
     <header 

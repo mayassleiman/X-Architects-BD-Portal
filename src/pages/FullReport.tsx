@@ -13,13 +13,11 @@ export function FullReport() {
 
   React.useEffect(() => {
     const now = new Date();
-    setCurrentDate(now.toLocaleDateString('en-US', { 
+    setCurrentDate(now.toLocaleDateString('en-GB', { 
       weekday: 'long', 
-      year: 'numeric', 
+      day: '2-digit',
       month: 'long', 
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      year: 'numeric'
     }));
   }, []);
 
@@ -43,19 +41,13 @@ export function FullReport() {
         </button>
       </div>
 
-      <div className="border-b border-[var(--border)] pb-8 print:border-none print:pb-4 relative">
-        <div className="absolute top-0 right-0 hidden print:block md:block">
-           <Logo showText={false} className="scale-125 origin-top-right" />
+      <div className="border-b border-[var(--border)] pb-8 print:border-none print:pb-4 flex justify-between items-start">
+        <div>
+          <h1 className="text-4xl font-light tracking-tight text-[var(--text-primary)] mb-2 uppercase">KSA Business Development Weekly Action Sheet {new Date().getFullYear()}</h1>
+          <p className="text-[var(--text-primary)] font-medium text-lg">{currentDate}</p>
         </div>
-        <div className="flex justify-between items-end pt-12">
-          <div>
-            <h1 className="text-5xl font-light tracking-tight text-[var(--text-primary)] mb-2">FULL REPORT</h1>
-            <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Comprehensive Status Overview</p>
-          </div>
-          <div className="text-right">
-            <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mb-1">Generated On</p>
-            <p className="text-[var(--text-primary)] font-medium">{currentDate}</p>
-          </div>
+        <div className="hidden print:block md:block">
+           <Logo showText={false} className="scale-125" />
         </div>
       </div>
 

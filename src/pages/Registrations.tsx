@@ -1,7 +1,9 @@
 import React from "react";
-import { Plus, X, FileText, Trash2, Building2, User, Calendar, List, Grid, Edit2 } from "lucide-react";
+import { Plus, X, FileText, Trash2, Building2, User, Calendar, List, Grid, Edit2, Download } from "lucide-react";
 import { cn } from "../lib/utils";
 import { useSearch } from "../context/SearchContext";
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface Registration {
   id: number;
@@ -32,6 +34,8 @@ export function Registrations({ isReportView = false }: { isReportView?: boolean
     last_week_follow_up: ""
   });
 
+  const [selectedStatuses, setSelectedStatuses] = React.useState<string[]>([]);
+
   const fetchRegistrations = () => {
     fetch('/api/registrations')
       .then(res => res.json())
@@ -47,12 +51,59 @@ export function Registrations({ isReportView = false }: { isReportView?: boolean
     const matchesSearch = (reg.client || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (reg.contact_name && reg.contact_name.toLowerCase().includes(searchQuery.toLowerCase()));
     
+    const matchesStatus = selectedStatuses.length === 0 || selectedStatuses.includes(reg.status);
+
     if (isReportView) {
-      return matchesSearch && (reg.last_week_follow_up && reg.last_week_follow_up.trim() !== "");
+      return matchesSearch && matchesStatus && (reg.last_week_follow_up && reg.last_week_follow_up.trim() !== "");
     }
     
-    return matchesSearch;
+    return matchesSearch && matchesStatus;
   });
+
+  const toggleStatus = (status: string) => {
+    setSelectedStatuses(prev => 
+      prev.includes(status) 
+        ? prev.filter(s => s !== status)
+        : [...prev, status]
+    );
+  };
+
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    
+    // Add title
+    doc.setFontSize(18);
+    doc.text('Registrations Report', 14, 22);
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    
+    // Add date
+    const dateStr = new Date().toLocaleDateString();
+    doc.text(`Generated on: ${dateStr}`, 14, 30);
+
+    // Define columns
+    const tableColumn = ["Client", "Contact", "Reg. Date", "Status", "Follow Up Date", "Notes"];
+    const tableRows = filteredRegistrations.map(reg => [
+      reg.client,
+      reg.contact_name,
+      reg.registration_date,
+      reg.status,
+      reg.due_date,
+      reg.follow_up_log
+    ]);
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 35,
+      theme: 'grid',
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+      alternateRowStyles: { fillColor: [245, 245, 245] }
+    });
+
+    doc.save('registrations_report.pdf');
+  };
 
   const handleEdit = (reg: Registration) => {
     setEditingId(reg.id);
@@ -140,6 +191,12 @@ export function Registrations({ isReportView = false }: { isReportView?: boolean
               </button>
             </div>
             <button 
+              onClick={handleExportPDF}
+              className="flex items-center gap-2 px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--border)] transition-colors border border-[var(--border)]"
+            >
+              <Download size={16} /> Export PDF
+            </button>
+            <button 
               onClick={() => {
                 setEditingId(null);
                 setFormData({ 
@@ -161,6 +218,39 @@ export function Registrations({ isReportView = false }: { isReportView?: boolean
           </div>
         )}
       </div>
+
+      {!isReportView && (
+        <div className="flex flex-wrap gap-4 bg-[var(--card-bg)] border border-[var(--border)] p-4 rounded-lg items-center">
+          <div className="flex items-center gap-4">
+            <span className="text-xs font-mono uppercase text-[var(--text-secondary)]">Filter Status:</span>
+            <div className="flex gap-2">
+              {["Pending", "Ongoing", "Completed"].map(status => (
+                <button
+                  key={status}
+                  onClick={() => toggleStatus(status)}
+                  className={cn(
+                    "px-3 py-1 text-xs rounded-full border transition-colors uppercase tracking-wider",
+                    selectedStatuses.includes(status)
+                      ? "bg-[var(--text-primary)] text-[var(--bg-primary)] border-[var(--text-primary)]"
+                      : "bg-transparent text-[var(--text-secondary)] border-[var(--border)] hover:border-[var(--text-primary)] hover:text-[var(--text-primary)]"
+                  )}
+                >
+                  {status}
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          {selectedStatuses.length > 0 && (
+            <button 
+              onClick={() => setSelectedStatuses([])}
+              className="ml-auto text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
+            >
+              <X size={12} /> Clear Filters
+            </button>
+          )}
+        </div>
+      )}
 
       {viewMode === 'grid' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -229,7 +319,7 @@ export function Registrations({ isReportView = false }: { isReportView?: boolean
                 
                 <div className="space-y-3 pt-4 border-t border-[var(--border)]">
                   <div className="flex justify-between text-xs">
-                    <span className="text-[var(--text-secondary)] uppercase">{isReportView ? "Follow Up" : "Due Date"}</span>
+                    <span className="text-[var(--text-secondary)] uppercase">{isReportView ? "Follow Up" : "Follow Up Date"}</span>
                     <span className="text-[var(--text-primary)] font-mono">{reg.due_date || "N/A"}</span>
                   </div>
                   {reg.last_week_follow_up && (
@@ -289,7 +379,7 @@ export function Registrations({ isReportView = false }: { isReportView?: boolean
                       <span>Reg: {reg.registration_date || "-"}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs uppercase tracking-wider">{isReportView ? "Follow Up:" : "Due:"}</span>
+                      <span className="text-xs uppercase tracking-wider">{isReportView ? "Follow Up:" : "Follow Up:"}</span>
                       <span className="font-mono text-[var(--text-primary)]">{reg.due_date || "-"}</span>
                     </div>
                   </div>
