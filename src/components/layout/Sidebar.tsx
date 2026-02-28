@@ -58,10 +58,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
         "flex items-center border-b border-[var(--border)] h-20 transition-all",
         isCollapsed ? "justify-center px-0" : "justify-between px-6"
       )}>
-        {!isCollapsed && <Logo />}
-        {isCollapsed && (
-             <div className="font-bold text-xl text-[var(--text-primary)]">X</div>
-        )}
+        <Logo collapsed={isCollapsed} />
         <button 
           onClick={onToggle}
           className={cn(

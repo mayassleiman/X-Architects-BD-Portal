@@ -491,4 +491,87 @@ router.get('/achieved-targets', (req, res) => {
   });
 });
 
+// --- Market Sectors API ---
+
+// Get Market Sectors
+router.get('/market-sectors', (req, res) => {
+  const stmt = db.prepare('SELECT * FROM market_sectors ORDER BY name ASC');
+  const sectors = stmt.all();
+  res.json(sectors);
+});
+
+// Create Market Sector
+router.post('/market-sectors', (req, res) => {
+  const { name, color } = req.body;
+  try {
+    const stmt = db.prepare('INSERT INTO market_sectors (name, color) VALUES (?, ?)');
+    const info = stmt.run(name, color);
+    res.json({ id: info.lastInsertRowid, name, color });
+  } catch (error: any) {
+    if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+      res.status(400).json({ error: 'Market sector already exists' });
+    } else {
+      res.status(500).json({ error: 'Failed to create market sector' });
+    }
+  }
+});
+
+// Update Market Sector
+router.put('/market-sectors/:id', (req, res) => {
+  const { id } = req.params;
+  const { name, color } = req.body;
+  try {
+    const stmt = db.prepare('UPDATE market_sectors SET name = ?, color = ? WHERE id = ?');
+    stmt.run(name, color, id);
+    res.json({ success: true });
+  } catch (error: any) {
+    if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+      res.status(400).json({ error: 'Market sector name already exists' });
+    } else {
+      res.status(500).json({ error: 'Failed to update market sector' });
+    }
+  }
+});
+
+// Delete Market Sector
+router.delete('/market-sectors/:id', (req, res) => {
+  const { id } = req.params;
+  const stmt = db.prepare('DELETE FROM market_sectors WHERE id = ?');
+  stmt.run(id);
+  res.json({ success: true });
+});
+
+// --- Company Types API ---
+
+// Get Company Types
+router.get('/company-types', (req, res) => {
+  const stmt = db.prepare('SELECT * FROM company_types ORDER BY name ASC');
+  const types = stmt.all();
+  res.json(types);
+});
+
+// Create Company Type
+router.post('/company-types', (req, res) => {
+  const { name } = req.body;
+  try {
+    const stmt = db.prepare('INSERT INTO company_types (name) VALUES (?)');
+    const info = stmt.run(name);
+    res.json({ id: info.lastInsertRowid, name });
+  } catch (error: any) {
+    if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+      res.status(400).json({ error: 'Company type already exists' });
+    } else {
+      res.status(500).json({ error: 'Failed to create company type' });
+    }
+  }
+});
+
+// Delete Company Type
+router.delete('/company-types/:id', (req, res) => {
+  const { id } = req.params;
+  const stmt = db.prepare('DELETE FROM company_types WHERE id = ?');
+  stmt.run(id);
+  res.json({ success: true });
+});
+
 export default router;

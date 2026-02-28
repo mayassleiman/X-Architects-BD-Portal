@@ -45,7 +45,7 @@ export function FullReport() {
 
       <div className="border-b border-[var(--border)] pb-8 print:border-none print:pb-4 relative">
         <div className="absolute top-0 right-0 hidden print:block md:block">
-           <Logo className="scale-90 origin-top-right" />
+           <Logo showText={false} className="scale-125 origin-top-right" />
         </div>
         <div className="flex justify-between items-end pt-12">
           <div>

@@ -76,9 +76,22 @@ export function MasterDirectory() {
   const [engagementForm, setEngagementForm] = useState<{id?: number, date: string, discussion: string}>({ date: new Date().toISOString().split('T')[0], discussion: '' });
   const [followUpForm, setFollowUpForm] = useState<{id?: number, date: string, description: string, status?: 'Pending' | 'Done'}>({ date: '', description: '' });
 
+  const [companyTypes, setCompanyTypes] = useState<{id: number, name: string}[]>([]);
+
   useEffect(() => {
     fetchContacts();
+    fetchCompanyTypes();
   }, []);
+
+  const fetchCompanyTypes = async () => {
+    try {
+      const res = await fetch('/api/company-types');
+      const data = await res.json();
+      setCompanyTypes(data);
+    } catch (error) {
+      console.error("Failed to fetch company types", error);
+    }
+  };
 
   useEffect(() => {
     if (selectedContact) {
@@ -647,13 +660,9 @@ export function MasterDirectory() {
                 onChange={e => setContactForm({...contactForm, category: e.target.value})}
               >
                 <option value="">Select Category...</option>
-                <option value="Consultant">Consultant</option>
-                <option value="Real Estate Developer">Real Estate Developer</option>
-                <option value="PIF Company">PIF Company</option>
-                <option value="Ministry">Ministry</option>
-                <option value="Contractor">Contractor</option>
-                <option value="General">General</option>
-                <option value="Personal">Personal</option>
+                {companyTypes.map(type => (
+                  <option key={type.id} value={type.name}>{type.name}</option>
+                ))}
               </select>
               <input 
                 placeholder="Contact Name" 

@@ -1,10 +1,10 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Plus, Briefcase, DollarSign, PieChart, Layers, Check, X, Edit2, Trash2 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { PieChart as RePieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { useSearch } from "../context/SearchContext";
 
-type Sector = "Commercial" | "Residential" | "Cultural" | "Religious" | "Hospitality" | "Mixed Use" | "Entertainment" | "Master Planning" | "Retail";
+type Sector = string;
 type Discipline = "Architecture" | "Interior" | "Construction Supervision";
 
 interface PipelineItem {
@@ -26,21 +26,11 @@ interface PipelineItem {
   rfpNumber?: string;
 }
 
-const SECTORS: Sector[] = [
-  "Commercial", "Residential", "Cultural", "Religious", "Hospitality", "Mixed Use", "Entertainment", "Master Planning", "Retail"
-];
-
-const SECTOR_COLORS: Record<Sector, string> = {
-  "Commercial": "#10b981", // emerald-500
-  "Residential": "#3b82f6", // blue-500
-  "Cultural": "#f59e0b", // amber-500
-  "Religious": "#ef4444", // red-500
-  "Hospitality": "#8b5cf6", // violet-500
-  "Mixed Use": "#ec4899", // pink-500
-  "Entertainment": "#6366f1", // indigo-500
-  "Master Planning": "#14b8a6", // teal-500
-  "Retail": "#f97316", // orange-500
-};
+interface MarketSector {
+  id: number;
+  name: string;
+  color: string;
+}
 
 const DISCIPLINE_COLORS: Record<string, string> = {
   "Architecture": "#06b6d4", // Cyan
@@ -54,23 +44,43 @@ const DISCIPLINES: Discipline[] = ["Architecture", "Interior", "Construction Sup
 export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
   const { searchQuery } = useSearch();
   const [items, setItems] = useState<PipelineItem[]>([]);
+  const [sectors, setSectors] = useState<MarketSector[]>([]);
   const [activeTab, setActiveTab] = useState<"RFP" | "VO">("RFP");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewFilter, setViewFilter] = useState<"All" | "Architecture" | "Interior" | "CS">("All");
 
-  // Fetch items on mount
-  React.useEffect(() => {
-    fetch('/api/pipeline')
-      .then(res => res.json())
-      .then(data => setItems(data))
-      .catch(err => console.error('Failed to fetch pipeline items:', err));
+  // Fetch items and sectors on mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [pipelineRes, sectorsRes] = await Promise.all([
+          fetch('/api/pipeline'),
+          fetch('/api/market-sectors')
+        ]);
+        
+        const pipelineData = await pipelineRes.json();
+        const sectorsData = await sectorsRes.json();
+        
+        setItems(pipelineData);
+        setSectors(sectorsData);
+        
+        // Update default sector if sectors are loaded
+        if (sectorsData.length > 0) {
+          setNewItem(prev => ({ ...prev, sector: sectorsData[0].name }));
+        }
+      } catch (err) {
+        console.error('Failed to fetch data:', err);
+      }
+    };
+    
+    fetchData();
   }, []);
 
   // Form State
   const [newItem, setNewItem] = useState<Partial<PipelineItem>>({
     type: "RFP",
-    sector: "Commercial",
+    sector: "",
     disciplines: [],
     values: {},
     status: "Pending"
@@ -128,7 +138,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
       
       setIsModalOpen(false);
       setEditingId(null);
-      setNewItem({ type: "RFP", sector: "Commercial", disciplines: [], values: {}, status: "Pending" });
+      setNewItem({ type: "RFP", sector: sectors[0]?.name || "", disciplines: [], values: {}, status: "Pending" });
     } catch (err) {
       console.error('Failed to save item:', err);
       alert('Failed to save item. Please try again.');
@@ -197,10 +207,10 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
       { name: "Supervision", value: totalSupervision, color: DISCIPLINE_COLORS["Construction Supervision"] },
     ];
 
-    const sectorData = SECTORS.map(sector => {
-      const sectorItems = activeItems.filter(i => i.sector === sector);
+    const sectorData = sectors.map(sector => {
+      const sectorItems = activeItems.filter(i => i.sector === sector.name);
       const value = sectorItems.reduce((acc, curr) => acc + getFilteredValue(curr), 0);
-      return { name: sector, value, color: SECTOR_COLORS[sector] };
+      return { name: sector.name, value, color: sector.color };
     }).filter(d => d.value > 0);
 
     return { totalRFP, totalVO, totalPipeline, sectorData, disciplineData, absoluteTotalPipeline };
@@ -261,10 +271,10 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
 
   const groupItems = (list: PipelineItem[]) => {
     const grouped: Record<string, PipelineItem[]> = {};
-    SECTORS.forEach(sector => {
-      const sectorItems = list.filter(i => i.sector === sector);
+    sectors.forEach(sector => {
+      const sectorItems = list.filter(i => i.sector === sector.name);
       if (sectorItems.length > 0) {
-        grouped[sector] = sectorItems;
+        grouped[sector.name] = sectorItems;
       }
     });
     return grouped;
@@ -284,7 +294,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
           <div className="grid gap-3">
             {sectorItems.map((item) => (
               <div key={item.id} className="bg-[var(--card-bg-inner)] border border-[var(--border)] p-4 hover:border-[var(--border-hover)] transition-colors group relative pl-6 overflow-hidden">
-                <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: SECTOR_COLORS[item.sector] }} />
+                <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: sectors.find(s => s.name === item.sector)?.color || '#ccc' }} />
                 {!isReportView && (
                   <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button 
@@ -306,7 +316,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                   <div>
                     <h5 
                       className="text-sm font-medium transition-colors"
-                      style={{ color: SECTOR_COLORS[item.sector] }}
+                      style={{ color: sectors.find(s => s.name === item.sector)?.color || 'inherit' }}
                     >
                       {item.rfpNumber && <span className="font-mono text-xs opacity-70 mr-2">{item.rfpNumber}</span>}
                       {item.name}
@@ -406,7 +416,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
             <button 
               onClick={() => {
                 setEditingId(null);
-                setNewItem({ type: "RFP", sector: "Commercial", disciplines: [], values: {}, status: "Pending" });
+                setNewItem({ type: "RFP", sector: sectors[0]?.name || "", disciplines: [], values: {}, status: "Pending" });
                 setIsModalOpen(true);
               }}
               className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors"
@@ -657,7 +667,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                     onChange={(e) => setNewItem({...newItem, sector: e.target.value as Sector})}
                     className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-[var(--text-primary)] focus:outline-none focus:border-[var(--text-primary)]"
                   >
-                    {SECTORS.map(s => <option key={s} value={s}>{s}</option>)}
+                    {sectors.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                   </select>
                 </div>
               </div>

@@ -99,7 +99,50 @@ db.exec(`
     year INTEGER PRIMARY KEY,
     amount REAL DEFAULT 0
   );
+
+  CREATE TABLE IF NOT EXISTS market_sectors (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE NOT NULL,
+    color TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS company_types (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE NOT NULL
+  );
 `);
+
+// Seed default market sectors if empty
+const sectorsCount = db.prepare('SELECT count(*) as count FROM market_sectors').get() as { count: number };
+if (sectorsCount.count === 0) {
+  const defaultSectors = [
+    { name: "Commercial", color: "#10b981" },
+    { name: "Residential", color: "#3b82f6" },
+    { name: "Cultural", color: "#f59e0b" },
+    { name: "Religious", color: "#ef4444" },
+    { name: "Hospitality", color: "#8b5cf6" },
+    { name: "Mixed Use", color: "#ec4899" },
+    { name: "Entertainment", color: "#6366f1" },
+    { name: "Master Planning", color: "#14b8a6" },
+    { name: "Retail", color: "#f97316" }
+  ];
+  const insertSector = db.prepare('INSERT INTO market_sectors (name, color) VALUES (@name, @color)');
+  defaultSectors.forEach(sector => insertSector.run(sector));
+}
+
+// Seed default company types if empty
+const typesCount = db.prepare('SELECT count(*) as count FROM company_types').get() as { count: number };
+if (typesCount.count === 0) {
+  const defaultTypes = [
+    { name: "Client" },
+    { name: "Contractor" },
+    { name: "Consultant" },
+    { name: "Developer" },
+    { name: "Government" }
+  ];
+  const insertType = db.prepare('INSERT INTO company_types (name) VALUES (@name)');
+  defaultTypes.forEach(type => insertType.run(type));
+}
 
 // Migration: Add category column to contacts if it doesn't exist
 try {

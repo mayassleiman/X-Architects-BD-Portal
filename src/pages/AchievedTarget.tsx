@@ -12,17 +12,11 @@ interface AchievedTargetData {
   items: any[];
 }
 
-const SECTOR_COLORS: Record<string, string> = {
-  "Commercial": "#10b981",
-  "Residential": "#3b82f6",
-  "Cultural": "#f59e0b",
-  "Religious": "#ef4444",
-  "Hospitality": "#8b5cf6",
-  "Mixed Use": "#ec4899",
-  "Entertainment": "#6366f1",
-  "Master Planning": "#14b8a6",
-  "Retail": "#f97316",
-};
+interface MarketSector {
+  id: number;
+  name: string;
+  color: string;
+}
 
 const DISCIPLINE_COLORS: Record<string, string> = {
   "Architecture": "#06b6d4", // Cyan
@@ -34,6 +28,7 @@ const DISCIPLINE_COLORS: Record<string, string> = {
 export function AchievedTarget({ isReportView = false }: { isReportView?: boolean }) {
   const [year, setYear] = useState(new Date().getFullYear());
   const [data, setData] = useState<AchievedTargetData>({ year: new Date().getFullYear(), target: 0, items: [] });
+  const [sectors, setSectors] = useState<MarketSector[]>([]);
   const [isEditingTarget, setIsEditingTarget] = useState(false);
   const [newTarget, setNewTarget] = useState(0);
   const [expandedQuarters, setExpandedQuarters] = useState<number[]>([1, 2, 3, 4]);
@@ -43,7 +38,18 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
 
   useEffect(() => {
     fetchData();
+    fetchSectors();
   }, [year]);
+
+  const fetchSectors = async () => {
+    try {
+      const res = await fetch('/api/market-sectors');
+      const json = await res.json();
+      setSectors(json);
+    } catch (error) {
+      console.error("Failed to fetch sectors", error);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -180,7 +186,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
       name,
       value,
       share: totalAchieved > 0 ? (value / totalAchieved) * 100 : 0,
-      color: SECTOR_COLORS[name] || '#ccc'
+      color: sectors.find(s => s.name === name)?.color || '#ccc'
     })).sort((a, b) => b.value - a.value);
 
     // Discipline Breakdown
@@ -553,7 +559,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
                         <td className="px-4 py-2 pl-10">
                           <div className="flex items-center justify-between">
                             <div>
-                              <div className="text-sm font-medium" style={{ color: SECTOR_COLORS[item.sector] }} title={item.sector}>{item.name}</div>
+                              <div className="text-sm font-medium" style={{ color: sectors.find(s => s.name === item.sector)?.color || '#ccc' }} title={item.sector}>{item.name}</div>
                               <div className="flex items-center gap-2 mt-1">
                                 <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-[var(--bg-tertiary)] text-[var(--text-secondary)]">
                                   {item.type === "RFP" ? "Project" : item.type}
