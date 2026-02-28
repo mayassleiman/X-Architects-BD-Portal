@@ -95,22 +95,22 @@ export function FullReport() {
         <MeetingsChartOnly />
       </section>
 
-      {/* Recent Engagements Section */}
-      <section className="break-inside-avoid page-break-after-always">
-        <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
-          <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">RECENT ENGAGEMENTS</h2>
-          <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Past 10 Days</p>
-        </div>
-        <RecentEngagements />
-      </section>
-
       {/* Tasks Section */}
-      <section className="break-inside-avoid">
+      <section className="break-inside-avoid page-break-after-always">
         <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
           <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">TASKS</h2>
           <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Business Development Pipeline</p>
         </div>
         <Tasks isReportView={true} />
+      </section>
+
+      {/* Recent Engagements Section */}
+      <section className="break-inside-avoid">
+        <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
+          <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">RECENT ENGAGEMENTS</h2>
+          <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Past 10 Days</p>
+        </div>
+        <RecentEngagements />
       </section>
 
       {/* Footer Stamp */}
