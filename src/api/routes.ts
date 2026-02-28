@@ -448,6 +448,13 @@ router.get('/follow-ups/due', (req, res) => {
   res.json(dueFollowUps);
 });
 
+// Get All Targets
+router.get('/targets', (req, res) => {
+  const stmt = db.prepare('SELECT * FROM targets ORDER BY year DESC');
+  const targets = stmt.all();
+  res.json(targets);
+});
+
 // Get Target for Year
 router.get('/targets/:year', (req, res) => {
   const { year } = req.params;

@@ -31,6 +31,20 @@ export function Settings() {
   const [newTypeName, setNewTypeName] = useState("");
   const [isAddingType, setIsAddingType] = useState(false);
 
+  // Export/Import State
+  const [selectedPage, setSelectedPage] = useState<string>("contacts");
+
+  const PAGES = [
+    { id: 'contacts', name: 'Master Directory (Contacts)', endpoint: '/api/contacts' },
+    { id: 'engagements', name: 'Engagements', endpoint: '/api/engagements/search?all=true' },
+    { id: 'pipeline', name: 'Pipeline', endpoint: '/api/pipeline' },
+    { id: 'actions', name: 'Action Plan', endpoint: '/api/actions' },
+    { id: 'registrations', name: 'Registration', endpoint: '/api/registrations' },
+    { id: 'tasks', name: 'Tasks', endpoint: '/api/tasks' },
+    { id: 'meetings', name: 'Meetings', endpoint: '/api/meetings' },
+    { id: 'targets', name: 'Yearly Target', endpoint: '/api/targets' },
+  ];
+
   useEffect(() => {
     fetchSectors();
     fetchCompanyTypes();
@@ -170,6 +184,167 @@ export function Settings() {
     }
   };
 
+  const handleExportPage = async (format: 'excel' | 'json') => {
+    const page = PAGES.find(p => p.id === selectedPage);
+    if (!page) return;
+
+    try {
+      const res = await fetch(page.endpoint);
+      const data = await res.json();
+
+      if (format === 'excel') {
+        const wb = XLSX.utils.book_new();
+        // Format data if needed (e.g. pipeline)
+        let formattedData = data;
+        if (page.id === 'pipeline') {
+          formattedData = data.map((item: any) => {
+            const { values, ...rest } = item;
+            const valueFields: any = {};
+            if (values) {
+              Object.entries(values).forEach(([k, v]) => {
+                valueFields[`Value [${k}]`] = v;
+              });
+            }
+            return {
+              ...rest,
+              disciplines: Array.isArray(item.disciplines) ? item.disciplines.join(", ") : item.disciplines,
+              ...valueFields
+            };
+          });
+        } else if (page.id === 'meetings') {
+           formattedData = data.map((item: any) => ({
+            ...item,
+            attendees: Array.isArray(item.attendees) ? item.attendees.map((a:any) => a.name || a.email).join(", ") : item.attendees
+          }));
+        }
+
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(formattedData), page.name);
+        XLSX.writeFile(wb, `${page.name.replace(/\s+/g, '_')}_Export.xlsx`);
+      } else {
+        // JSON Export
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${page.name.replace(/\s+/g, '_')}_Database.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error("Error exporting page data:", error);
+      alert("Failed to export data.");
+    }
+  };
+
+  const handleImportPage = async (e: React.ChangeEvent<HTMLInputElement>, format: 'excel' | 'json') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const page = PAGES.find(p => p.id === selectedPage);
+    if (!page) return;
+
+    if (!confirm(`This will append data to ${page.name}. Continue?`)) {
+      e.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    
+    reader.onload = async (evt) => {
+      try {
+        let data: any[] = [];
+        if (format === 'excel') {
+          const bstr = evt.target?.result;
+          const wb = XLSX.read(bstr, { type: 'array' });
+          const sheetName = wb.SheetNames[0];
+          const sheet = wb.Sheets[sheetName];
+          data = XLSX.utils.sheet_to_json(sheet);
+        } else {
+          const text = evt.target?.result as string;
+          data = JSON.parse(text);
+        }
+
+        // Determine correct endpoint for POST (creation)
+        let endpoint = page.endpoint.split('?')[0]; 
+        
+        // Handle special cases
+        if (page.id === 'engagements') {
+           // Engagements need special handling as they are usually tied to a contact
+           // We'll try to use the contact_id if present
+           for (const item of data) {
+             if (item.contact_id) {
+               await fetch(`/api/contacts/${item.contact_id}/engagements`, {
+                 method: 'POST',
+                 headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify(item)
+               });
+             }
+           }
+        } else if (page.id === 'pipeline') {
+           for (const item of data) {
+             // Parse fields if coming from Excel (strings)
+             if (typeof item.disciplines === 'string') {
+               item.disciplines = item.disciplines.split(',').map((s: string) => s.trim());
+             }
+             // Parse values from separate columns
+             const valuesObj: any = {};
+             Object.keys(item).forEach(key => {
+               if (key.startsWith('Value [')) {
+                 const discipline = key.substring(7, key.length - 1);
+                 valuesObj[discipline] = item[key];
+               }
+             });
+
+             // Fallback for legacy format
+             if (typeof item.values === 'string') {
+                (item.values || "").split(',').forEach((pair: string) => {
+                  const parts = pair.split(':');
+                  if (parts.length === 2) valuesObj[parts[0].trim()] = parts[1].trim();
+                });
+             }
+             item.values = valuesObj;
+             await fetch('/api/pipeline', {
+               method: 'POST',
+               headers: { 'Content-Type': 'application/json' },
+               body: JSON.stringify(item)
+             });
+           }
+        } else if (page.id === 'targets') {
+           for (const item of data) {
+             await fetch('/api/targets', {
+               method: 'POST',
+               headers: { 'Content-Type': 'application/json' },
+               body: JSON.stringify(item)
+             });
+           }
+        } else {
+           // Generic POST for other pages (contacts, actions, registrations, tasks, meetings)
+           for (const item of data) {
+             await fetch(endpoint, {
+               method: 'POST',
+               headers: { 'Content-Type': 'application/json' },
+               body: JSON.stringify(item)
+             });
+           }
+        }
+
+        alert("Import complete! Page will reload.");
+        window.location.reload();
+      } catch (error) {
+        console.error("Error importing data:", error);
+        alert("Failed to import data.");
+      }
+    };
+
+    if (format === 'excel') {
+      reader.readAsArrayBuffer(file);
+    } else {
+      reader.readAsText(file);
+    }
+  };
+
   const handleExportAll = async () => {
     try {
       const [
@@ -199,11 +374,20 @@ export function Settings() {
       const meetings = await meetingsRes.json();
 
       // Format Pipeline data for Excel
-      const formattedPipeline = pipeline.map((item: any) => ({
-        ...item,
-        disciplines: Array.isArray(item.disciplines) ? item.disciplines.join(", ") : item.disciplines,
-        values: item.values ? Object.entries(item.values).map(([k, v]) => `${k}: ${v}`).join(", ") : ""
-      }));
+      const formattedPipeline = pipeline.map((item: any) => {
+        const { values, ...rest } = item;
+        const valueFields: any = {};
+        if (values) {
+          Object.entries(values).forEach(([k, v]) => {
+            valueFields[`Value [${k}]`] = v;
+          });
+        }
+        return {
+          ...rest,
+          disciplines: Array.isArray(item.disciplines) ? item.disciplines.join(", ") : item.disciplines,
+          ...valueFields
+        };
+      });
 
       const wb = XLSX.utils.book_new();
 
@@ -261,9 +445,17 @@ export function Settings() {
               item.disciplines = item.disciplines.split(',').map((s: string) => s.trim());
             }
             
-            // Parse values
+            // Parse values from separate columns
+            const valuesObj: any = {};
+            Object.keys(item).forEach(key => {
+              if (key.startsWith('Value [')) {
+                const discipline = key.substring(7, key.length - 1);
+                valuesObj[discipline] = item[key];
+              }
+            });
+
+            // Fallback for legacy format
             if (typeof item.values === 'string') {
-              const valuesObj: any = {};
               (item.values || "").split(',').forEach((pair: string) => {
                 const parts = pair.split(':');
                 if (parts.length === 2) {
@@ -272,8 +464,8 @@ export function Settings() {
                   if (k && v) valuesObj[k] = v;
                 }
               });
-              item.values = valuesObj;
             }
+            item.values = valuesObj;
 
             await fetch('/api/pipeline', {
               method: 'POST',
@@ -455,14 +647,86 @@ export function Settings() {
         </div>
 
         <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6">
-          <h3 className="text-lg font-medium text-[var(--text-primary)] mb-4">Data Management</h3>
+          <h3 className="text-lg font-medium text-[var(--text-primary)] mb-4">Page Data Management</h3>
+          <div className="space-y-4">
+            <div className="flex flex-col gap-4 p-4 border border-[var(--border)] bg-[var(--card-bg-inner)]">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <FileSpreadsheet size={20} className="text-[var(--text-secondary)]" />
+                  <div>
+                    <h4 className="text-sm font-medium text-[var(--text-primary)]">Select Page</h4>
+                    <p className="text-xs text-[var(--text-secondary)]">Choose a page to manage its data.</p>
+                  </div>
+                </div>
+                <select 
+                  className="bg-[var(--bg-tertiary)] border border-[var(--border)] px-3 py-1.5 text-sm rounded focus:outline-none focus:border-[var(--text-primary)] text-[var(--text-primary)]"
+                  value={selectedPage}
+                  onChange={(e) => setSelectedPage(e.target.value)}
+                >
+                  {PAGES.map(page => (
+                    <option key={page.id} value={page.id}>{page.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-[var(--border)]">
+                {/* Excel Operations */}
+                <div className="space-y-2">
+                  <h5 className="text-xs font-mono uppercase text-[var(--text-secondary)]">Excel Format (.xlsx)</h5>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => handleExportPage('excel')}
+                      className="flex-1 flex items-center justify-center gap-2 text-xs font-mono uppercase border border-[var(--border)] px-3 py-2 text-[var(--text-primary)] hover:bg-[var(--text-primary)] hover:text-[var(--bg-primary)] transition-colors"
+                    >
+                      <Download size={14} /> Export Excel
+                    </button>
+                    <label className="flex-1 cursor-pointer flex items-center justify-center gap-2 text-xs font-mono uppercase border border-[var(--border)] px-3 py-2 text-[var(--text-primary)] hover:bg-[var(--text-primary)] hover:text-[var(--bg-primary)] transition-colors">
+                      <Upload size={14} /> Import Excel
+                      <input 
+                        type="file" 
+                        accept=".xlsx, .xls"
+                        className="hidden"
+                        onChange={(e) => handleImportPage(e, 'excel')}
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* JSON Operations */}
+                <div className="space-y-2">
+                  <h5 className="text-xs font-mono uppercase text-[var(--text-secondary)]">Database Format (.json)</h5>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => handleExportPage('json')}
+                      className="flex-1 flex items-center justify-center gap-2 text-xs font-mono uppercase border border-[var(--border)] px-3 py-2 text-[var(--text-primary)] hover:bg-[var(--text-primary)] hover:text-[var(--bg-primary)] transition-colors"
+                    >
+                      <Download size={14} /> Download DB
+                    </button>
+                    <label className="flex-1 cursor-pointer flex items-center justify-center gap-2 text-xs font-mono uppercase border border-[var(--border)] px-3 py-2 text-[var(--text-primary)] hover:bg-[var(--text-primary)] hover:text-[var(--bg-primary)] transition-colors">
+                      <Upload size={14} /> Upload DB
+                      <input 
+                        type="file" 
+                        accept=".json"
+                        className="hidden"
+                        onChange={(e) => handleImportPage(e, 'json')}
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6">
+          <h3 className="text-lg font-medium text-[var(--text-primary)] mb-4">Full System Backup & Restore</h3>
           <div className="space-y-4">
             <div className="flex items-center justify-between p-4 border border-[var(--border)] bg-[var(--card-bg-inner)]">
               <div className="flex items-center gap-3">
                 <FileSpreadsheet size={20} className="text-[var(--text-secondary)]" />
                 <div>
-                  <h4 className="text-sm font-medium text-[var(--text-primary)]">Export / Import Data (Excel)</h4>
-                  <p className="text-xs text-[var(--text-secondary)]">Manage system data via Excel. Supports Contacts and Pipeline.</p>
+                  <h4 className="text-sm font-medium text-[var(--text-primary)]">Full System Data (Excel)</h4>
+                  <p className="text-xs text-[var(--text-secondary)]">Export or Import all system data in one Excel file.</p>
                 </div>
               </div>
               <div className="flex gap-2">
@@ -470,10 +734,10 @@ export function Settings() {
                   onClick={handleExportAll}
                   className="flex items-center gap-2 text-xs font-mono uppercase border border-[var(--border)] px-3 py-1.5 text-[var(--text-primary)] hover:bg-[var(--text-primary)] hover:text-[var(--bg-primary)] transition-colors"
                 >
-                  <Download size={14} /> Export
+                  <Download size={14} /> Export All
                 </button>
                 <label className="cursor-pointer flex items-center gap-2 text-xs font-mono uppercase border border-[var(--border)] px-3 py-1.5 text-[var(--text-primary)] hover:bg-[var(--text-primary)] hover:text-[var(--bg-primary)] transition-colors">
-                  <Upload size={14} /> Import
+                  <Upload size={14} /> Import All
                   <input 
                     type="file" 
                     accept=".xlsx, .xls"
@@ -488,8 +752,8 @@ export function Settings() {
               <div className="flex items-center gap-3">
                 <Database size={20} className="text-[var(--text-secondary)]" />
                 <div>
-                  <h4 className="text-sm font-medium text-[var(--text-primary)]">Backup Database</h4>
-                  <p className="text-xs text-[var(--text-secondary)]">Download a copy of your local SQLite database.</p>
+                  <h4 className="text-sm font-medium text-[var(--text-primary)]">Full Database Backup (SQLite)</h4>
+                  <p className="text-xs text-[var(--text-secondary)]">Download a raw copy of the SQLite database file.</p>
                 </div>
               </div>
               <a 
@@ -497,7 +761,7 @@ export function Settings() {
                 download="bd-portal.db"
                 className="text-xs font-mono uppercase border border-[var(--border)] px-3 py-1.5 text-[var(--text-primary)] hover:bg-[var(--text-primary)] hover:text-[var(--bg-primary)] transition-colors"
               >
-                Download
+                Download DB
               </a>
             </div>
 
@@ -505,12 +769,12 @@ export function Settings() {
               <div className="flex items-center gap-3">
                 <Database size={20} className="text-[var(--text-secondary)]" />
                 <div>
-                  <h4 className="text-sm font-medium text-[var(--text-primary)]">Restore Database</h4>
-                  <p className="text-xs text-[var(--text-secondary)]">Upload a database file to restore data. This will overwrite current data.</p>
+                  <h4 className="text-sm font-medium text-[var(--text-primary)]">Full Database Restore (SQLite)</h4>
+                  <p className="text-xs text-[var(--text-secondary)]">Upload a database file to overwrite the current system.</p>
                 </div>
               </div>
               <label className="cursor-pointer text-xs font-mono uppercase border border-[var(--border)] px-3 py-1.5 text-[var(--text-primary)] hover:bg-[var(--text-primary)] hover:text-[var(--bg-primary)] transition-colors">
-                Upload
+                Upload DB
                 <input 
                   type="file" 
                   accept=".db,.sqlite,.sqlite3"
