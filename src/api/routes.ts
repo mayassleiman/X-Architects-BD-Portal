@@ -52,6 +52,42 @@ router.post('/upload-db', upload.single('database'), (req, res) => {
   }
 });
 
+// Upload Logo
+router.post('/upload-logo', upload.single('logo'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).send('No file uploaded');
+  }
+
+  const tempPath = req.file.path;
+  const uploadsDir = path.resolve(process.cwd(), 'uploads');
+  const targetPath = path.join(uploadsDir, 'company-logo.png');
+
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir);
+  }
+
+  try {
+    // Overwrite the existing logo file
+    fs.copyFileSync(tempPath, targetPath);
+    fs.unlinkSync(tempPath); // Remove temp file
+
+    res.json({ success: true, message: 'Logo uploaded successfully' });
+  } catch (error) {
+    console.error('Error uploading logo:', error);
+    res.status(500).send('Failed to upload logo');
+  }
+});
+
+// Get Logo
+router.get('/logo', (req, res) => {
+  const logoPath = path.resolve(process.cwd(), 'uploads', 'company-logo.png');
+  if (fs.existsSync(logoPath)) {
+    res.sendFile(logoPath);
+  } else {
+    res.status(404).send('Logo not found');
+  }
+});
+
 // Get Actions
 router.get('/actions', (req, res) => {
   const stmt = db.prepare('SELECT * FROM actions ORDER BY due_date ASC');

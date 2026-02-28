@@ -1,10 +1,35 @@
 import React from "react";
-import { Database, Download, FileSpreadsheet, Upload } from "lucide-react";
+import { Database, Download, FileSpreadsheet, Upload, Image as ImageIcon } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
 import * as XLSX from 'xlsx';
 
 export function Settings() {
   const { theme, toggleTheme } = useTheme();
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('logo', file);
+
+    try {
+      const res = await fetch('/api/upload-logo', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (res.ok) {
+        alert("Logo uploaded successfully. The page will reload.");
+        window.location.reload();
+      } else {
+        alert("Failed to upload logo.");
+      }
+    } catch (error) {
+      console.error("Error uploading logo:", error);
+      alert("Error uploading logo.");
+    }
+  };
 
   const handleExportAll = async () => {
     try {
@@ -154,6 +179,18 @@ export function Settings() {
               <div className="w-10 h-5 bg-neutral-700 rounded-full relative cursor-pointer">
                 <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-neutral-400 rounded-full shadow-sm"></div>
               </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-[var(--text-secondary)]">Company Logo</span>
+              <label className="cursor-pointer flex items-center gap-2 text-xs font-mono uppercase border border-[var(--border)] px-3 py-1.5 text-[var(--text-primary)] hover:bg-[var(--text-primary)] hover:text-[var(--bg-primary)] transition-colors">
+                <ImageIcon size={14} /> Upload
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleLogoUpload}
+                />
+              </label>
             </div>
           </div>
         </div>

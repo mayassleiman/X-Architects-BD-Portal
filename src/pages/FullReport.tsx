@@ -6,6 +6,7 @@ import { AchievedTarget } from "./AchievedTarget";
 import { RecentEngagements } from "./RecentEngagements";
 import { Pipeline } from "./Pipeline";
 import { Tasks } from "./Tasks";
+import { Logo } from "../components/ui/Logo";
 
 export function FullReport() {
   const [currentDate, setCurrentDate] = React.useState("");
@@ -42,8 +43,11 @@ export function FullReport() {
         </button>
       </div>
 
-      <div className="border-b border-[var(--border)] pb-8 print:border-none print:pb-4">
-        <div className="flex justify-between items-end">
+      <div className="border-b border-[var(--border)] pb-8 print:border-none print:pb-4 relative">
+        <div className="absolute top-0 right-0 hidden print:block md:block">
+           <Logo className="scale-90 origin-top-right" />
+        </div>
+        <div className="flex justify-between items-end pt-12">
           <div>
             <h1 className="text-5xl font-light tracking-tight text-[var(--text-primary)] mb-2">FULL REPORT</h1>
             <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Comprehensive Status Overview</p>

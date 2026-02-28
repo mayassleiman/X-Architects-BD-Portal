@@ -1,6 +1,28 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 
 export function Logo({ className }: { className?: string }) {
+  const [hasCustomLogo, setHasCustomLogo] = useState<boolean>(false);
+
+  useEffect(() => {
+    fetch('/api/logo', { method: 'HEAD' })
+      .then(res => {
+        if (res.ok) setHasCustomLogo(true);
+      })
+      .catch(() => setHasCustomLogo(false));
+  }, []);
+
+  if (hasCustomLogo) {
+    return (
+      <div className={`flex items-center gap-3 ${className}`}>
+        <img 
+          src={`/api/logo?t=${new Date().getTime()}`} 
+          alt="Company Logo" 
+          className="h-10 w-auto object-contain max-w-[180px]" 
+        />
+      </div>
+    );
+  }
+
   return (
     <div className={`flex items-center gap-3 ${className}`}>
       <div className="relative flex items-center justify-center w-8 h-8 bg-[var(--bg-tertiary)] border border-[var(--border)]">

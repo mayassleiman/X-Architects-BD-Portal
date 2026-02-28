@@ -250,6 +250,27 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
     const doc = new jsPDF();
     const timestamp = new Date().toLocaleString();
 
+    // Add Logo
+    try {
+      const response = await fetch('/api/logo');
+      if (response.ok) {
+        const blob = await response.blob();
+        const logoBase64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
+
+        const imgProps = doc.getImageProperties(logoBase64);
+        const pdfWidth = doc.internal.pageSize.getWidth();
+        const logoWidth = 40; 
+        const logoHeight = (imgProps.height * logoWidth) / imgProps.width;
+        doc.addImage(logoBase64, 'PNG', pdfWidth - logoWidth - 14, 10, logoWidth, logoHeight);
+      }
+    } catch (error) {
+      console.error("Error adding logo to PDF", error);
+    }
+
     // Title
     doc.setFontSize(18);
     doc.text(`Yearly Target Report - ${year}`, 14, 22);
