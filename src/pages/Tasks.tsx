@@ -18,7 +18,7 @@ const LEVELS = [
   { id: 4, label: "Level 4: Negotiation & Closing", color: "border-emerald-500/50" },
 ];
 
-export function Tasks() {
+export function Tasks({ isReportView = false }: { isReportView?: boolean }) {
   const { searchQuery } = useSearch();
   const [tasks, setTasks] = React.useState<Task[]>([]);
   const [isModalOpen, setIsModalOpen] = React.useState(false);
@@ -94,15 +94,17 @@ export function Tasks() {
           <h1 className="text-4xl font-light tracking-tight text-[var(--text-primary)] mb-2">TASK MANAGEMENT</h1>
           <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Business Development Pipeline</p>
         </div>
-        <button 
-          onClick={() => {
-            setFormData({ title: "", level: 1, status: "Pending", description: "" });
-            setIsModalOpen(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors"
-        >
-          <Plus size={16} /> New Task
-        </button>
+        {!isReportView && (
+          <button 
+            onClick={() => {
+              setFormData({ title: "", level: 1, status: "Pending", description: "" });
+              setIsModalOpen(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors"
+          >
+            <Plus size={16} /> New Task
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 h-[calc(100vh-12rem)] overflow-hidden">
@@ -114,20 +116,22 @@ export function Tasks() {
             <div className="flex-1 p-4 space-y-3 overflow-y-auto custom-scrollbar">
               {filteredTasks.filter(t => t.level === level.id).map(task => (
                 <div key={task.id} className="bg-[var(--bg-tertiary)] p-3 border border-[var(--border)] group hover:border-[var(--border-hover)] transition-colors relative">
-                  <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button 
-                      onClick={() => handleEdit(task)}
-                      className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                    >
-                      <Edit2 size={14} />
-                    </button>
-                    <button 
-                      onClick={() => handleDelete(task.id)}
-                      className="text-[var(--text-secondary)] hover:text-red-400"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
+                  {!isReportView && (
+                    <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button 
+                        onClick={() => handleEdit(task)}
+                        className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                      >
+                        <Edit2 size={14} />
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(task.id)}
+                        className="text-[var(--text-secondary)] hover:text-red-400"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  )}
                   <h4 className="text-sm font-medium text-[var(--text-primary)] pr-12">{task.title}</h4>
                   {task.description && (
                     <p className="text-xs text-[var(--text-secondary)] mt-2 line-clamp-2">{task.description}</p>

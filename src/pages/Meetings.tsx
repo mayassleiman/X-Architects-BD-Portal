@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { Plus, X, Trash2, Calendar as CalendarIcon, Clock, User, List, Grid, Edit2, BarChart2, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "../lib/utils";
 import { useSearch } from "../context/SearchContext";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from "recharts";
 
 interface Meeting {
   id: number;
@@ -349,7 +349,9 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
                     itemStyle={{ color: '#fff' }}
                     cursor={{ fill: 'var(--bg-tertiary)' }}
                   />
-                  <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]}>
+                    <LabelList dataKey="count" position="top" fill="var(--text-primary)" fontSize={12} />
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -369,7 +371,9 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
                     itemStyle={{ color: '#fff' }}
                     cursor={{ fill: 'var(--bg-tertiary)' }}
                   />
-                  <Bar dataKey="count" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="count" fill="#10b981" radius={[4, 4, 0, 0]}>
+                    <LabelList dataKey="count" position="top" fill="var(--text-primary)" fontSize={12} />
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -389,7 +393,9 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
                     itemStyle={{ color: '#fff' }}
                     cursor={{ fill: 'var(--bg-tertiary)' }}
                   />
-                  <Bar dataKey="count" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={60} />
+                  <Bar dataKey="count" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={60}>
+                    <LabelList dataKey="count" position="top" fill="var(--text-primary)" fontSize={12} />
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>

@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { TrendingUp, Edit2, Save, PieChart, ChevronDown, ChevronRight, Check, X, Trash2, Layers, Download } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { TrendingUp, Edit2, Save, PieChart, ChevronDown, ChevronRight, Check, X, Trash2, Layers, Download, LineChart as LineChartIcon } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { PieChart as RePieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, LabelList } from 'recharts';
+import { PieChart as RePieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, LabelList, AreaChart, Area, ReferenceLine } from 'recharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import html2canvas from 'html2canvas';
 
 interface AchievedTargetData {
   year: number;
@@ -38,6 +39,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
   const [expandedQuarters, setExpandedQuarters] = useState<number[]>([1, 2, 3, 4]);
   const [editingItemNumber, setEditingItemNumber] = useState<{ id: string, number: string } | null>(null);
   const [itemToDelete, setItemToDelete] = useState<any | null>(null);
+  const chartRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchData();
@@ -210,10 +212,41 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
       color: DISCIPLINE_COLORS[name] || '#ccc'
     })).filter(d => d.value > 0);
 
-    return { quarters, totalAchieved, totalDeficiency, totalAchievedPercent, totalDeficiencyPercent, sectorData, disciplineData };
+    // Cumulative Chart Data
+    const sortedItems = [...data.items].sort((a, b) => {
+      const dateA = new Date(a.achieved_date || a.submission_date).getTime();
+      const dateB = new Date(b.achieved_date || b.submission_date).getTime();
+      return dateA - dateB;
+    });
+
+    let cumulativeValue = 0;
+    const chartData = sortedItems.map(item => {
+      const dateStr = item.achieved_date || item.submission_date;
+      const date = new Date(dateStr);
+      const vals = item.item_values || {};
+      const total = (Number(vals.architecture) || 0) + (Number(vals.interior) || 0) + (Number(vals.cs) || 0) + (Number(vals.vo) || 0);
+      cumulativeValue += total;
+      
+      return {
+        date: isNaN(date.getTime()) ? 'Unknown' : date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
+        fullDate: isNaN(date.getTime()) ? 'Unknown' : date.toLocaleDateString(),
+        value: total,
+        cumulative: cumulativeValue,
+        name: item.name,
+        target: data.target // Flat target line
+      };
+    });
+
+    // Add start and end points for better visualization if needed, or just use the data points
+    if (chartData.length > 0) {
+       // Optional: Add a starting point at 0
+       // chartData.unshift({ date: 'Start', fullDate: '', value: 0, cumulative: 0, name: '', target: data.target });
+    }
+
+    return { quarters, totalAchieved, totalDeficiency, totalAchievedPercent, totalDeficiencyPercent, sectorData, disciplineData, chartData };
   }, [data]);
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     const doc = new jsPDF();
     const timestamp = new Date().toLocaleString();
 
@@ -227,6 +260,24 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
     doc.text(`Generated on: ${timestamp}`, 14, 28);
     doc.text(`Total Target: ${data.target.toLocaleString()} SAR`, 14, 34);
     doc.text(`Total Achieved: ${metrics.totalAchieved.toLocaleString()} SAR (${metrics.totalAchievedPercent.toFixed(1)}%)`, 14, 40);
+
+    let currentY = 50;
+
+    // Add Chart Image
+    if (chartRef.current) {
+      try {
+        const canvas = await html2canvas(chartRef.current, { scale: 2 });
+        const imgData = canvas.toDataURL('image/png');
+        const imgWidth = 180;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        
+        doc.text("Cumulative Achievement Trend", 14, currentY);
+        doc.addImage(imgData, 'PNG', 14, currentY + 5, imgWidth, imgHeight);
+        currentY += imgHeight + 15;
+      } catch (error) {
+        console.error("Failed to capture chart", error);
+      }
+    }
 
     // Summary Table
     const summaryBody = metrics.quarters.map(q => [
@@ -251,14 +302,21 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
     autoTable(doc, {
       head: [['Quarter', 'Target', 'Achieved', '% Achieved', 'Deficiency', '% Deficiency']],
       body: summaryBody,
-      startY: 50,
+      startY: currentY,
       styles: { fontSize: 9, cellPadding: 3 },
       headStyles: { fillColor: [40, 40, 40], textColor: 255, fontStyle: 'bold' },
       footStyles: { fillColor: [240, 240, 240], textColor: 0, fontStyle: 'bold' }
     });
 
     // Detailed Items Table
-    let currentY = (doc as any).lastAutoTable.finalY + 15;
+    currentY = (doc as any).lastAutoTable.finalY + 15;
+    
+    // Check if we need a new page
+    if (currentY > 250) {
+      doc.addPage();
+      currentY = 20;
+    }
+
     doc.setFontSize(14);
     doc.setTextColor(0);
     doc.text("Detailed Achievements", 14, currentY);
@@ -267,7 +325,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
     metrics.quarters.forEach(q => {
       if (q.items.length > 0) {
         // Section Header
-        detailsBody.push([{ content: `${q.quarter} Summary`, colSpan: 4, styles: { fillColor: [240, 240, 240], fontStyle: 'bold' } }]);
+        detailsBody.push([{ content: `${q.quarter} Summary`, colSpan: 5, styles: { fillColor: [240, 240, 240], fontStyle: 'bold' } }]);
         
         q.items.forEach(item => {
           const vals = item.item_values || {};
@@ -275,6 +333,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
           detailsBody.push([
             item.rfpNumber || "No #",
             item.name,
+            new Date(item.achieved_date || item.submission_date).toLocaleDateString(),
             item.type === "RFP" ? "Project" : item.type,
             totalValue.toLocaleString()
           ]);
@@ -283,7 +342,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
     });
 
     autoTable(doc, {
-      head: [['Ref #', 'Project Name', 'Type', 'Value (SAR)']],
+      head: [['Ref #', 'Project Name', 'Date', 'Type', 'Value (SAR)']],
       body: detailsBody,
       startY: currentY + 5,
       styles: { fontSize: 9, cellPadding: 3 },
@@ -370,12 +429,62 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
           </div>
         </div>
 
+        {/* Cumulative Achievement Chart */}
+        <div className="mb-8 p-4 bg-[var(--bg-tertiary)]/10 rounded-lg border border-[var(--border)]" ref={chartRef}>
+          <h3 className="text-sm font-medium text-[var(--text-primary)] mb-4 flex items-center gap-2">
+            <LineChartIcon size={16} />
+            Cumulative Achievement Trend
+          </h3>
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={metrics.chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorAchieved" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#333" />
+                <XAxis 
+                  dataKey="date" 
+                  tick={{ fill: '#888', fontSize: 12 }} 
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis 
+                  tick={{ fill: '#888', fontSize: 12 }} 
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`}
+                />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff' }}
+                  itemStyle={{ color: '#fff' }}
+                  formatter={(value: number, name: string) => [value.toLocaleString() + ' SAR', name === 'cumulative' ? 'Cumulative Achieved' : 'Target']}
+                  labelFormatter={(label) => `Date: ${label}`}
+                />
+                <ReferenceLine y={data.target} stroke="#f59e0b" strokeDasharray="3 3" label={{ position: 'top', value: 'Target', fill: '#f59e0b', fontSize: 12 }} />
+                <Area 
+                  type="monotone" 
+                  dataKey="cumulative" 
+                  stroke="#10b981" 
+                  fillOpacity={1} 
+                  fill="url(#colorAchieved)" 
+                  strokeWidth={2}
+                  name="Cumulative Achieved"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
         {/* Quarterly Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
             <thead className="text-xs text-[var(--text-secondary)] uppercase bg-[var(--bg-tertiary)] border-y border-[var(--border)]">
               <tr>
                 <th className="px-4 py-3 font-mono w-1/3">Quarter / Project</th>
+                <th className="px-4 py-3 font-mono text-center">Date</th>
                 <th className="px-4 py-3 font-mono text-right">Target (SAR)</th>
                 <th className="px-4 py-3 font-mono text-right">Achieved (SAR)</th>
                 <th className="px-4 py-3 font-mono text-right">% Achieved</th>
@@ -395,6 +504,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
                        </button>
                        {q.quarter} Summary
                     </td>
+                    <td className="px-4 py-3"></td>
                     <td className="px-4 py-3 text-right font-mono text-[var(--text-secondary)]">{q.target.toLocaleString()}</td>
                     <td className="px-4 py-3 text-right font-mono text-emerald-400 font-medium">{q.achieved.toLocaleString()}</td>
                     <td className="px-4 py-3 text-right">
@@ -422,7 +532,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
                         <td className="px-4 py-2 pl-10">
                           <div className="flex items-center justify-between">
                             <div>
-                              <div className="text-sm font-medium text-[var(--text-primary)]">{item.name}</div>
+                              <div className="text-sm font-medium" style={{ color: SECTOR_COLORS[item.sector] }} title={item.sector}>{item.name}</div>
                               <div className="flex items-center gap-2 mt-1">
                                 <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-[var(--bg-tertiary)] text-[var(--text-secondary)]">
                                   {item.type === "RFP" ? "Project" : item.type}
@@ -457,32 +567,34 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
                               <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-[10px] font-mono text-[var(--text-secondary)]">
                                 {(vals.architecture > 0) && (
                                   <span className="flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-[#8b5cf6]"></span>
+                                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: DISCIPLINE_COLORS["Architecture"] }}></span>
                                     Arch: {vals.architecture.toLocaleString()}
                                   </span>
                                 )}
                                 {(vals.interior > 0) && (
                                   <span className="flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-[#ec4899]"></span>
+                                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: DISCIPLINE_COLORS["Interior"] }}></span>
                                     Int: {vals.interior.toLocaleString()}
                                   </span>
                                 )}
                                 {(vals.cs > 0) && (
                                   <span className="flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-[#f59e0b]"></span>
+                                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: DISCIPLINE_COLORS["Construction Supervision"] }}></span>
                                     CS: {vals.cs.toLocaleString()}
                                   </span>
                                 )}
                                 {(vals.vo > 0) && (
                                   <span className="flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: DISCIPLINE_COLORS["VO"] }}></span>
                                     VO: {vals.vo.toLocaleString()}
                                   </span>
                                 )}
                               </div>
                             </div>
-                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: SECTOR_COLORS[item.sector] }} title={item.sector} />
                           </div>
+                        </td>
+                        <td className="px-4 py-2 text-center font-mono text-xs text-[var(--text-secondary)]">
+                          {new Date(item.achieved_date || item.submission_date).toLocaleDateString()}
                         </td>
                         <td className="px-4 py-2 text-right text-[var(--text-tertiary)]">-</td>
                         <td className="px-4 py-2 text-right font-mono text-[var(--text-primary)]">{totalValue.toLocaleString()}</td>
@@ -507,6 +619,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
               ))}
               <tr className="bg-[var(--bg-tertiary)]/30 font-bold border-t-2 border-[var(--border)]">
                 <td className="px-4 py-4 text-[var(--text-primary)]">TOTAL</td>
+                <td className="px-4 py-4"></td>
                 <td className="px-4 py-4 text-right font-mono">{data.target.toLocaleString()}</td>
                 <td className="px-4 py-4 text-right font-mono text-emerald-500">{metrics.totalAchieved.toLocaleString()}</td>
                 <td className="px-4 py-4 text-right">{metrics.totalAchievedPercent.toFixed(1)}%</td>

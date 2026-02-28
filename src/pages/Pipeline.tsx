@@ -51,7 +51,7 @@ const DISCIPLINE_COLORS: Record<string, string> = {
 
 const DISCIPLINES: Discipline[] = ["Architecture", "Interior", "Construction Supervision"];
 
-export function Pipeline() {
+export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
   const { searchQuery } = useSearch();
   const [items, setItems] = useState<PipelineItem[]>([]);
   const [activeTab, setActiveTab] = useState<"RFP" | "VO">("RFP");
@@ -236,31 +236,147 @@ export function Pipeline() {
   };
 
   // Filter out Achieved/Approved items from the main pipeline view
-  const filteredItems = items.filter(i => 
-    i.type === activeTab &&
+  const rfpItems = useMemo(() => items.filter(i => 
+    i.type === "RFP" &&
     i.status !== "Achieved" && 
     i.status !== "Approved" &&
     ((i.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
      (i.client && i.client.toLowerCase().includes(searchQuery.toLowerCase()))) &&
-    (viewFilter === "All" || (i.type === "RFP" && Array.isArray(i.disciplines) && i.disciplines.some(d => {
+    (viewFilter === "All" || (Array.isArray(i.disciplines) && i.disciplines.some(d => {
       if (viewFilter === "Architecture") return d === "Architecture";
       if (viewFilter === "Interior") return d === "Interior";
       if (viewFilter === "CS") return d === "Construction Supervision";
       return false;
     })))
-  );
+  ), [items, searchQuery, viewFilter]);
 
-  // Group by sector for display
-  const groupedItems = useMemo(() => {
+  const voItems = useMemo(() => items.filter(i => 
+    i.type === "VO" &&
+    i.status !== "Achieved" && 
+    i.status !== "Approved" &&
+    ((i.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+     (i.client && i.client.toLowerCase().includes(searchQuery.toLowerCase()))) &&
+    (viewFilter === "All")
+  ), [items, searchQuery, viewFilter]);
+
+  const groupItems = (list: PipelineItem[]) => {
     const grouped: Record<string, PipelineItem[]> = {};
     SECTORS.forEach(sector => {
-      const sectorItems = filteredItems.filter(i => i.sector === sector);
+      const sectorItems = list.filter(i => i.sector === sector);
       if (sectorItems.length > 0) {
         grouped[sector] = sectorItems;
       }
     });
     return grouped;
-  }, [filteredItems]);
+  };
+
+  const rfpGrouped = useMemo(() => groupItems(rfpItems), [rfpItems]);
+  const voGrouped = useMemo(() => groupItems(voItems), [voItems]);
+
+  const renderGroupedItems = (grouped: Record<string, PipelineItem[]>) => (
+    <div className="space-y-8">
+      {(Object.entries(grouped) as [string, PipelineItem[]][]).map(([sector, sectorItems]) => (
+        <div key={sector} className="space-y-3">
+          <h4 className="text-xs font-mono uppercase text-[var(--text-secondary)] tracking-wider flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-secondary)]" />
+            {sector}
+          </h4>
+          <div className="grid gap-3">
+            {sectorItems.map((item) => (
+              <div key={item.id} className="bg-[var(--card-bg-inner)] border border-[var(--border)] p-4 hover:border-[var(--border-hover)] transition-colors group relative pl-6 overflow-hidden">
+                <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: SECTOR_COLORS[item.sector] }} />
+                {!isReportView && (
+                  <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button 
+                      onClick={() => handleEdit(item)}
+                      className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1"
+                    >
+                      <Edit2 size={14} />
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(item.id)}
+                      className="text-[var(--text-secondary)] hover:text-red-400 p-1"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex justify-between items-start pr-16">
+                  <div>
+                    <h5 
+                      className="text-sm font-medium transition-colors"
+                      style={{ color: SECTOR_COLORS[item.sector] }}
+                    >
+                      {item.rfpNumber && <span className="font-mono text-xs opacity-70 mr-2">{item.rfpNumber}</span>}
+                      {item.name}
+                    </h5>
+                    {item.client && <p className="text-xs text-[var(--text-secondary)] mt-1">{item.client}</p>}
+                    <div className="flex gap-4 mt-2 text-[10px] text-[var(--text-secondary)] font-mono uppercase tracking-wider">
+                       {item.submissionDate && <span>Submitted: {item.submissionDate}</span>}
+                       {item.probability && (
+                         <span className={cn(
+                           item.probability === "High" ? "text-emerald-400" : 
+                           item.probability === "Medium" ? "text-amber-400" : "text-red-400"
+                         )}>
+                           Prob: {item.probability}
+                         </span>
+                       )}
+                    </div>
+                  </div>
+                  <div className="text-right flex flex-col items-end gap-2">
+                    <div>
+                      <span className="text-sm font-mono text-[var(--text-primary)] block">{getFilteredValue(item).toLocaleString()} SAR</span>
+                      {viewFilter !== "All" && (
+                        <span className="text-[10px] text-[var(--text-secondary)]">of {getTotalValue(item).toLocaleString()} Total</span>
+                      )}
+                    </div>
+                    {!isReportView && (
+                      <button 
+                        onClick={() => {
+                          setAchievingItem({ item, status: item.type === "RFP" ? "Achieved" : "Approved" });
+                          setAchievementDate(new Date().toISOString().split('T')[0]);
+                        }}
+                        className="flex items-center gap-1 px-2 py-1 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white rounded text-[10px] font-bold uppercase tracking-wider transition-colors"
+                        title={item.type === "RFP" ? "Mark as Achieved" : "Mark as Approved"}
+                      >
+                        <Check size={12} />
+                        {item.type === "RFP" ? "Achieved" : "Approved"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+                
+                {item.type === "RFP" && Array.isArray(item.disciplines) && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {item.disciplines.map((d) => (
+                      <span key={d} className={cn(
+                        "text-[10px] uppercase tracking-wider px-2 py-1 rounded border border-[var(--border)]",
+                        (viewFilter === "All" || 
+                         (viewFilter === "Architecture" && d === "Architecture") ||
+                         (viewFilter === "Interior" && d === "Interior") ||
+                         (viewFilter === "CS" && d === "Construction Supervision"))
+                         ? "text-[var(--text-primary)] bg-[var(--bg-tertiary)] border-[var(--text-primary)]"
+                         : "text-[var(--text-tertiary)] bg-[var(--bg-primary)] opacity-50"
+                      )}>
+                        {d}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+      
+      {Object.keys(grouped).length === 0 && (
+        <div className="text-center py-12 text-[var(--text-secondary)]">
+          No items found for this category.
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="space-y-8">
@@ -286,17 +402,19 @@ export function Pipeline() {
               </button>
             ))}
           </div>
-          <button 
-            onClick={() => {
-              setEditingId(null);
-              setNewItem({ type: "RFP", sector: "Commercial", disciplines: [], values: {}, status: "Pending" });
-              setIsModalOpen(true);
-            }}
-            className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors"
-          >
-            <Plus size={16} />
-            Add Entry
-          </button>
+          {!isReportView && (
+            <button 
+              onClick={() => {
+                setEditingId(null);
+                setNewItem({ type: "RFP", sector: "Commercial", disciplines: [], values: {}, status: "Pending" });
+                setIsModalOpen(true);
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors"
+            >
+              <Plus size={16} />
+              Add Entry
+            </button>
+          )}
         </div>
       </div>
 
@@ -421,129 +539,51 @@ export function Pipeline() {
 
         {/* Main List */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Tabs */}
-          <div className="flex border-b border-[var(--border)]">
-            <button
-              onClick={() => setActiveTab("RFP")}
-              className={cn(
-                "px-6 py-3 text-sm font-medium transition-colors relative",
-                activeTab === "RFP" ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-              )}
-            >
-              Current RFPs
-              {activeTab === "RFP" && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[var(--text-primary)]" />}
-            </button>
-            <button
-              onClick={() => setActiveTab("VO")}
-              className={cn(
-                "px-6 py-3 text-sm font-medium transition-colors relative",
-                activeTab === "VO" ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-              )}
-            >
-              Potential VOs
-              {activeTab === "VO" && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[var(--text-primary)]" />}
-            </button>
-          </div>
-
-          {/* List Content */}
-          <div className="space-y-8">
-            {(Object.entries(groupedItems) as [string, PipelineItem[]][]).map(([sector, sectorItems]) => (
-              <div key={sector} className="space-y-3">
-                <h4 className="text-xs font-mono uppercase text-[var(--text-secondary)] tracking-wider flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-secondary)]" />
-                  {sector}
-                </h4>
-                <div className="grid gap-3">
-                  {sectorItems.map((item) => (
-                    <div key={item.id} className="bg-[var(--card-bg-inner)] border border-[var(--border)] p-4 hover:border-[var(--border-hover)] transition-colors group relative pl-6 overflow-hidden">
-                      <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: SECTOR_COLORS[item.sector] }} />
-                      <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button 
-                          onClick={() => handleEdit(item)}
-                          className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1"
-                        >
-                          <Edit2 size={14} />
-                        </button>
-                        <button 
-                          onClick={() => handleDelete(item.id)}
-                          className="text-[var(--text-secondary)] hover:text-red-400 p-1"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-
-                      <div className="flex justify-between items-start pr-16">
-                        <div>
-                          <h5 
-                            className="text-sm font-medium transition-colors"
-                            style={{ color: SECTOR_COLORS[item.sector] }}
-                          >
-                            {item.rfpNumber && <span className="font-mono text-xs opacity-70 mr-2">{item.rfpNumber}</span>}
-                            {item.name}
-                          </h5>
-                          {item.client && <p className="text-xs text-[var(--text-secondary)] mt-1">{item.client}</p>}
-                          <div className="flex gap-4 mt-2 text-[10px] text-[var(--text-secondary)] font-mono uppercase tracking-wider">
-                             {item.submissionDate && <span>Submitted: {item.submissionDate}</span>}
-                             {item.probability && (
-                               <span className={cn(
-                                 item.probability === "High" ? "text-emerald-400" : 
-                                 item.probability === "Medium" ? "text-amber-400" : "text-red-400"
-                               )}>
-                                 Prob: {item.probability}
-                               </span>
-                             )}
-                          </div>
-                        </div>
-                        <div className="text-right flex flex-col items-end gap-2">
-                          <div>
-                            <span className="text-sm font-mono text-[var(--text-primary)] block">{getFilteredValue(item).toLocaleString()} SAR</span>
-                            {viewFilter !== "All" && (
-                              <span className="text-[10px] text-[var(--text-secondary)]">of {getTotalValue(item).toLocaleString()} Total</span>
-                            )}
-                          </div>
-                          <button 
-                            onClick={() => {
-                              setAchievingItem({ item, status: item.type === "RFP" ? "Achieved" : "Approved" });
-                              setAchievementDate(new Date().toISOString().split('T')[0]);
-                            }}
-                            className="flex items-center gap-1 px-2 py-1 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white rounded text-[10px] font-bold uppercase tracking-wider transition-colors"
-                            title={item.type === "RFP" ? "Mark as Achieved" : "Mark as Approved"}
-                          >
-                            <Check size={12} />
-                            {item.type === "RFP" ? "Achieved" : "Approved"}
-                          </button>
-                        </div>
-                      </div>
-                      
-                      {item.type === "RFP" && Array.isArray(item.disciplines) && (
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {item.disciplines.map((d) => (
-                            <span key={d} className={cn(
-                              "text-[10px] uppercase tracking-wider px-2 py-1 rounded border border-[var(--border)]",
-                              (viewFilter === "All" || 
-                               (viewFilter === "Architecture" && d === "Architecture") ||
-                               (viewFilter === "Interior" && d === "Interior") ||
-                               (viewFilter === "CS" && d === "Construction Supervision"))
-                               ? "text-[var(--text-primary)] bg-[var(--bg-tertiary)] border-[var(--text-primary)]"
-                               : "text-[var(--text-tertiary)] bg-[var(--bg-primary)] opacity-50"
-                            )}>
-                              {d}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+          {isReportView ? (
+            <div className="space-y-12">
+              <section>
+                <div className="mb-4 border-b border-[var(--border)] pb-2">
+                  <h3 className="text-lg font-light text-[var(--text-primary)]">Current RFPs</h3>
                 </div>
+                {renderGroupedItems(rfpGrouped)}
+              </section>
+              <section>
+                <div className="mb-4 border-b border-[var(--border)] pb-2">
+                  <h3 className="text-lg font-light text-[var(--text-primary)]">Potential VOs</h3>
+                </div>
+                {renderGroupedItems(voGrouped)}
+              </section>
+            </div>
+          ) : (
+            <>
+              {/* Tabs */}
+              <div className="flex border-b border-[var(--border)]">
+                <button
+                  onClick={() => setActiveTab("RFP")}
+                  className={cn(
+                    "px-6 py-3 text-sm font-medium transition-colors relative",
+                    activeTab === "RFP" ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                  )}
+                >
+                  Current RFPs
+                  {activeTab === "RFP" && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[var(--text-primary)]" />}
+                </button>
+                <button
+                  onClick={() => setActiveTab("VO")}
+                  className={cn(
+                    "px-6 py-3 text-sm font-medium transition-colors relative",
+                    activeTab === "VO" ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                  )}
+                >
+                  Potential VOs
+                  {activeTab === "VO" && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[var(--text-primary)]" />}
+                </button>
               </div>
-            ))}
-            
-            {Object.keys(groupedItems).length === 0 && (
-              <div className="text-center py-12 text-[var(--text-secondary)]">
-                No items found for this category.
-              </div>
-            )}
-          </div>
+
+              {/* List Content */}
+              {renderGroupedItems(activeTab === "RFP" ? rfpGrouped : voGrouped)}
+            </>
+          )}
         </div>
       </div>
 

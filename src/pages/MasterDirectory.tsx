@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Search, Plus, Edit2, Trash2, Phone, Mail, MapPin, 
   Briefcase, Calendar, MessageSquare, Bell, ChevronDown, ChevronRight, User,
-  History, X, Download
+  History, X, Download, Building2
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useSearch } from '../context/SearchContext';
@@ -363,8 +363,9 @@ export function MasterDirectory() {
                   onClick={() => toggleOrg(org)}
                   className="w-full flex items-center justify-between p-3 bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] transition-colors"
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-sm text-[var(--text-primary)]">{org}</span>
+                  <div className="flex items-center gap-3">
+                    <Building2 size={16} className="text-[var(--text-secondary)]" />
+                    <span className="font-bold text-sm text-[var(--text-primary)] uppercase tracking-wide">{org}</span>
                     {category && <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-secondary)]">{category}</span>}
                   </div>
                   <div className="flex items-center gap-2">
@@ -385,8 +386,11 @@ export function MasterDirectory() {
                         )}
                       >
                         <div>
-                          <h4 className="text-sm font-medium text-[var(--text-primary)]">{contact.client_contact}</h4>
-                          <p className="text-xs text-[var(--text-secondary)]">{contact.position}</p>
+                          <div className="flex items-center gap-2">
+                            <User size={14} className="text-[var(--text-tertiary)]" />
+                            <h4 className="text-sm font-medium text-[var(--text-primary)]">{contact.client_contact}</h4>
+                          </div>
+                          <p className="text-xs text-[var(--text-secondary)] pl-5.5">{contact.position}</p>
                         </div>
                         <div className="opacity-0 group-hover:opacity-100 flex gap-1">
                           <button 
