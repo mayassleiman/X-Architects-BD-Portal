@@ -344,7 +344,7 @@ router.delete('/engagements/:id', (req, res) => {
 
 // Get Recent or Searched Engagements (Global)
 router.get('/engagements/search', (req, res) => {
-  const { q, startDate, endDate } = req.query;
+  const { q, startDate, endDate, organization } = req.query;
   
   let query = `
     SELECT e.*, c.client_contact, c.client_organization 
@@ -369,10 +369,15 @@ router.get('/engagements/search', (req, res) => {
     params.push(endDate);
   }
 
+  if (organization) {
+    query += ` AND c.client_organization = ?`;
+    params.push(organization);
+  }
+
   query += ` ORDER BY e.date DESC`;
   
   // If no filters and not requesting all, limit to 50
-  if (!q && !startDate && !endDate && req.query.all !== 'true') {
+  if (!q && !startDate && !endDate && !organization && req.query.all !== 'true') {
     query += ` LIMIT 50`;
   }
 

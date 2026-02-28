@@ -44,6 +44,10 @@ export function MasterDirectory() {
   const [expandedOrgs, setExpandedOrgs] = useState<string[]>([]);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   
+  const [viewMode, setViewMode] = useState<'details' | 'map'>('details');
+  const [selectedOrg, setSelectedOrg] = useState<string | null>(null);
+  const [activeContactIds, setActiveContactIds] = useState<Set<number>>(new Set());
+
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [isEngagementModalOpen, setIsEngagementModalOpen] = useState(false);
   const [isFollowUpModalOpen, setIsFollowUpModalOpen] = useState(false);
@@ -108,8 +112,6 @@ export function MasterDirectory() {
       const res = await fetch('/api/contacts');
       const data = await res.json();
       setContacts(data);
-      const orgs = Array.from(new Set(data.map((c: Contact) => c.client_organization))) as string[];
-      setExpandedOrgs(orgs);
     } catch (error) {
       console.error("Failed to fetch contacts", error);
     }
@@ -166,6 +168,28 @@ export function MasterDirectory() {
     return groups;
   }, [contacts, searchQuery]);
 
+  const contactsByLocation = useMemo(() => {
+    if (!selectedOrg || !groupedContacts[selectedOrg]) return {};
+    const groups: Record<string, Contact[]> = {};
+    groupedContacts[selectedOrg].forEach(c => {
+      const loc = c.location || 'Other Locations';
+      if (!groups[loc]) groups[loc] = [];
+      groups[loc].push(c);
+    });
+    // Sort locations alphabetically, putting 'Other Locations' last
+    const sortedKeys = Object.keys(groups).sort((a, b) => {
+      if (a === 'Other Locations') return 1;
+      if (b === 'Other Locations') return -1;
+      return a.localeCompare(b);
+    });
+    
+    const sortedGroups: Record<string, Contact[]> = {};
+    sortedKeys.forEach(key => {
+      sortedGroups[key] = groups[key];
+    });
+    return sortedGroups;
+  }, [selectedOrg, groupedContacts]);
+
   const toggleOrg = (org: string) => {
     setExpandedOrgs(prev => 
       prev.includes(org) ? prev.filter(o => o !== org) : [...prev, org]
@@ -177,6 +201,28 @@ export function MasterDirectory() {
       setExpandedOrgs([]);
     } else {
       setExpandedOrgs(Object.keys(groupedContacts));
+    }
+  };
+
+  const handleMapOrg = async (org: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedOrg(org);
+    setViewMode('map');
+    setSelectedContact(null); // Clear selected contact
+    
+    // Fetch active engagements for this org (last 90 days)
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+    const startDate = ninetyDaysAgo.toISOString().split('T')[0];
+    
+    try {
+      const res = await fetch(`/api/engagements/search?organization=${encodeURIComponent(org)}&startDate=${startDate}`);
+      const data = await res.json();
+      // Extract unique contact IDs that have engagements
+      const activeIds = new Set<number>(data.map((e: any) => e.contact_id));
+      setActiveContactIds(activeIds);
+    } catch (error) {
+      console.error("Failed to fetch org engagements", error);
     }
   };
 
@@ -346,9 +392,11 @@ export function MasterDirectory() {
     <div className="flex h-[calc(100vh-8rem)] gap-6">
       {/* List Panel */}
       <div className="w-1/3 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg flex flex-col">
+        {/* ... header ... */}
         <div className="p-4 border-b border-[var(--border)] flex justify-between items-center">
           <h2 className="font-light text-[var(--text-primary)]">DIRECTORY</h2>
           <div className="flex gap-2">
+            {/* ... existing buttons ... */}
             <button 
               onClick={() => { 
                 window.history.pushState({}, "", "/email-gun");
@@ -390,35 +438,45 @@ export function MasterDirectory() {
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-2">
           {Object.entries(groupedContacts).map(([org, orgContacts]: [string, Contact[]]) => {
-            const category = orgContacts[0]?.category; // Assume category is consistent per org or take first
+            const category = orgContacts[0]?.category; 
             return (
               <div key={org} className={cn("border border-[var(--border)] rounded overflow-hidden", getCategoryColor(category))}>
-                <button 
-                  onClick={() => toggleOrg(org)}
-                  className="w-full flex items-center justify-between p-3 bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] transition-colors"
-                >
-                  <div className="flex items-center gap-3">
+                <div className="flex items-center justify-between p-3 bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] transition-colors group/org">
+                  <button 
+                    onClick={() => toggleOrg(org)}
+                    className="flex items-center gap-3 flex-1 text-left"
+                  >
                     <Building2 size={16} className="text-[var(--text-secondary)]" />
                     <span className="font-bold text-sm text-[var(--text-primary)] uppercase tracking-wide">{org}</span>
                     {category && <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-secondary)]">{category}</span>}
-                  </div>
+                  </button>
                   <div className="flex items-center gap-2">
+                    <button
+                      onClick={(e) => handleMapOrg(org, e)}
+                      className="p-1.5 hover:bg-[var(--bg-primary)] rounded text-[var(--text-secondary)] hover:text-emerald-400 opacity-0 group-hover/org:opacity-100 transition-all"
+                      title="Map Organization"
+                    >
+                      <MapPin size={14} />
+                    </button>
                     <span className="text-xs text-[var(--text-secondary)]">{orgContacts.length}</span>
-                    {expandedOrgs.includes(org) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                    <button onClick={() => toggleOrg(org)}>
+                      {expandedOrgs.includes(org) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                    </button>
                   </div>
-                </button>
+                </div>
                 
                 {expandedOrgs.includes(org) && (
                   <div className="divide-y divide-[var(--border)]">
                     {orgContacts.map(contact => (
                       <div 
                         key={contact.id}
-                        onClick={() => setSelectedContact(contact)}
+                        onClick={() => { setSelectedContact(contact); setViewMode('details'); }}
                         className={cn(
                           "p-3 cursor-pointer hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-between group",
-                          selectedContact?.id === contact.id ? "bg-[var(--bg-tertiary)] border-l-2 border-[var(--text-primary)]" : "pl-3"
+                          selectedContact?.id === contact.id && viewMode === 'details' ? "bg-[var(--bg-tertiary)] border-l-2 border-[var(--text-primary)]" : "pl-3"
                         )}
                       >
+                        {/* ... contact item content ... */}
                         <div>
                           <div className="flex items-center gap-2">
                             <User size={14} className="text-[var(--text-tertiary)]" />
@@ -445,9 +503,115 @@ export function MasterDirectory() {
       </div>
 
       {/* Detail Panel */}
-      <div className="flex-1 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg flex flex-col">
-        {selectedContact ? (
+      <div className="flex-1 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg flex flex-col relative overflow-hidden">
+        {viewMode === 'map' && selectedOrg ? (
+          <div className="flex flex-col h-full">
+            <div className="p-6 border-b border-[var(--border)] flex justify-between items-center bg-[var(--bg-secondary)]">
+              <div>
+                <h1 className="text-2xl font-light text-[var(--text-primary)] mb-1 flex items-center gap-3">
+                  <Building2 size={24} />
+                  {selectedOrg}
+                </h1>
+                <p className="text-[var(--text-secondary)] text-sm uppercase tracking-wider">Organization Map</p>
+              </div>
+              <div className="flex gap-2">
+                <div className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded text-xs text-emerald-400">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Active Engagement (Last 90 Days)
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex-1 overflow-auto p-8 bg-[var(--bg-primary)]">
+              <div className="flex flex-col items-center gap-10 min-w-fit w-full">
+                {/* Root Node */}
+                <div className="flex flex-col items-center">
+                  <div className="w-72 p-6 bg-[var(--card-bg)] border-2 border-[var(--text-primary)] rounded-xl shadow-lg flex flex-col items-center text-center z-10 relative">
+                    <Building2 size={40} className="mb-3 text-[var(--text-primary)]" />
+                    <h2 className="font-bold text-xl text-[var(--text-primary)]">{selectedOrg}</h2>
+                    <span className="text-xs text-[var(--text-secondary)] uppercase tracking-wider mt-1">Organization Overview</span>
+                  </div>
+                </div>
+
+                {/* Locations Groups */}
+                <div className="w-full max-w-6xl space-y-8">
+                  {Object.entries(contactsByLocation).map(([location, locContacts]) => (
+                    <div key={location} className="bg-[var(--bg-tertiary)]/20 rounded-2xl p-6 border border-[var(--border)]">
+                      <div className="flex items-center gap-3 mb-6 pb-3 border-b border-[var(--border)]">
+                        <div className="p-2 bg-[var(--bg-tertiary)] rounded-full text-[var(--text-secondary)]">
+                          <MapPin size={18} />
+                        </div>
+                        <h3 className="text-lg font-medium text-[var(--text-primary)] uppercase tracking-wide">{location}</h3>
+                        <span className="text-xs text-[var(--text-secondary)] bg-[var(--bg-tertiary)] px-2 py-0.5 rounded-full">{locContacts.length}</span>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {locContacts.map(contact => {
+                          const isActive = activeContactIds.has(contact.id);
+                          return (
+                            <div 
+                              key={contact.id}
+                              onClick={() => { setSelectedContact(contact); setViewMode('details'); }}
+                              className={cn(
+                                "relative group cursor-pointer transition-all duration-300 hover:-translate-y-1",
+                                "bg-[var(--card-bg)] border rounded-xl p-4 flex flex-col gap-3 shadow-sm hover:shadow-md",
+                                isActive 
+                                  ? "border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]" 
+                                  : "border-[var(--border)] hover:border-[var(--text-secondary)]"
+                              )}
+                            >
+                              {isActive && (
+                                <div className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-[var(--bg-primary)] shadow-sm z-20" />
+                              )}
+                              
+                              <div className="flex items-start justify-between">
+                                <div className="flex items-center gap-3">
+                                  <div className={cn(
+                                    "w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold",
+                                    isActive ? "bg-emerald-500/10 text-emerald-500" : "bg-[var(--bg-tertiary)] text-[var(--text-secondary)]"
+                                  )}>
+                                    {contact.client_contact.charAt(0)}
+                                  </div>
+                                  <div>
+                                    <h3 className="font-bold text-[var(--text-primary)] leading-tight">{contact.client_contact}</h3>
+                                    <p className="text-xs text-[var(--text-secondary)] mt-0.5">{contact.position || "No Position"}</p>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="space-y-1.5 pt-2 border-t border-[var(--border)]/50">
+                                {contact.email && (
+                                  <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)] truncate">
+                                    <Mail size={12} />
+                                    <span className="truncate">{contact.email}</span>
+                                  </div>
+                                )}
+                                {contact.phone && (
+                                  <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)] truncate">
+                                    <Phone size={12} />
+                                    <span className="truncate">{contact.phone}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {Object.keys(contactsByLocation).length === 0 && (
+                    <div className="text-center p-12 text-[var(--text-secondary)] italic">
+                      No contacts found for this organization.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : selectedContact ? (
           <>
+            {/* ... existing selectedContact view ... */}
             {/* Header */}
             <div className="p-6 border-b border-[var(--border)]">
               <div className="flex justify-between items-start">
@@ -635,7 +799,7 @@ export function MasterDirectory() {
           <div className="flex-1 flex items-center justify-center text-[var(--text-secondary)]">
             <div className="text-center">
               <User size={48} className="mx-auto mb-4 opacity-20" />
-              <p>Select a contact to view details</p>
+              <p>Select a contact to view details or click Map icon to view Org Chart</p>
             </div>
           </div>
         )}
