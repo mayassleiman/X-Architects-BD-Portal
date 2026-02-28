@@ -25,6 +25,8 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
   const [meetings, setMeetings] = React.useState<Meeting[]>([]);
   const [viewMode, setViewMode] = React.useState<'list' | 'calendar' | 'stats'>(defaultViewMode);
   const [currentDate, setCurrentDate] = React.useState(new Date());
+  const [selectedMonth, setSelectedMonth] = React.useState(new Date());
+  const [selectedQuarter, setSelectedQuarter] = React.useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [editingId, setEditingId] = React.useState<number | null>(null);
   const [formData, setFormData] = React.useState({
@@ -74,45 +76,77 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
       return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
     };
 
-    // Weekly Stats (Last 8 weeks)
+    // Weekly Stats (Weeks of the selected month)
     const weeklyData = [];
-    for (let i = 7; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - (i * 7));
-      const weekNum = getWeek(d);
-      const year = d.getFullYear();
-      
-      const count = meetings.filter(m => {
-        const mDate = new Date(m.date);
-        return getWeek(mDate) === weekNum && mDate.getFullYear() === year;
-      }).length;
+    const startOfMonth = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), 1);
+    const endOfMonth = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0);
+    
+    // Find the Monday of the first week
+    const startWeekDate = new Date(startOfMonth);
+    const startDay = startWeekDate.getDay() || 7; // 1 (Mon) to 7 (Sun)
+    startWeekDate.setDate(startWeekDate.getDate() - startDay + 1);
 
-      weeklyData.push({ name: `Week ${weekNum}`, count });
+    // Iterate through weeks until we pass the end of the month
+    const currentWeekDate = new Date(startWeekDate);
+    while (currentWeekDate <= endOfMonth || (currentWeekDate.getMonth() === endOfMonth.getMonth() && currentWeekDate.getDate() <= endOfMonth.getDate())) {
+        const weekNum = getWeek(currentWeekDate);
+        const year = currentWeekDate.getFullYear();
+        
+        // Count meetings in this week
+        const count = meetings.filter(m => {
+            const mDate = new Date(m.date);
+            return getWeek(mDate) === weekNum && mDate.getFullYear() === year;
+        }).length;
+
+        weeklyData.push({ name: `Week ${weekNum}`, count, startDate: new Date(currentWeekDate) });
+        
+        // Move to next week
+        currentWeekDate.setDate(currentWeekDate.getDate() + 7);
+        // Break if we've gone far past the month (safety)
+        if (currentWeekDate.getMonth() > endOfMonth.getMonth() && currentWeekDate.getFullYear() >= endOfMonth.getFullYear() && currentWeekDate.getDate() > 7) break; 
     }
 
-    // Monthly Stats (Last 12 months)
+    // Monthly Stats
     const monthlyData = [];
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    for (let i = 11; i >= 0; i--) {
-      const d = new Date();
-      d.setMonth(d.getMonth() - i);
-      const monthIndex = d.getMonth();
-      const year = d.getFullYear();
 
-      const count = meetings.filter(m => {
-        const mDate = new Date(m.date);
-        return mDate.getMonth() === monthIndex && mDate.getFullYear() === year;
-      }).length;
+    if (selectedQuarter !== null) {
+      // Show months for the selected quarter of the current year
+      const startMonth = selectedQuarter * 3;
+      for (let i = 0; i < 3; i++) {
+        const monthIndex = startMonth + i;
+        const d = new Date(currentYear, monthIndex, 1);
+        
+        const count = meetings.filter(m => {
+          const mDate = new Date(m.date);
+          return mDate.getMonth() === monthIndex && mDate.getFullYear() === currentYear;
+        }).length;
 
-      monthlyData.push({ name: `${months[monthIndex]}`, count });
+        monthlyData.push({ name: months[monthIndex], count, date: d });
+      }
+    } else {
+      // Show Last 12 months
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
+        const monthIndex = d.getMonth();
+        const year = d.getFullYear();
+
+        const count = meetings.filter(m => {
+          const mDate = new Date(m.date);
+          return mDate.getMonth() === monthIndex && mDate.getFullYear() === year;
+        }).length;
+
+        monthlyData.push({ name: `${months[monthIndex]}`, count, date: new Date(d) });
+      }
     }
 
     // Quarterly Stats (Current Year)
     const quarterlyData = [
-      { name: "Q1", count: 0 },
-      { name: "Q2", count: 0 },
-      { name: "Q3", count: 0 },
-      { name: "Q4", count: 0 },
+      { name: "Q1", count: 0, index: 0 },
+      { name: "Q2", count: 0, index: 1 },
+      { name: "Q3", count: 0, index: 2 },
+      { name: "Q4", count: 0, index: 3 },
     ];
 
     meetings.forEach(m => {
@@ -125,7 +159,7 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
     });
 
     return { weeklyData, monthlyData, quarterlyData };
-  }, [meetings]);
+  }, [meetings, selectedMonth, selectedQuarter]);
 
   const handleEdit = (meeting: Meeting) => {
     setEditingId(meeting.id);
@@ -337,20 +371,48 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Weekly Stats */}
           <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6">
-            <h3 className="text-sm font-medium text-[var(--text-primary)] mb-6">Weekly Meetings (Last 8 Weeks)</h3>
-            <div className="h-64 w-full">
+            <h3 className="text-sm font-medium text-[var(--text-primary)] mb-6 flex items-center justify-between">
+              <span>
+                Weekly Meetings ({selectedMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })})
+                {!isReportView && <span className="text-[var(--text-secondary)] font-normal ml-2 text-xs">- Click to View Schedule</span>}
+              </span>
+            </h3>
+            <div className="h-64 w-full cursor-pointer">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={stats.weeklyData}>
+                <BarChart 
+                  data={stats.weeklyData}
+                  onClick={(data) => {
+                    if (!data) return;
+                    
+                    let item = null;
+                    if (typeof data.activeTooltipIndex === 'number') {
+                      item = stats.weeklyData[data.activeTooltipIndex];
+                    } else if (data.activeLabel) {
+                      item = stats.weeklyData.find(d => d.name === data.activeLabel);
+                    }
+
+                    if (item && item.startDate) {
+                      setCurrentDate(item.startDate);
+                      setViewMode('calendar');
+                    }
+                  }}
+                >
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                   <XAxis dataKey="name" stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
                   <YAxis stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff' }}
                     itemStyle={{ color: '#fff' }}
-                    cursor={{ fill: 'var(--bg-tertiary)' }}
+                    cursor={{ fill: 'var(--bg-tertiary)', opacity: 0.5 }}
                   />
                   <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]}>
-                    <LabelList dataKey="count" position="top" fill="var(--text-primary)" fontSize={12} />
+                    <LabelList 
+                      dataKey="count" 
+                      position="top" 
+                      fill="var(--text-primary)" 
+                      fontSize={12} 
+                      formatter={(value: number) => value === 0 ? "" : value}
+                    />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -359,20 +421,55 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
 
           {/* Monthly Stats */}
           <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6">
-            <h3 className="text-sm font-medium text-[var(--text-primary)] mb-6">Monthly Meetings (Last 12 Months)</h3>
-            <div className="h-64 w-full">
+            <h3 className="text-sm font-medium text-[var(--text-primary)] mb-6 flex items-center justify-between">
+              <span>
+                {selectedQuarter !== null ? `Monthly Meetings (Q${selectedQuarter + 1})` : "Monthly Meetings (Last 12 Months)"}
+                {!isReportView && <span className="text-[var(--text-secondary)] font-normal ml-2 text-xs">- Click to View Weeks</span>}
+              </span>
+              {selectedQuarter !== null && (
+                <button 
+                  onClick={() => setSelectedQuarter(null)}
+                  className="text-xs bg-[var(--bg-tertiary)] px-2 py-1 rounded hover:bg-[var(--border)] transition-colors text-[var(--text-primary)]"
+                >
+                  Show All Months
+                </button>
+              )}
+            </h3>
+            <div className="h-64 w-full cursor-pointer">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={stats.monthlyData}>
+                <BarChart 
+                  data={stats.monthlyData}
+                  onClick={(data) => {
+                    if (!data) return;
+
+                    let item = null;
+                    if (typeof data.activeTooltipIndex === 'number') {
+                      item = stats.monthlyData[data.activeTooltipIndex];
+                    } else if (data.activeLabel) {
+                      item = stats.monthlyData.find(d => d.name === data.activeLabel);
+                    }
+
+                    if (item && item.date) {
+                      setSelectedMonth(item.date);
+                    }
+                  }}
+                >
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                   <XAxis dataKey="name" stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
                   <YAxis stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff' }}
                     itemStyle={{ color: '#fff' }}
-                    cursor={{ fill: 'var(--bg-tertiary)' }}
+                    cursor={{ fill: 'var(--bg-tertiary)', opacity: 0.5 }}
                   />
                   <Bar dataKey="count" fill="#10b981" radius={[4, 4, 0, 0]}>
-                    <LabelList dataKey="count" position="top" fill="var(--text-primary)" fontSize={12} />
+                    <LabelList 
+                      dataKey="count" 
+                      position="top" 
+                      fill="var(--text-primary)" 
+                      fontSize={12} 
+                      formatter={(value: number) => value === 0 ? "" : value}
+                    />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -381,20 +478,54 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
 
           {/* Quarterly Stats */}
           <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6 lg:col-span-2">
-            <h3 className="text-sm font-medium text-[var(--text-primary)] mb-6">Quarterly Meetings (Current Year)</h3>
-            <div className="h-64 w-full">
+            <h3 className="text-sm font-medium text-[var(--text-primary)] mb-6 flex items-center justify-between">
+              <span>
+                Quarterly Meetings (Current Year)
+                {!isReportView && <span className="text-[var(--text-secondary)] font-normal ml-2 text-xs">- Click to Filter Months</span>}
+              </span>
+            </h3>
+            <div className="h-64 w-full cursor-pointer">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={stats.quarterlyData}>
+                <BarChart 
+                  data={stats.quarterlyData}
+                  onClick={(data) => {
+                    if (!data) return;
+
+                    let item = null;
+                    if (typeof data.activeTooltipIndex === 'number') {
+                      item = stats.quarterlyData[data.activeTooltipIndex];
+                    } else if (data.activeLabel) {
+                      item = stats.quarterlyData.find(d => d.name === data.activeLabel);
+                    }
+
+                    if (item && typeof item.index === 'number') {
+                      if (selectedQuarter === item.index) {
+                          setSelectedQuarter(null);
+                      } else {
+                          setSelectedQuarter(item.index);
+                          // Also set selectedMonth to the first month of that quarter to keep views synced
+                          const firstMonthOfQuarter = new Date(new Date().getFullYear(), item.index * 3, 1);
+                          setSelectedMonth(firstMonthOfQuarter);
+                      }
+                    }
+                  }}
+                >
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                   <XAxis dataKey="name" stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
                   <YAxis stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff' }}
                     itemStyle={{ color: '#fff' }}
-                    cursor={{ fill: 'var(--bg-tertiary)' }}
+                    cursor={{ fill: 'var(--bg-tertiary)', opacity: 0.5 }}
                   />
                   <Bar dataKey="count" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={60}>
-                    <LabelList dataKey="count" position="top" fill="var(--text-primary)" fontSize={12} />
+                    <LabelList 
+                      dataKey="count" 
+                      position="top" 
+                      fill="var(--text-primary)" 
+                      fontSize={12} 
+                      formatter={(value: number) => value === 0 ? "" : value}
+                    />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
