@@ -160,9 +160,9 @@ ${processedBody}
   };
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] gap-6">
+    <div className="flex flex-col lg:flex-row h-auto lg:h-[calc(100vh-8rem)] gap-6">
       {/* Left Panel: Recipient Selection */}
-      <div className="w-1/3 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg flex flex-col">
+      <div className="w-full lg:w-1/3 h-[500px] lg:h-auto bg-[var(--card-bg)] border border-[var(--border)] rounded-lg flex flex-col">
         <div className="p-4 border-b border-[var(--border)] space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="font-light text-[var(--text-primary)] flex items-center gap-2">
@@ -184,9 +184,9 @@ ${processedBody}
             />
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 max-w-full">
             <select 
-              className="flex-1 bg-[var(--bg-tertiary)] border border-[var(--border)] px-2 py-1.5 text-xs rounded text-[var(--text-primary)] focus:outline-none"
+              className="flex-1 min-w-0 bg-[var(--bg-tertiary)] border border-[var(--border)] px-2 py-1.5 text-xs rounded text-[var(--text-primary)] focus:outline-none"
               value={orgFilter}
               onChange={e => setOrgFilter(e.target.value)}
             >
@@ -196,7 +196,7 @@ ${processedBody}
             </select>
             <button 
               onClick={toggleAll}
-              className="px-3 py-1.5 bg-[var(--bg-tertiary)] border border-[var(--border)] text-xs rounded hover:bg-[var(--bg-secondary)] text-[var(--text-primary)]"
+              className="px-3 py-1.5 whitespace-nowrap bg-[var(--bg-tertiary)] border border-[var(--border)] text-xs rounded hover:bg-[var(--bg-secondary)] text-[var(--text-primary)] shrink-0"
             >
               {selectedContactIds.size === filteredContacts.length ? "Deselect All" : "Select All"}
             </button>
@@ -234,16 +234,16 @@ ${processedBody}
       </div>
 
       {/* Right Panel: Composer */}
-      <div className="flex-1 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg flex flex-col">
-        <div className="p-4 border-b border-[var(--border)] flex justify-between items-center">
+      <div className="w-full lg:flex-1 h-[600px] lg:h-auto bg-[var(--card-bg)] border border-[var(--border)] rounded-lg flex flex-col">
+        <div className="p-4 border-b border-[var(--border)] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
           <h2 className="font-light text-[var(--text-primary)] flex items-center gap-2">
             <Mail size={18} /> EMAIL GUN
           </h2>
-          <div className="flex gap-2">
+          <div className="flex gap-2 w-full sm:w-auto">
             <button 
               onClick={() => setIsPreviewMode(!isPreviewMode)}
               className={cn(
-                "px-3 py-1.5 text-xs font-bold uppercase tracking-wider rounded transition-colors border",
+                "flex-1 sm:flex-none px-3 py-1.5 text-xs font-bold uppercase tracking-wider rounded transition-colors border text-center",
                 isPreviewMode 
                   ? "bg-[var(--text-primary)] text-[var(--bg-primary)] border-[var(--text-primary)]" 
                   : "bg-transparent text-[var(--text-secondary)] border-[var(--border)] hover:border-[var(--text-primary)]"
@@ -254,9 +254,9 @@ ${processedBody}
             <button 
               onClick={handleDownloadDrafts}
               disabled={selectedContactIds.size === 0}
-              className="px-3 py-1.5 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider rounded hover:bg-[var(--text-secondary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="flex-1 sm:flex-none px-3 py-1.5 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider rounded hover:bg-[var(--text-secondary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              <Download size={14} /> Download Drafts (.eml)
+              <Download size={14} /> <span className="hidden sm:inline">Download Drafts</span><span className="sm:hidden">Drafts</span>
             </button>
           </div>
         </div>
@@ -266,22 +266,22 @@ ${processedBody}
             {selectedContactIds.size > 0 ? (
               <div className="space-y-8 max-w-3xl mx-auto">
                 {contacts.filter(c => selectedContactIds.has(c.id)).slice(0, 5).map(contact => (
-                  <div key={contact.id} className="bg-white text-black p-6 rounded shadow-lg border border-gray-200">
+                  <div key={contact.id} className="bg-white text-black p-4 sm:p-6 rounded shadow-lg border border-gray-200">
                     <div className="border-b border-gray-200 pb-4 mb-4 space-y-2">
                       <div className="flex gap-2 text-sm">
-                        <span className="font-bold text-gray-500 w-16">To:</span>
-                        <span>{contact.client_contact} &lt;{contact.email}&gt;</span>
+                        <span className="font-bold text-gray-500 w-16 shrink-0">To:</span>
+                        <span className="break-all">{contact.client_contact} &lt;{contact.email}&gt;</span>
                       </div>
                       <div className="flex gap-2 text-sm">
-                        <span className="font-bold text-gray-500 w-16">Subject:</span>
-                        <span>{processTemplate(subject, contact)}</span>
+                        <span className="font-bold text-gray-500 w-16 shrink-0">Subject:</span>
+                        <span className="break-words">{processTemplate(subject, contact)}</span>
                       </div>
                     </div>
                     <div 
-                      className="prose prose-sm max-w-none"
+                      className="prose prose-sm max-w-none break-words"
                       dangerouslySetInnerHTML={{ __html: processTemplate(body, contact) }} 
                     />
-                    <div className="mt-4 pt-4 border-t border-gray-100 flex justify-end gap-2">
+                    <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap justify-end gap-2">
                       <button 
                         onClick={() => handleDownloadSingleDraft(contact)}
                         className="text-xs text-gray-500 hover:text-gray-900 flex items-center gap-1 px-2 py-1 border border-transparent hover:border-gray-200 rounded"
@@ -293,7 +293,9 @@ ${processedBody}
                         onClick={handleBatchOpenMail}
                         className="text-xs text-blue-600 hover:underline flex items-center gap-1 font-medium"
                       >
-                        Open All ({selectedContactIds.size}) in Mail App <ArrowRight size={12} />
+                        <span className="hidden sm:inline">Open All ({selectedContactIds.size}) in Mail App</span>
+                        <span className="sm:hidden">Open All ({selectedContactIds.size})</span>
+                        <ArrowRight size={12} />
                       </button>
                     </div>
                   </div>
@@ -324,9 +326,9 @@ ${processedBody}
             </div>
             
             <div className="flex-1 flex flex-col">
-              <div className="flex justify-between items-center mb-1">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-1 gap-2 sm:gap-0">
                 <label className="block text-xs font-mono uppercase text-[var(--text-secondary)]">Body</label>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   <button onClick={() => editorRef.current?.insertText("{FirstName}")} className="text-[10px] px-2 py-1 bg-[var(--bg-tertiary)] border border-[var(--border)] rounded hover:border-[var(--text-primary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
                     {'{FirstName}'}
                   </button>

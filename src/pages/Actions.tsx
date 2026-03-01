@@ -1,7 +1,9 @@
 import React from "react";
-import { Plus, X, Trash2, Pencil, Filter } from "lucide-react";
+import { Plus, X, Trash2, Pencil, Filter, Download } from "lucide-react";
 import { cn } from "../lib/utils";
 import { useSearch } from "../context/SearchContext";
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface Action {
   id: number;
@@ -55,6 +57,42 @@ export function Actions({ isReportView = false }: { isReportView?: boolean }) {
         ? prev.filter(s => s !== status)
         : [...prev, status]
     );
+  };
+
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    
+    // Add title
+    doc.setFontSize(18);
+    doc.text('Action List Report', 14, 22);
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    
+    // Add date
+    const dateStr = new Date().toLocaleDateString();
+    doc.text(`Generated on: ${dateStr}`, 14, 30);
+
+    // Define columns
+    const tableColumn = ["Task", "Description", "Responsible", "Status", "Due Date"];
+    const tableRows = filteredActions.map(action => [
+      action.title,
+      action.description,
+      action.responsible,
+      action.status,
+      action.due_date
+    ]);
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 35,
+      theme: 'grid',
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+      alternateRowStyles: { fillColor: [245, 245, 245] }
+    });
+
+    doc.save('actions_report.pdf');
   };
 
   const handleEdit = (action: Action) => {
@@ -125,9 +163,28 @@ export function Actions({ isReportView = false }: { isReportView?: boolean }) {
           <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Manage Tasks & Responsibilities</p>
         </div>
         {!isReportView && (
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 mr-4">
-              <span className="text-xs font-mono uppercase text-[var(--text-secondary)] mr-2">Filter:</span>
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={handleExportPDF}
+              className="flex items-center gap-2 px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--border)] transition-colors border border-[var(--border)]"
+            >
+              <Download size={16} /> Export PDF
+            </button>
+            <button 
+              onClick={openNewModal}
+              className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors"
+            >
+              <Plus size={16} /> Add Action
+            </button>
+          </div>
+        )}
+      </div>
+
+      {!isReportView && (
+        <div className="flex flex-wrap gap-4 items-center pl-1">
+          <div className="flex items-center gap-4">
+            <span className="text-xs font-mono uppercase text-[var(--text-secondary)]">Filter:</span>
+            <div className="flex gap-2">
               {["Pending", "In Progress", "Completed"].map(status => (
                 <button
                   key={status}
@@ -142,26 +199,20 @@ export function Actions({ isReportView = false }: { isReportView?: boolean }) {
                   {status}
                 </button>
               ))}
-              {statusFilter.length > 0 && (
-                <button
-                  onClick={() => setStatusFilter([])}
-                  className="ml-2 p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-                  title="Clear filters"
-                >
-                  <X size={14} />
-                </button>
-              )}
             </div>
-            
-            <button 
-              onClick={openNewModal}
-              className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors"
-            >
-              <Plus size={16} /> Add Action
-            </button>
           </div>
-        )}
-      </div>
+          
+          {statusFilter.length > 0 && (
+            <button
+              onClick={() => setStatusFilter([])}
+              className="ml-auto p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+              title="Clear filters"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="bg-[var(--card-bg)] border border-[var(--border)]">
         <div className="grid grid-cols-12 gap-4 p-4 border-b border-[var(--border)] text-xs font-mono uppercase text-[var(--text-secondary)]">

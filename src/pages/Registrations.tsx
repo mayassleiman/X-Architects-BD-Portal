@@ -220,16 +220,16 @@ export function Registrations({ isReportView = false }: { isReportView?: boolean
       </div>
 
       {!isReportView && (
-        <div className="flex flex-wrap gap-4 bg-[var(--card-bg)] border border-[var(--border)] p-4 rounded-lg items-center">
+        <div className="flex flex-wrap gap-4 items-center pl-1">
           <div className="flex items-center gap-4">
-            <span className="text-xs font-mono uppercase text-[var(--text-secondary)]">Filter Status:</span>
+            <span className="text-xs font-mono uppercase text-[var(--text-secondary)]">Filter:</span>
             <div className="flex gap-2">
               {["Pending", "Ongoing", "Completed"].map(status => (
                 <button
                   key={status}
                   onClick={() => toggleStatus(status)}
                   className={cn(
-                    "px-3 py-1 text-xs rounded-full border transition-colors uppercase tracking-wider",
+                    "px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider border transition-colors rounded-full",
                     selectedStatuses.includes(status)
                       ? "bg-[var(--text-primary)] text-[var(--bg-primary)] border-[var(--text-primary)]"
                       : "bg-transparent text-[var(--text-secondary)] border-[var(--border)] hover:border-[var(--text-primary)] hover:text-[var(--text-primary)]"
@@ -244,9 +244,10 @@ export function Registrations({ isReportView = false }: { isReportView?: boolean
           {selectedStatuses.length > 0 && (
             <button 
               onClick={() => setSelectedStatuses([])}
-              className="ml-auto text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
+              className="ml-auto p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+              title="Clear filters"
             >
-              <X size={12} /> Clear Filters
+              <X size={14} />
             </button>
           )}
         </div>

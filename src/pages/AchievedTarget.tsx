@@ -243,10 +243,16 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
       };
     });
 
-    // Add start and end points for better visualization if needed, or just use the data points
+    // Add start point at 0 for better visualization
     if (chartData.length > 0) {
-       // Optional: Add a starting point at 0
-       // chartData.unshift({ date: 'Start', fullDate: '', value: 0, cumulative: 0, name: '', target: data.target });
+       chartData.unshift({ 
+         date: '01 Jan', 
+         fullDate: `01/01/${data.year}`, 
+         value: 0, 
+         cumulative: 0, 
+         name: 'Start of Year', 
+         target: data.target 
+       });
     }
 
     return { quarters, totalAchieved, totalDeficiency, totalAchievedPercent, totalDeficiencyPercent, sectorData, disciplineData, chartData };
@@ -499,6 +505,8 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
                   fill="url(#colorAchieved)" 
                   strokeWidth={2}
                   name="Cumulative Achieved"
+                  dot={{ r: 4, fill: '#10b981', stroke: '#fff', strokeWidth: 2 }}
+                  activeDot={{ r: 6, fill: '#10b981', stroke: '#fff', strokeWidth: 2 }}
                 />
               </AreaChart>
             </ResponsiveContainer>
