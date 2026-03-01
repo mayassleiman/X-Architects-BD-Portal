@@ -14,10 +14,10 @@ interface Meeting {
 }
 
 const LEVELS = [
-  { id: 1, label: "Lead", color: "text-neutral-400 border-neutral-700 bg-neutral-800/50" },
-  { id: 2, label: "Prospect", color: "text-blue-400 border-blue-500/50 bg-blue-900/20" },
-  { id: 3, label: "Proposal", color: "text-amber-400 border-amber-500/50 bg-amber-900/20" },
-  { id: 4, label: "Negotiation", color: "text-emerald-400 border-emerald-500/50 bg-emerald-900/20" },
+  { id: 1, label: "Lead", tagClass: "bg-neutral-600 text-white border-neutral-500", cardClass: "bg-neutral-800/80 border-l-4 border-l-neutral-500 text-neutral-100" },
+  { id: 2, label: "Prospect", tagClass: "bg-blue-600 text-white border-blue-500", cardClass: "bg-blue-900/40 border-l-4 border-l-blue-500 text-blue-100" },
+  { id: 3, label: "Proposal", tagClass: "bg-amber-600 text-white border-amber-500", cardClass: "bg-amber-900/40 border-l-4 border-l-amber-500 text-amber-100" },
+  { id: 4, label: "Negotiation", tagClass: "bg-emerald-600 text-white border-emerald-500", cardClass: "bg-emerald-900/40 border-l-4 border-l-emerald-500 text-emerald-100" },
 ];
 
 export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { isReportView?: boolean, defaultViewMode?: 'list' | 'calendar' | 'stats' }) {
@@ -568,7 +568,7 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
                   )}
                   
                   <div className="flex items-center gap-2 mb-4">
-                    <span className={cn("text-[10px] uppercase tracking-wider px-2 py-1 rounded border", levelInfo.color)}>
+                    <span className={cn("text-[10px] uppercase tracking-wider px-2 py-1 rounded border", levelInfo.tagClass)}>
                       {levelInfo.label}
                     </span>
                   </div>
@@ -628,10 +628,13 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
                       draggable
                       onDragStart={(e) => handleDragStart(e, meeting.id)}
                       onClick={() => handleEdit(meeting)}
-                      className={cn("p-2 rounded border text-xs mb-2 cursor-pointer hover:opacity-80 shadow-sm", levelInfo.color)}
+                      className={cn("p-2 rounded-r text-xs mb-2 cursor-pointer hover:brightness-110 shadow-sm transition-all", levelInfo.cardClass)}
                     >
-                      <div className="font-bold truncate">{meeting.time}</div>
-                      <div className="truncate font-medium">{meeting.title}</div>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="font-bold">{meeting.time}</span>
+                        <span className="text-[9px] opacity-75 uppercase tracking-wider">{levelInfo.label}</span>
+                      </div>
+                      <div className="font-medium leading-tight">{meeting.title}</div>
                     </div>
                   );
                 })}

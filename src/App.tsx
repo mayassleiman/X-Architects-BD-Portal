@@ -32,6 +32,29 @@ const Placeholder = ({ title }: { title: string }) => (
 );
 
 export default function App() {
+  React.useEffect(() => {
+    // Check if custom logo exists and update favicon
+    fetch('/api/logo', { method: 'HEAD' })
+      .then(res => {
+        if (res.ok) {
+          const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+          if (link) {
+            link.href = `/api/logo?t=${new Date().getTime()}`;
+            link.type = 'image/png';
+          } else {
+            const newLink = document.createElement('link');
+            newLink.rel = 'icon';
+            newLink.href = `/api/logo?t=${new Date().getTime()}`;
+            newLink.type = 'image/png';
+            document.head.appendChild(newLink);
+          }
+        }
+      })
+      .catch(() => {
+        // Keep default favicon
+      });
+  }, []);
+
   return (
     <UserProvider>
       <SearchProvider>
