@@ -80,7 +80,7 @@ export function MasterDirectory() {
   const [engagementForm, setEngagementForm] = useState<{id?: number, date: string, discussion: string}>({ date: new Date().toISOString().split('T')[0], discussion: '' });
   const [followUpForm, setFollowUpForm] = useState<{id?: number, date: string, description: string, status?: 'Pending' | 'Done'}>({ date: '', description: '' });
 
-  const [companyTypes, setCompanyTypes] = useState<{id: number, name: string}[]>([]);
+  const [companyTypes, setCompanyTypes] = useState<{id: number, name: string, color: string}[]>([]);
 
   useEffect(() => {
     fetchContacts();
@@ -139,16 +139,9 @@ export function MasterDirectory() {
   };
 
   const getCategoryColor = (category?: string) => {
-    switch (category) {
-      case 'Consultant': return 'border-l-4 border-l-blue-500';
-      case 'Real Estate Developer': return 'border-l-4 border-l-emerald-500';
-      case 'PIF Company': return 'border-l-4 border-l-purple-500';
-      case 'Ministry': return 'border-l-4 border-l-amber-500';
-      case 'Contractor': return 'border-l-4 border-l-rose-500';
-      case 'General': return 'border-l-4 border-l-gray-500';
-      case 'Personal': return 'border-l-4 border-l-pink-500';
-      default: return 'border-l-4 border-l-transparent';
-    }
+    if (!category) return 'transparent';
+    const type = companyTypes.find(t => t.name === category);
+    return type ? type.color : 'transparent';
   };
 
   // Group contacts by organization
@@ -168,7 +161,7 @@ export function MasterDirectory() {
     return groups;
   }, [contacts, searchQuery]);
 
-  const contactsByLocation = useMemo(() => {
+  const contactsByLocation: Record<string, Contact[]> = useMemo(() => {
     if (!selectedOrg || !groupedContacts[selectedOrg]) return {};
     const groups: Record<string, Contact[]> = {};
     groupedContacts[selectedOrg].forEach(c => {
@@ -440,7 +433,11 @@ export function MasterDirectory() {
           {Object.entries(groupedContacts).map(([org, orgContacts]: [string, Contact[]]) => {
             const category = orgContacts[0]?.category; 
             return (
-              <div key={org} className={cn("border border-[var(--border)] rounded overflow-hidden", getCategoryColor(category))}>
+              <div 
+                key={org} 
+                className="border border-[var(--border)] rounded overflow-hidden"
+                style={{ borderLeft: `4px solid ${getCategoryColor(category)}` }}
+              >
                 <div className="flex items-center justify-between p-3 bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] transition-colors group/org">
                   <button 
                     onClick={() => toggleOrg(org)}

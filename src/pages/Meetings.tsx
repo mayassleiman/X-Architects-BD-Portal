@@ -313,7 +313,7 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
           <h1 className="text-4xl font-light tracking-tight text-[var(--text-primary)] mb-2">MEETINGS</h1>
           <div className="flex items-center gap-4">
             <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Schedule & Coordination</p>
-            {viewMode === 'calendar' && (
+            {viewMode === 'calendar' && !isReportView && (
               <div className="flex items-center gap-2 ml-4 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg p-1">
                 <button onClick={handlePrevWeek} className="p-1 hover:bg-[var(--bg-tertiary)] rounded transition-colors">
                   <ChevronLeft size={14} className="text-[var(--text-secondary)]" />
@@ -327,6 +327,13 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
                 <button onClick={handleToday} className="text-[10px] font-bold uppercase px-2 py-1 hover:bg-[var(--bg-tertiary)] rounded text-[var(--text-secondary)] ml-1">
                   Today
                 </button>
+              </div>
+            )}
+            {viewMode === 'calendar' && isReportView && (
+              <div className="flex items-center gap-2 ml-4">
+                <span className="text-xs font-mono text-[var(--text-primary)] px-2 min-w-[140px] text-center border border-[var(--border)] rounded py-1">
+                  {new Date(weekDates[0]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(weekDates[6]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </span>
               </div>
             )}
           </div>

@@ -13,12 +13,14 @@ export function FullReport() {
 
   React.useEffect(() => {
     const now = new Date();
-    setCurrentDate(now.toLocaleDateString('en-GB', { 
+    // Format: "Monday 02 March 2026"
+    const formattedDate = now.toLocaleDateString('en-GB', { 
       weekday: 'long', 
       day: '2-digit',
       month: 'long', 
       year: 'numeric'
-    }));
+    }).replace(',', ''); // Remove comma if present
+    setCurrentDate(formattedDate);
   }, []);
 
   const handlePrint = () => {
@@ -26,9 +28,9 @@ export function FullReport() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-12 pb-20 print:space-y-8 print:pb-0">
-      {/* Report Header */}
-      <div className="flex items-center justify-between print:hidden">
+    <div className="max-w-7xl mx-auto pb-20 print:pb-0">
+      {/* Screen-only Controls */}
+      <div className="flex items-center justify-between mb-8 print:hidden">
         <Link to="/" className="flex items-center gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
           <ArrowLeft size={20} />
           <span className="text-sm font-mono uppercase tracking-wider">Back to Dashboard</span>
@@ -41,72 +43,113 @@ export function FullReport() {
         </button>
       </div>
 
-      <div className="border-b border-[var(--border)] pb-8 print:border-none print:pb-4 flex justify-between items-start">
-        <div>
-          <h1 className="text-4xl font-light tracking-tight text-[var(--text-primary)] mb-2 uppercase">KSA Business Development Weekly Action Sheet {new Date().getFullYear()}</h1>
-          <p className="text-[var(--text-primary)] font-medium text-lg">{currentDate}</p>
-        </div>
-        <div className="hidden print:block md:block">
-           <Logo showText={false} className="scale-125" />
-        </div>
-      </div>
-
-      {/* Yearly Target Section */}
-      <section className="break-inside-avoid page-break-after-always">
-        <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
-          <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">YEARLY TARGET</h2>
-          <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Performance & Goals</p>
-        </div>
-        <AchievedTarget isReportView={true} />
-      </section>
-
-      {/* Pipeline Section */}
-      <section className="break-inside-avoid page-break-after-always">
-        <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
-          <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">PIPELINE OVERVIEW</h2>
-          <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Active RFPs & VOs</p>
-        </div>
-        <Pipeline isReportView={true} />
-      </section>
-
-      {/* Meetings Section - Weekly View */}
-      <section className="break-inside-avoid page-break-after-always">
-        <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
-          <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">MEETINGS SCHEDULE</h2>
-          <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Weekly Overview</p>
-        </div>
-        <Meetings isReportView={true} />
-      </section>
-
-      {/* Meetings Section - Charts */}
-      <section className="break-inside-avoid page-break-after-always">
-        <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
-          <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">MEETINGS ANALYTICS</h2>
-          <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Distribution & Counts</p>
-        </div>
-        <MeetingsChartOnly />
-      </section>
-
-      {/* Tasks Section */}
-      <section className="break-inside-avoid page-break-after-always">
-        <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
-          <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">TASKS</h2>
-          <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Business Development Pipeline</p>
-        </div>
-        <Tasks isReportView={true} />
-      </section>
-
-      {/* Recent Engagements Section */}
-      <section className="break-inside-avoid">
-        <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
-          <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">RECENT ENGAGEMENTS</h2>
-          <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Past 10 Days</p>
-        </div>
-        <RecentEngagements />
-      </section>
-
-      {/* Footer Stamp */}
-      <div className="mt-12 pt-6 border-t border-[var(--border)] flex justify-between items-center text-[var(--text-secondary)] text-xs font-mono uppercase tracking-wider print:flex hidden">
+      <table className="w-full">
+        <thead className="print:table-header-group">
+          <tr>
+            <td>
+              <div className="border-b border-[var(--border)] pb-8 mb-8 print:border-none print:pb-4 print:mb-4 flex justify-between items-start">
+                <div>
+                  <h1 className="text-4xl font-light tracking-tight text-[var(--text-primary)] mb-2 uppercase">
+                    KSA Business Development Weekly Action Sheet {new Date().getFullYear()}
+                  </h1>
+                  <p className="text-[var(--text-primary)] font-medium text-lg">{currentDate}</p>
+                </div>
+                <div className="hidden print:block md:block">
+                   <Logo showText={false} className="scale-125" />
+                </div>
+              </div>
+            </td>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td className="pb-8">
+              {/* Yearly Target Section */}
+              <section className="break-inside-avoid">
+                <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
+                  <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">YEARLY TARGET</h2>
+                  <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Performance & Goals</p>
+                </div>
+                <AchievedTarget isReportView={true} />
+              </section>
+            </td>
+          </tr>
+          <tr>
+            <td className="pb-8">
+              {/* Pipeline Section */}
+              <section className="break-inside-avoid">
+                <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
+                  <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">PIPELINE OVERVIEW</h2>
+                  <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Active RFPs & VOs</p>
+                </div>
+                <Pipeline isReportView={true} />
+              </section>
+            </td>
+          </tr>
+          <tr>
+            <td className="pb-8">
+              {/* Meetings Section - Weekly View */}
+              <section className="break-inside-avoid">
+                <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
+                  <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">MEETINGS SCHEDULE</h2>
+                  <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Weekly Overview</p>
+                </div>
+                <Meetings isReportView={true} />
+              </section>
+            </td>
+          </tr>
+          <tr>
+            <td className="pb-8">
+              {/* Meetings Section - Charts */}
+              <section className="break-inside-avoid">
+                <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
+                  <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">MEETINGS ANALYTICS</h2>
+                  <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Distribution & Counts</p>
+                </div>
+                <MeetingsChartOnly />
+              </section>
+            </td>
+          </tr>
+          <tr>
+            <td className="pb-8">
+              {/* Tasks Section */}
+              <section className="break-inside-avoid">
+                <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
+                  <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">TASKS</h2>
+                  <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Business Development Pipeline</p>
+                </div>
+                <Tasks isReportView={true} />
+              </section>
+            </td>
+          </tr>
+          <tr>
+            <td className="pb-8">
+              {/* Recent Engagements Section */}
+              <section className="break-inside-avoid">
+                <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
+                  <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">RECENT ENGAGEMENTS</h2>
+                  <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Past 10 Days</p>
+                </div>
+                <RecentEngagements />
+              </section>
+            </td>
+          </tr>
+        </tbody>
+        <tfoot className="print:table-footer-group hidden">
+          <tr>
+            <td>
+              <div className="mt-12 pt-6 border-t border-[var(--border)] flex justify-between items-center text-[var(--text-secondary)] text-xs font-mono uppercase tracking-wider">
+                <span>Confidential Internal Report</span>
+                <span>{currentDate}</span>
+              </div>
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+      
+      {/* Screen-only Footer (since tfoot is hidden by default and only shown in print via print:table-footer-group if supported, or we can just show it always) */}
+      {/* Actually, let's make tfoot visible on screen too but styled appropriately */}
+      <div className="print:hidden mt-12 pt-6 border-t border-[var(--border)] flex justify-between items-center text-[var(--text-secondary)] text-xs font-mono uppercase tracking-wider">
         <span>Confidential Internal Report</span>
         <span>{currentDate}</span>
       </div>

@@ -107,15 +107,21 @@ export function Tasks({ isReportView = false }: { isReportView?: boolean }) {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 h-[calc(100vh-12rem)] overflow-hidden">
+      <div className={cn(
+        "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6",
+        isReportView ? "h-auto" : "h-[calc(100vh-12rem)] overflow-hidden"
+      )}>
         {LEVELS.map((level) => (
-          <div key={level.id} className="flex flex-col h-full bg-[var(--card-bg)] border border-[var(--border)]">
+          <div key={level.id} className="flex flex-col h-full bg-[var(--card-bg)] border border-[var(--border)] break-inside-avoid">
             <div className={cn("p-4 border-b border-[var(--border)] border-t-2", level.color)}>
               <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">{level.label}</h3>
             </div>
-            <div className="flex-1 p-4 space-y-3 overflow-y-auto custom-scrollbar">
+            <div className={cn(
+              "flex-1 p-4 space-y-3",
+              isReportView ? "overflow-visible" : "overflow-y-auto custom-scrollbar"
+            )}>
               {filteredTasks.filter(t => t.level === level.id).map(task => (
-                <div key={task.id} className="bg-[var(--bg-tertiary)] p-3 border border-[var(--border)] group hover:border-[var(--border-hover)] transition-colors relative">
+                <div key={task.id} className="bg-[var(--bg-tertiary)] p-3 border border-[var(--border)] group hover:border-[var(--border-hover)] transition-colors relative break-inside-avoid">
                   {!isReportView && (
                     <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button 

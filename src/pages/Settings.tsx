@@ -12,6 +12,7 @@ interface MarketSector {
 interface CompanyType {
   id: number;
   name: string;
+  color: string;
 }
 
 export function Settings() {
@@ -29,7 +30,11 @@ export function Settings() {
 
   // Company Type State
   const [newTypeName, setNewTypeName] = useState("");
+  const [newTypeColor, setNewTypeColor] = useState("#000000");
   const [isAddingType, setIsAddingType] = useState(false);
+  const [editingTypeId, setEditingTypeId] = useState<number | null>(null);
+  const [editTypeName, setEditTypeName] = useState("");
+  const [editTypeColor, setEditTypeColor] = useState("");
 
   // Export/Import State
   const [selectedPage, setSelectedPage] = useState<string>("contacts");
@@ -128,10 +133,11 @@ export function Settings() {
       const res = await fetch('/api/company-types', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newTypeName })
+        body: JSON.stringify({ name: newTypeName, color: newTypeColor })
       });
       if (res.ok) {
         setNewTypeName("");
+        setNewTypeColor("#000000");
         setIsAddingType(false);
         fetchCompanyTypes();
       } else {
@@ -141,6 +147,32 @@ export function Settings() {
     } catch (error) {
       console.error("Error adding company type", error);
     }
+  };
+
+  const handleUpdateType = async (id: number) => {
+    if (!editTypeName) return;
+    try {
+      const res = await fetch(`/api/company-types/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editTypeName, color: editTypeColor })
+      });
+      if (res.ok) {
+        setEditingTypeId(null);
+        fetchCompanyTypes();
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to update company type");
+      }
+    } catch (error) {
+      console.error("Error updating company type", error);
+    }
+  };
+
+  const startEditingType = (type: CompanyType) => {
+    setEditingTypeId(type.id);
+    setEditTypeName(type.name);
+    setEditTypeColor(type.color || '#000000');
   };
 
   const handleDeleteType = async (id: number) => {
@@ -614,34 +646,79 @@ export function Settings() {
             <h3 className="text-lg font-medium text-[var(--text-primary)]">Company Types</h3>
           </div>
           
-          <div className="flex flex-wrap gap-2 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
             {companyTypes.map((type) => (
-              <div key={type.id} className="flex items-center gap-2 pl-3 pr-2 py-1.5 bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-full group hover:border-[var(--text-secondary)] transition-colors">
-                <span className="text-sm text-[var(--text-primary)]">{type.name}</span>
-                <button onClick={() => handleDeleteType(type.id)} className="text-[var(--text-secondary)] hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"><X size={12} /></button>
+              <div key={type.id} className="flex items-center justify-between p-3 border border-[var(--border)] rounded bg-[var(--bg-tertiary)]/20 hover:bg-[var(--bg-tertiary)]/40 transition-colors group">
+                {editingTypeId === type.id ? (
+                  <div className="flex items-center gap-2 w-full">
+                    <input 
+                      type="color" 
+                      value={editTypeColor}
+                      onChange={(e) => setEditTypeColor(e.target.value)}
+                      className="w-8 h-8 rounded cursor-pointer border-none p-0 bg-transparent"
+                    />
+                    <input 
+                      type="text" 
+                      value={editTypeName}
+                      onChange={(e) => setEditTypeName(e.target.value)}
+                      className="flex-1 bg-[var(--bg-primary)] border border-[var(--border)] px-2 py-1 rounded text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--text-primary)]"
+                    />
+                    <button onClick={() => handleUpdateType(type.id)} className="text-emerald-500 hover:text-emerald-400"><Check size={16} /></button>
+                    <button onClick={() => setEditingTypeId(null)} className="text-rose-500 hover:text-rose-400"><X size={16} /></button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-3">
+                      <div className="w-4 h-4 rounded-full" style={{ backgroundColor: type.color || '#000000' }}></div>
+                      <span className="text-sm font-medium text-[var(--text-primary)]">{type.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => startEditingType(type)} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]"><Edit2 size={14} /></button>
+                      <button onClick={() => handleDeleteType(type.id)} className="text-[var(--text-secondary)] hover:text-rose-500"><Trash2 size={14} /></button>
+                    </div>
+                  </>
+                )}
               </div>
             ))}
-            <button 
-              onClick={() => setIsAddingType(true)}
-              className="flex items-center gap-1 px-3 py-1.5 border border-[var(--border)] border-dashed rounded-full text-xs font-mono uppercase text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--text-primary)] transition-colors"
-            >
-              <Plus size={12} /> Add
-            </button>
           </div>
 
+          {!isAddingType && (
+            <button 
+              onClick={() => setIsAddingType(true)}
+              className="flex items-center gap-2 text-xs font-mono uppercase text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+            >
+              <Plus size={14} /> Add Company Type
+            </button>
+          )}
+
           {isAddingType && (
-            <div className="flex items-center gap-2 max-w-md animate-in fade-in slide-in-from-left-2">
-              <input 
-                type="text" 
-                placeholder="New Company Type"
-                value={newTypeName}
-                onChange={(e) => setNewTypeName(e.target.value)}
-                className="flex-1 bg-[var(--bg-primary)] border border-[var(--border)] px-3 py-1.5 rounded text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--text-primary)]"
-                autoFocus
-                onKeyDown={(e) => e.key === 'Enter' && handleAddType()}
-              />
-              <button onClick={handleAddType} className="px-3 py-1.5 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase rounded hover:opacity-90">Add</button>
-              <button onClick={() => setIsAddingType(false)} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]"><X size={16} /></button>
+            <div className="mb-4 p-4 border border-[var(--border)] border-dashed rounded bg-[var(--bg-tertiary)]/10 animate-in fade-in slide-in-from-top-2">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <input 
+                    type="color" 
+                    value={newTypeColor}
+                    onChange={(e) => setNewTypeColor(e.target.value)}
+                    className="w-10 h-10 rounded cursor-pointer border border-[var(--border)] p-0 bg-transparent"
+                  />
+                  <Palette size={14} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none text-white mix-blend-difference" />
+                </div>
+                <input 
+                  type="text" 
+                  placeholder="Company Type Name"
+                  value={newTypeName}
+                  onChange={(e) => setNewTypeName(e.target.value)}
+                  className="flex-1 bg-[var(--bg-primary)] border border-[var(--border)] px-3 py-2 rounded text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--text-primary)]"
+                  autoFocus
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddType()}
+                />
+                <button onClick={handleAddType} className="p-2 bg-[var(--text-primary)] text-[var(--bg-primary)] rounded hover:opacity-90">
+                  <Check size={16} />
+                </button>
+                <button onClick={() => setIsAddingType(false)} className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
+                  <X size={16} />
+                </button>
+              </div>
             </div>
           )}
         </div>

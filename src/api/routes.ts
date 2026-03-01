@@ -564,16 +564,33 @@ router.get('/company-types', (req, res) => {
 
 // Create Company Type
 router.post('/company-types', (req, res) => {
-  const { name } = req.body;
+  const { name, color } = req.body;
   try {
-    const stmt = db.prepare('INSERT INTO company_types (name) VALUES (?)');
-    const info = stmt.run(name);
-    res.json({ id: info.lastInsertRowid, name });
+    const stmt = db.prepare('INSERT INTO company_types (name, color) VALUES (?, ?)');
+    const info = stmt.run(name, color || '#000000');
+    res.json({ id: info.lastInsertRowid, name, color: color || '#000000' });
   } catch (error: any) {
     if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
       res.status(400).json({ error: 'Company type already exists' });
     } else {
       res.status(500).json({ error: 'Failed to create company type' });
+    }
+  }
+});
+
+// Update Company Type
+router.put('/company-types/:id', (req, res) => {
+  const { id } = req.params;
+  const { name, color } = req.body;
+  try {
+    const stmt = db.prepare('UPDATE company_types SET name = ?, color = ? WHERE id = ?');
+    stmt.run(name, color, id);
+    res.json({ success: true });
+  } catch (error: any) {
+    if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+      res.status(400).json({ error: 'Company type name already exists' });
+    } else {
+      res.status(500).json({ error: 'Failed to update company type' });
     }
   }
 });

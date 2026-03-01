@@ -396,22 +396,24 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
           <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Project Opportunities & Variations</p>
         </div>
         <div className="flex items-center gap-4">
-          <div className="flex bg-[var(--card-bg)] border border-[var(--border)] rounded-lg p-1">
-            {(["All", "Architecture", "Interior", "CS"] as const).map((filter) => (
-              <button
-                key={filter}
-                onClick={() => setViewFilter(filter)}
-                className={cn(
-                  "px-3 py-1.5 text-xs font-medium rounded transition-colors",
-                  viewFilter === filter 
-                    ? "bg-[var(--text-primary)] text-[var(--bg-primary)]" 
-                    : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                )}
-              >
-                {filter === "CS" ? "Supervision" : filter}
-              </button>
-            ))}
-          </div>
+          {!isReportView && (
+            <div className="flex bg-[var(--card-bg)] border border-[var(--border)] rounded-lg p-1">
+              {(["All", "Architecture", "Interior", "CS"] as const).map((filter) => (
+                <button
+                  key={filter}
+                  onClick={() => setViewFilter(filter)}
+                  className={cn(
+                    "px-3 py-1.5 text-xs font-medium rounded transition-colors",
+                    viewFilter === filter 
+                      ? "bg-[var(--text-primary)] text-[var(--bg-primary)]" 
+                      : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                  )}
+                >
+                  {filter === "CS" ? "Supervision" : filter}
+                </button>
+              ))}
+            </div>
+          )}
           {!isReportView && (
             <button 
               onClick={() => {

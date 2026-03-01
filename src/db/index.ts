@@ -108,7 +108,8 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS company_types (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT UNIQUE NOT NULL
+    name TEXT UNIQUE NOT NULL,
+    color TEXT DEFAULT '#000000'
   );
 `);
 
@@ -134,19 +135,26 @@ if (sectorsCount.count === 0) {
 const typesCount = db.prepare('SELECT count(*) as count FROM company_types').get() as { count: number };
 if (typesCount.count === 0) {
   const defaultTypes = [
-    { name: "Client" },
-    { name: "Contractor" },
-    { name: "Consultant" },
-    { name: "Developer" },
-    { name: "Government" }
+    { name: "Client", color: "#3b82f6" },
+    { name: "Contractor", color: "#ef4444" },
+    { name: "Consultant", color: "#10b981" },
+    { name: "Developer", color: "#f59e0b" },
+    { name: "Government", color: "#8b5cf6" }
   ];
-  const insertType = db.prepare('INSERT INTO company_types (name) VALUES (@name)');
+  const insertType = db.prepare('INSERT INTO company_types (name, color) VALUES (@name, @color)');
   defaultTypes.forEach(type => insertType.run(type));
 }
 
 // Migration: Add category column to contacts if it doesn't exist
 try {
   db.exec("ALTER TABLE contacts ADD COLUMN category TEXT");
+} catch (error) {
+  // Column likely already exists, ignore
+}
+
+// Migration: Add color column to company_types if it doesn't exist
+try {
+  db.exec("ALTER TABLE company_types ADD COLUMN color TEXT DEFAULT '#000000'");
 } catch (error) {
   // Column likely already exists, ignore
 }
