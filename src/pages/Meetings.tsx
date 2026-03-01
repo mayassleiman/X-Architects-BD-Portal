@@ -406,7 +406,7 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                   <XAxis dataKey="name" stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <YAxis stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} domain={[0, (dataMax: number) => Math.ceil((dataMax || 1) * 1.2)]} />
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff' }}
                     itemStyle={{ color: '#fff' }}
@@ -463,7 +463,7 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                   <XAxis dataKey="name" stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <YAxis stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} domain={[0, (dataMax: number) => Math.ceil((dataMax || 1) * 1.2)]} />
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff' }}
                     itemStyle={{ color: '#fff' }}
@@ -519,7 +519,7 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                   <XAxis dataKey="name" stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <YAxis stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} domain={[0, (dataMax: number) => Math.ceil((dataMax || 1) * 1.2)]} />
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff' }}
                     itemStyle={{ color: '#fff' }}
