@@ -304,10 +304,34 @@ export function Settings() {
         // Handle special cases
         if (page.id === 'engagements') {
            // Engagements need special handling as they are usually tied to a contact
-           // We'll try to use the contact_id if present
+           
+           // Fetch all contacts first for lookup to ensure we link to the correct contact
+           let contacts: any[] = [];
+           try {
+             const res = await fetch('/api/contacts');
+             contacts = await res.json();
+           } catch (e) {
+             console.error("Failed to fetch contacts for lookup", e);
+           }
+
            for (const item of data) {
-             if (item.contact_id) {
-               await fetch(`/api/contacts/${item.contact_id}/engagements`, {
+             let targetContactId = item.contact_id;
+
+             // If we have contact info in the import, try to find a match by name/org
+             // This fixes issues where IDs might be wrong (e.g. cross-system import)
+             if (item.client_contact && item.client_organization) {
+               const foundContact = contacts.find((c: any) => 
+                 (c.client_contact || "").trim().toLowerCase() === (item.client_contact || "").trim().toLowerCase() && 
+                 (c.client_organization || "").trim().toLowerCase() === (item.client_organization || "").trim().toLowerCase()
+               );
+               
+               if (foundContact) {
+                 targetContactId = foundContact.id;
+               }
+             }
+
+             if (targetContactId) {
+               await fetch(`/api/contacts/${targetContactId}/engagements`, {
                  method: 'POST',
                  headers: { 'Content-Type': 'application/json' },
                  body: JSON.stringify(item)
@@ -463,6 +487,45 @@ export function Settings() {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(contact)
             });
+          }
+        }
+
+        // Fetch all contacts to link Engagements correctly
+        let systemContacts: any[] = [];
+        try {
+          const res = await fetch('/api/contacts');
+          systemContacts = await res.json();
+        } catch (e) {
+          console.error("Failed to fetch contacts for linking", e);
+        }
+
+        // Import Engagements
+        const engagementsSheet = wb.Sheets["Engagements"];
+        if (engagementsSheet) {
+          const engagements = XLSX.utils.sheet_to_json(engagementsSheet);
+          for (const rawItem of engagements) {
+            const item = rawItem as any;
+            let targetContactId = item.contact_id;
+
+            // Try to find contact by name and organization
+            if (item.client_contact && item.client_organization) {
+              const foundContact = systemContacts.find((c: any) => 
+                (c.client_contact || "").trim().toLowerCase() === (item.client_contact || "").trim().toLowerCase() && 
+                (c.client_organization || "").trim().toLowerCase() === (item.client_organization || "").trim().toLowerCase()
+              );
+              
+              if (foundContact) {
+                targetContactId = foundContact.id;
+              }
+            }
+
+            if (targetContactId) {
+              await fetch(`/api/contacts/${targetContactId}/engagements`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(item)
+              });
+            }
           }
         }
 
