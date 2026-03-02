@@ -316,6 +316,7 @@ export function MasterDirectory() {
     const doc = new jsPDF();
     
     // Add Logo
+    let tableStartY = 45;
     try {
       const response = await fetch('/api/logo');
       if (response.ok) {
@@ -328,14 +329,29 @@ export function MasterDirectory() {
 
         const imgProps = doc.getImageProperties(logoBase64);
         const pdfWidth = doc.internal.pageSize.getWidth();
-        const logoWidth = 40; 
-        const logoHeight = (imgProps.height * logoWidth) / imgProps.width;
+        
+        // Constrain logo dimensions
+        let logoWidth = 40; 
+        let logoHeight = (imgProps.height * logoWidth) / imgProps.width;
+        
+        // If logo is too tall, constrain by height instead
+        if (logoHeight > 30) {
+          logoHeight = 30;
+          logoWidth = (imgProps.width * logoHeight) / imgProps.height;
+        }
+
         doc.addImage(logoBase64, 'PNG', pdfWidth - logoWidth - 14, 10, logoWidth, logoHeight);
+        
+        // Ensure table starts below logo with some padding
+        tableStartY = Math.max(tableStartY, 10 + logoHeight + 10);
       }
     } catch (error) {
       console.error("Error adding logo to PDF", error);
     }
     
+    const pdfWidth = doc.internal.pageSize.getWidth();
+    const contentMaxWidth = pdfWidth - 28 - 50; // Subtract margins and logo space
+
     // Title
     doc.setFontSize(18);
     doc.text("Engagement Report", 14, 22);
@@ -352,7 +368,15 @@ export function MasterDirectory() {
       if (globalSearch) filterText += `Search: "${globalSearch}" `;
       if (globalStartDate) filterText += `From: ${globalStartDate} `;
       if (globalEndDate) filterText += `To: ${globalEndDate}`;
-      doc.text(filterText, 14, 34);
+      
+      // Split text to fit if needed
+      const splitText = doc.splitTextToSize(filterText, contentMaxWidth);
+      doc.text(splitText, 14, 34);
+      
+      // Adjust table start if filters take multiple lines
+      if (splitText.length > 1) {
+        tableStartY = Math.max(tableStartY, 34 + (splitText.length * 5) + 5);
+      }
     }
 
     // Table Data
@@ -367,7 +391,7 @@ export function MasterDirectory() {
     autoTable(doc, {
       head: [['Date', 'Contact', 'Organization', 'Discussion']],
       body: tableBody,
-      startY: 40,
+      startY: tableStartY,
       styles: { fontSize: 9, cellPadding: 3 },
       headStyles: { fillColor: [40, 40, 40], textColor: 255, fontStyle: 'bold' },
       columnStyles: {
