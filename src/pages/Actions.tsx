@@ -29,6 +29,8 @@ export function Actions({ isReportView = false }: { isReportView?: boolean }) {
 
   // Filter state
   const [statusFilter, setStatusFilter] = React.useState<string[]>([]);
+  const [startDateFilter, setStartDateFilter] = React.useState<string>("");
+  const [endDateFilter, setEndDateFilter] = React.useState<string>("");
 
   const fetchActions = () => {
     fetch('/api/actions')
@@ -47,8 +49,10 @@ export function Actions({ isReportView = false }: { isReportView?: boolean }) {
       (action.description && action.description.toLowerCase().includes(searchQuery.toLowerCase()));
     
     const matchesStatus = statusFilter.length === 0 || statusFilter.includes(action.status);
+    const matchesStartDate = startDateFilter ? action.due_date >= startDateFilter : true;
+    const matchesEndDate = endDateFilter ? action.due_date <= endDateFilter : true;
 
-    return matchesSearch && matchesStatus;
+    return matchesSearch && matchesStatus && matchesStartDate && matchesEndDate;
   });
 
   const toggleStatus = (status: string) => {
@@ -72,6 +76,15 @@ export function Actions({ isReportView = false }: { isReportView?: boolean }) {
     const dateStr = new Date().toLocaleDateString();
     doc.text(`Generated on: ${dateStr}`, 14, 30);
 
+    // Filters info
+    if (statusFilter.length > 0 || startDateFilter || endDateFilter) {
+      let filterText = "Filters: ";
+      if (statusFilter.length > 0) filterText += `Status: ${statusFilter.join(', ')} `;
+      if (startDateFilter) filterText += `From: ${startDateFilter} `;
+      if (endDateFilter) filterText += `To: ${endDateFilter}`;
+      doc.text(filterText, 14, 36);
+    }
+
     // Define columns
     const tableColumn = ["Task", "Description", "Responsible", "Status", "Due Date"];
     const tableRows = filteredActions.map(action => [
@@ -85,7 +98,7 @@ export function Actions({ isReportView = false }: { isReportView?: boolean }) {
     autoTable(doc, {
       head: [tableColumn],
       body: tableRows,
-      startY: 35,
+      startY: (statusFilter.length > 0 || startDateFilter || endDateFilter) ? 42 : 35,
       theme: 'grid',
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [41, 128, 185], textColor: 255 },
@@ -202,9 +215,30 @@ export function Actions({ isReportView = false }: { isReportView?: boolean }) {
             </div>
           </div>
           
-          {statusFilter.length > 0 && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono uppercase text-[var(--text-secondary)]">Due Date:</span>
+            <input 
+              type="date" 
+              className="bg-[var(--bg-tertiary)] border border-[var(--border)] px-2 py-1 text-xs rounded focus:outline-none focus:border-[var(--text-primary)] text-[var(--text-primary)]"
+              value={startDateFilter}
+              onChange={(e) => setStartDateFilter(e.target.value)}
+            />
+            <span className="text-[var(--text-secondary)]">-</span>
+            <input 
+              type="date" 
+              className="bg-[var(--bg-tertiary)] border border-[var(--border)] px-2 py-1 text-xs rounded focus:outline-none focus:border-[var(--text-primary)] text-[var(--text-primary)]"
+              value={endDateFilter}
+              onChange={(e) => setEndDateFilter(e.target.value)}
+            />
+          </div>
+
+          {(statusFilter.length > 0 || startDateFilter || endDateFilter) && (
             <button
-              onClick={() => setStatusFilter([])}
+              onClick={() => {
+                setStatusFilter([]);
+                setStartDateFilter("");
+                setEndDateFilter("");
+              }}
               className="ml-auto p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
               title="Clear filters"
             >
