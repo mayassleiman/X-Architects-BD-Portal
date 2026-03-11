@@ -20,10 +20,11 @@ interface PipelineItem {
     cs?: number;
     vo?: number; // For VO type
   };
-  status: "Pending" | "Submitted" | "Won" | "Lost";
+  status: "Pending" | "Submitted" | "Won" | "Lost" | "Achieved" | "Approved";
   submissionDate?: string;
   probability?: "High" | "Medium" | "Low";
   rfpNumber?: string;
+  achievedDate?: string;
 }
 
 interface MarketSector {
@@ -115,7 +116,8 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
       status: newItem.status as any || "Pending",
       submissionDate: newItem.submissionDate,
       probability: newItem.probability,
-      rfpNumber: newItem.rfpNumber
+      rfpNumber: newItem.rfpNumber,
+      achievedDate: newItem.achievedDate
     };
 
     try {

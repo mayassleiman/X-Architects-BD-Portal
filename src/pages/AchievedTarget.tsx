@@ -133,7 +133,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
     
     const quarters = [1, 2, 3, 4].map(q => {
       const quarterItems = data.items.filter(item => {
-        const dateStr = item.achieved_date || item.submission_date;
+        const dateStr = item.achievedDate || item.submissionDate;
         if (!dateStr) return false;
         const date = new Date(dateStr);
         if (isNaN(date.getTime())) return false;
@@ -142,7 +142,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
       });
 
       const achieved = quarterItems.reduce((acc, item) => {
-        const vals = item.item_values || {};
+        const vals = item.values || {};
         const total = (Number(vals.architecture) || 0) + (Number(vals.interior) || 0) + (Number(vals.cs) || 0) + (Number(vals.vo) || 0);
         return acc + total;
       }, 0);
@@ -171,13 +171,13 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
     // Sector Breakdown
     const sectorMap: Record<string, number> = {};
     data.items.forEach(item => {
-      const dateStr = item.achieved_date || item.submission_date;
+      const dateStr = item.achievedDate || item.submissionDate;
       if (!dateStr) return; 
 
       const date = new Date(dateStr);
       if (isNaN(date.getTime())) return;
 
-      const vals = item.item_values || {};
+      const vals = item.values || {};
       const total = (Number(vals.architecture) || 0) + (Number(vals.interior) || 0) + (Number(vals.cs) || 0) + (Number(vals.vo) || 0);
       sectorMap[item.sector] = (sectorMap[item.sector] || 0) + total;
     });
@@ -198,13 +198,13 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
     };
     
     data.items.forEach(item => {
-      const dateStr = item.achieved_date || item.submission_date;
+      const dateStr = item.achievedDate || item.submissionDate;
       if (!dateStr) return;
 
       const date = new Date(dateStr);
       if (isNaN(date.getTime())) return;
 
-      const vals = item.item_values || {};
+      const vals = item.values || {};
       disciplineMap["Architecture"] += (Number(vals.architecture) || 0);
       disciplineMap["Interior"] += (Number(vals.interior) || 0);
       disciplineMap["Construction Supervision"] += (Number(vals.cs) || 0);
@@ -220,16 +220,16 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
 
     // Cumulative Chart Data
     const sortedItems = [...data.items].sort((a, b) => {
-      const dateA = new Date(a.achieved_date || a.submission_date).getTime();
-      const dateB = new Date(b.achieved_date || b.submission_date).getTime();
+      const dateA = new Date(a.achievedDate || a.submissionDate).getTime();
+      const dateB = new Date(b.achievedDate || b.submissionDate).getTime();
       return dateA - dateB;
     });
 
     let cumulativeValue = 0;
     const chartData = sortedItems.map(item => {
-      const dateStr = item.achieved_date || item.submission_date;
+      const dateStr = item.achievedDate || item.submissionDate;
       const date = new Date(dateStr);
-      const vals = item.item_values || {};
+      const vals = item.values || {};
       const total = (Number(vals.architecture) || 0) + (Number(vals.interior) || 0) + (Number(vals.cs) || 0) + (Number(vals.vo) || 0);
       cumulativeValue += total;
       
@@ -361,12 +361,12 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
         detailsBody.push([{ content: `${q.quarter} Summary`, colSpan: 5, styles: { fillColor: [240, 240, 240], fontStyle: 'bold' } }]);
         
         q.items.forEach(item => {
-          const vals = item.item_values || {};
+          const vals = item.values || {};
           const totalValue = (Number(vals.architecture) || 0) + (Number(vals.interior) || 0) + (Number(vals.cs) || 0) + (Number(vals.vo) || 0);
           detailsBody.push([
             item.rfpNumber || "No #",
             item.name,
-            new Date(item.achieved_date || item.submission_date).toLocaleDateString(),
+            new Date(item.achievedDate || item.submissionDate).toLocaleDateString(),
             item.type === "RFP" ? "Project" : item.type,
             totalValue.toLocaleString()
           ]);
@@ -559,7 +559,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
                   
                   {/* Items Rows */}
                   {expandedQuarters.includes(q.quarterNum) && q.items.map(item => {
-                    const vals = item.item_values || {};
+                    const vals = item.values || {};
                     const totalValue = (Number(vals.architecture) || 0) + (Number(vals.interior) || 0) + (Number(vals.cs) || 0) + (Number(vals.vo) || 0);
                     
                     return (
@@ -629,7 +629,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
                           </div>
                         </td>
                         <td className="px-4 py-2 text-center font-mono text-xs text-[var(--text-secondary)]">
-                          {new Date(item.achieved_date || item.submission_date).toLocaleDateString()}
+                          {new Date(item.achievedDate || item.submissionDate).toLocaleDateString()}
                         </td>
                         <td className="px-4 py-2 text-right text-[var(--text-tertiary)]">-</td>
                         <td className="px-4 py-2 text-right font-mono text-[var(--text-primary)]">{totalValue.toLocaleString()}</td>

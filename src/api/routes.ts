@@ -482,19 +482,31 @@ router.get('/achieved-targets', (req, res) => {
   const yearlyTarget = target ? target.amount : 0;
 
   // Get Won/Approved Items for the year
-  // Use achieved_date if available, otherwise submission_date
+  // Use achieved_date if available (and not empty), otherwise submission_date
   const itemsStmt = db.prepare(`
     SELECT * FROM pipeline_items 
     WHERE (status = 'Achieved' OR status = 'Approved') 
-    AND strftime('%Y', COALESCE(achieved_date, submission_date)) = ?
+    AND strftime('%Y', CASE WHEN achieved_date IS NULL OR achieved_date = '' THEN submission_date ELSE achieved_date END) = ?
   `);
   const items = itemsStmt.all(String(currentYear));
 
-  const parsedItems = items.map((i: any) => ({
-    ...i,
-    item_values: i.item_values ? JSON.parse(i.item_values) : {},
-    achieved_date: i.achieved_date
-  }));
+  const parsedItems = items.map((i: any) => {
+    const parsedDisciplines = i.disciplines ? JSON.parse(i.disciplines) : [];
+    return {
+      id: String(i.id),
+      name: i.name,
+      client: i.client,
+      type: i.type,
+      sector: i.sector,
+      disciplines: Array.isArray(parsedDisciplines) ? parsedDisciplines : [],
+      values: i.item_values ? JSON.parse(i.item_values) : {},
+      status: i.status,
+      submissionDate: i.submission_date,
+      probability: i.probability,
+      rfpNumber: i.rfp_number,
+      achievedDate: i.achieved_date
+    };
+  });
 
   res.json({
     year: currentYear,
