@@ -91,8 +91,13 @@ export function Dashboard() {
       .then(data => {
         if (data) {
           const achieved = data.items.reduce((acc: number, item: any) => {
-            const vals = item.item_values || {};
-            const total = (vals.architecture || 0) + (vals.interior || 0) + (vals.cs || 0) + (vals.vo || 0);
+            const dateStr = item.achievedDate || item.submissionDate;
+            if (!dateStr) return acc;
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) return acc;
+
+            const vals = item.values || {};
+            const total = (Number(vals.architecture) || 0) + (Number(vals.interior) || 0) + (Number(vals.cs) || 0) + (Number(vals.vo) || 0);
             return acc + total;
           }, 0);
           setTargetData({ target: data.target, achieved });
