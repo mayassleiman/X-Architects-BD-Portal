@@ -485,6 +485,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
                   tickLine={false}
                 />
                 <YAxis 
+                  domain={[0, (dataMax: number) => Math.max(dataMax, data.target) * 1.1]}
                   tick={{ fill: '#888', fontSize: 12 }} 
                   axisLine={false}
                   tickLine={false}
