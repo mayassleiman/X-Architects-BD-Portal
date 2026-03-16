@@ -17,7 +17,7 @@ interface Registration {
   last_week_follow_up: string;
 }
 
-export function Registrations({ isReportView = false }: { isReportView?: boolean }) {
+export function Registrations({ isReportView = false, currentDateOnly = false }: { isReportView?: boolean, currentDateOnly?: boolean }) {
   const { searchQuery } = useSearch();
   const [registrations, setRegistrations] = React.useState<Registration[]>([]);
   const [viewMode, setViewMode] = React.useState<'grid' | 'list'>('list');
@@ -56,12 +56,18 @@ export function Registrations({ isReportView = false }: { isReportView?: boolean
     const matchesStatus = selectedStatuses.length === 0 || selectedStatuses.includes(reg.status);
     const matchesStartDate = startDateFilter ? reg.registration_date >= startDateFilter : true;
     const matchesEndDate = endDateFilter ? reg.registration_date <= endDateFilter : true;
+    
+    const today = new Date().toISOString().split('T')[0];
+    const matchesCurrentDate = currentDateOnly ? reg.registration_date === today : true;
 
     if (isReportView) {
+      if (currentDateOnly) {
+        return matchesSearch && matchesStatus && matchesStartDate && matchesEndDate && matchesCurrentDate;
+      }
       return matchesSearch && matchesStatus && matchesStartDate && matchesEndDate && (reg.last_week_follow_up && reg.last_week_follow_up.trim() !== "");
     }
     
-    return matchesSearch && matchesStatus && matchesStartDate && matchesEndDate;
+    return matchesSearch && matchesStatus && matchesStartDate && matchesEndDate && matchesCurrentDate;
   });
 
   const toggleStatus = (status: string) => {
@@ -182,12 +188,12 @@ export function Registrations({ isReportView = false }: { isReportView?: boolean
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-4xl font-light tracking-tight text-[var(--text-primary)] mb-2">REGISTRATIONS</h1>
-          <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Reg Status & Follow-Ups</p>
-        </div>
-        {!isReportView && (
+      {!isReportView && (
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-light tracking-tight text-[var(--text-primary)] mb-2">REGISTRATIONS</h1>
+            <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Reg Status & Follow-Ups</p>
+          </div>
           <div className="flex items-center gap-4">
             <div className="flex bg-[var(--card-bg)] border border-[var(--border)] rounded-lg p-1">
               <button 
@@ -229,8 +235,8 @@ export function Registrations({ isReportView = false }: { isReportView?: boolean
               <Plus size={16} /> New Registration
             </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {!isReportView && (
         <div className="flex flex-wrap gap-4 items-center pl-1">

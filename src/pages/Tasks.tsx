@@ -89,12 +89,12 @@ export function Tasks({ isReportView = false }: { isReportView?: boolean }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-4xl font-light tracking-tight text-[var(--text-primary)] mb-2">TASK MANAGEMENT</h1>
-          <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Business Development Pipeline</p>
-        </div>
-        {!isReportView && (
+      {!isReportView && (
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-light tracking-tight text-[var(--text-primary)] mb-2">TASK MANAGEMENT</h1>
+            <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Business Development Pipeline</p>
+          </div>
           <button 
             onClick={() => {
               setFormData({ title: "", level: 1, status: "Pending", description: "" });
@@ -104,8 +104,8 @@ export function Tasks({ isReportView = false }: { isReportView?: boolean }) {
           >
             <Plus size={16} /> New Task
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       <div className={cn(
         "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6",

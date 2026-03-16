@@ -6,6 +6,7 @@ import { AchievedTarget } from "./AchievedTarget";
 import { RecentEngagements } from "./RecentEngagements";
 import { Pipeline } from "./Pipeline";
 import { Tasks } from "./Tasks";
+import { Registrations } from "./Registrations";
 import { Logo } from "../components/ui/Logo";
 
 export function FullReport() {
@@ -44,16 +45,17 @@ export function FullReport() {
       </div>
 
       {/* Cover Page for Print */}
-      <div className="hidden print:flex flex-col items-center justify-center h-screen w-full break-after-page">
+      <div className="hidden print:flex flex-col items-center justify-center min-h-[85vh] pt-20 w-full break-after-page">
         <div className="mb-16">
-          <Logo showText={false} className="scale-[4]" />
+          <Logo showText={false} className="[&>img]:!h-48 [&>img]:!max-w-[600px]" />
         </div>
         <h1 className="text-5xl font-light tracking-tight text-[var(--text-primary)] mb-4 uppercase text-center mt-12">
           KSA Business Development<br/>Weekly Action Sheet {new Date().getFullYear()}
         </h1>
         <p className="text-[var(--text-secondary)] font-medium text-2xl mt-8">{currentDate}</p>
-        <div className="mt-auto pb-12 text-[var(--text-tertiary)] font-mono text-sm uppercase tracking-widest">
-          Confidential Internal Report
+        <div className="mt-auto pb-12 text-[var(--text-tertiary)] font-mono text-sm uppercase tracking-widest flex flex-col items-center gap-4">
+          <span>Confidential Internal Report</span>
+          <span className="text-[10px] opacity-70">Created by Mayas Sleiman - KSA Projects Director</span>
         </div>
       </div>
 
@@ -71,8 +73,8 @@ export function FullReport() {
                   </h1>
                   <p className="text-[var(--text-primary)] font-medium text-lg">{currentDate}</p>
                 </div>
-                <div className="hidden print:block md:block">
-                   <Logo showText={false} className="scale-125 print:scale-[2.5] print:origin-right" />
+                <div className="hidden print:flex md:flex justify-end">
+                   <Logo showText={false} className="scale-125 print:scale-100 [&>img]:print:!h-20 [&>img]:print:!max-w-[300px]" />
                 </div>
               </div>
             </td>
@@ -141,6 +143,18 @@ export function FullReport() {
           </tr>
           <tr>
             <td className="pb-8">
+              {/* Registrations Section */}
+              <section className="break-inside-avoid">
+                <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
+                  <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">TODAY'S REGISTRATIONS</h2>
+                  <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Status Overview</p>
+                </div>
+                <Registrations isReportView={true} currentDateOnly={true} />
+              </section>
+            </td>
+          </tr>
+          <tr>
+            <td className="pb-8">
               {/* Recent Engagements Section */}
               <section className="break-inside-avoid">
                 <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
@@ -155,9 +169,14 @@ export function FullReport() {
         <tfoot className="print:table-footer-group hidden">
           <tr>
             <td>
-              <div className="mt-12 pt-6 border-t border-[var(--border)] flex justify-between items-center text-[var(--text-secondary)] text-xs font-mono uppercase tracking-wider">
-                <span>Confidential Internal Report</span>
-                <span>{currentDate}</span>
+              <div className="mt-12 pt-6 border-t border-[var(--border)] flex flex-col gap-2 text-[var(--text-secondary)] text-xs font-mono uppercase tracking-wider">
+                <div className="flex justify-between items-center">
+                  <span>Confidential Internal Report</span>
+                  <span>{currentDate}</span>
+                </div>
+                <div className="text-center mt-2 text-[10px] text-[var(--text-tertiary)] opacity-70">
+                  Created by Mayas Sleiman - KSA Projects Director
+                </div>
               </div>
             </td>
           </tr>
@@ -166,9 +185,14 @@ export function FullReport() {
       
       {/* Screen-only Footer (since tfoot is hidden by default and only shown in print via print:table-footer-group if supported, or we can just show it always) */}
       {/* Actually, let's make tfoot visible on screen too but styled appropriately */}
-      <div className="print:hidden mt-12 pt-6 border-t border-[var(--border)] flex justify-between items-center text-[var(--text-secondary)] text-xs font-mono uppercase tracking-wider">
-        <span>Confidential Internal Report</span>
-        <span>{currentDate}</span>
+      <div className="print:hidden mt-12 pt-6 border-t border-[var(--border)] flex flex-col gap-2 text-[var(--text-secondary)] text-xs font-mono uppercase tracking-wider">
+        <div className="flex justify-between items-center">
+          <span>Confidential Internal Report</span>
+          <span>{currentDate}</span>
+        </div>
+        <div className="text-center mt-2 text-[10px] text-[var(--text-tertiary)] opacity-70">
+          Created by Mayas Sleiman - KSA Projects Director
+        </div>
       </div>
     </div>
   );
