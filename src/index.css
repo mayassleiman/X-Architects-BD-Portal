@@ -117,6 +117,12 @@ body {
   }
   .break-inside-avoid {
     break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  
+  table, tr, td, th, tbody, thead, tfoot, .recharts-wrapper {
+    page-break-inside: avoid;
+    break-inside: avoid;
   }
 }
 

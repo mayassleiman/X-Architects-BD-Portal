@@ -43,19 +43,36 @@ export function FullReport() {
         </button>
       </div>
 
+      {/* Cover Page for Print */}
+      <div className="hidden print:flex flex-col items-center justify-center h-screen w-full break-after-page">
+        <div className="mb-16">
+          <Logo showText={false} className="scale-[4]" />
+        </div>
+        <h1 className="text-5xl font-light tracking-tight text-[var(--text-primary)] mb-4 uppercase text-center mt-12">
+          KSA Business Development<br/>Weekly Action Sheet {new Date().getFullYear()}
+        </h1>
+        <p className="text-[var(--text-secondary)] font-medium text-2xl mt-8">{currentDate}</p>
+        <div className="mt-auto pb-12 text-[var(--text-tertiary)] font-mono text-sm uppercase tracking-widest">
+          Confidential Internal Report
+        </div>
+      </div>
+
       <table className="w-full">
         <thead className="print:table-header-group">
           <tr>
             <td>
               <div className="border-b border-[var(--border)] pb-8 mb-8 print:border-none print:pb-4 print:mb-4 flex justify-between items-start">
                 <div>
-                  <h1 className="text-4xl font-light tracking-tight text-[var(--text-primary)] mb-2 uppercase">
+                  <h1 className="text-4xl font-light tracking-tight text-[var(--text-primary)] mb-2 uppercase print:hidden">
                     KSA Business Development Weekly Action Sheet {new Date().getFullYear()}
+                  </h1>
+                  <h1 className="hidden print:block text-2xl font-light tracking-tight text-[var(--text-primary)] mb-2 uppercase">
+                    Weekly Action Sheet
                   </h1>
                   <p className="text-[var(--text-primary)] font-medium text-lg">{currentDate}</p>
                 </div>
                 <div className="hidden print:block md:block">
-                   <Logo showText={false} className="scale-125" />
+                   <Logo showText={false} className="scale-125 print:scale-[2.5] print:origin-right" />
                 </div>
               </div>
             </td>
