@@ -35,6 +35,8 @@ export function Registrations({ isReportView = false }: { isReportView?: boolean
   });
 
   const [selectedStatuses, setSelectedStatuses] = React.useState<string[]>([]);
+  const [startDateFilter, setStartDateFilter] = React.useState<string>("");
+  const [endDateFilter, setEndDateFilter] = React.useState<string>("");
 
   const fetchRegistrations = () => {
     fetch('/api/registrations')
@@ -52,12 +54,14 @@ export function Registrations({ isReportView = false }: { isReportView?: boolean
       (reg.contact_name && reg.contact_name.toLowerCase().includes(searchQuery.toLowerCase()));
     
     const matchesStatus = selectedStatuses.length === 0 || selectedStatuses.includes(reg.status);
+    const matchesStartDate = startDateFilter ? reg.registration_date >= startDateFilter : true;
+    const matchesEndDate = endDateFilter ? reg.registration_date <= endDateFilter : true;
 
     if (isReportView) {
-      return matchesSearch && matchesStatus && (reg.last_week_follow_up && reg.last_week_follow_up.trim() !== "");
+      return matchesSearch && matchesStatus && matchesStartDate && matchesEndDate && (reg.last_week_follow_up && reg.last_week_follow_up.trim() !== "");
     }
     
-    return matchesSearch && matchesStatus;
+    return matchesSearch && matchesStatus && matchesStartDate && matchesEndDate;
   });
 
   const toggleStatus = (status: string) => {
@@ -81,6 +85,15 @@ export function Registrations({ isReportView = false }: { isReportView?: boolean
     const dateStr = new Date().toLocaleDateString();
     doc.text(`Generated on: ${dateStr}`, 14, 30);
 
+    // Filters info
+    if (selectedStatuses.length > 0 || startDateFilter || endDateFilter) {
+      let filterText = "Filters: ";
+      if (selectedStatuses.length > 0) filterText += `Status: ${selectedStatuses.join(', ')} `;
+      if (startDateFilter) filterText += `From: ${startDateFilter} `;
+      if (endDateFilter) filterText += `To: ${endDateFilter}`;
+      doc.text(filterText, 14, 36);
+    }
+
     // Define columns
     const tableColumn = ["Client", "Contact", "Reg. Date", "Status", "Follow Up Date", "Notes"];
     const tableRows = filteredRegistrations.map(reg => [
@@ -95,7 +108,7 @@ export function Registrations({ isReportView = false }: { isReportView?: boolean
     autoTable(doc, {
       head: [tableColumn],
       body: tableRows,
-      startY: 35,
+      startY: (selectedStatuses.length > 0 || startDateFilter || endDateFilter) ? 42 : 35,
       theme: 'grid',
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [41, 128, 185], textColor: 255 },
@@ -241,9 +254,30 @@ export function Registrations({ isReportView = false }: { isReportView?: boolean
             </div>
           </div>
           
-          {selectedStatuses.length > 0 && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono uppercase text-[var(--text-secondary)]">Reg Date:</span>
+            <input 
+              type="date" 
+              className="bg-[var(--bg-tertiary)] border border-[var(--border)] px-2 py-1 text-xs rounded focus:outline-none focus:border-[var(--text-primary)] text-[var(--text-primary)]"
+              value={startDateFilter}
+              onChange={(e) => setStartDateFilter(e.target.value)}
+            />
+            <span className="text-[var(--text-secondary)]">-</span>
+            <input 
+              type="date" 
+              className="bg-[var(--bg-tertiary)] border border-[var(--border)] px-2 py-1 text-xs rounded focus:outline-none focus:border-[var(--text-primary)] text-[var(--text-primary)]"
+              value={endDateFilter}
+              onChange={(e) => setEndDateFilter(e.target.value)}
+            />
+          </div>
+          
+          {(selectedStatuses.length > 0 || startDateFilter || endDateFilter) && (
             <button 
-              onClick={() => setSelectedStatuses([])}
+              onClick={() => {
+                setSelectedStatuses([]);
+                setStartDateFilter("");
+                setEndDateFilter("");
+              }}
               className="ml-auto p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
               title="Clear filters"
             >
