@@ -379,7 +379,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
             <Droppable droppableId={sector} key={sector} isDropDisabled={sortBy !== "manual" && sortBy !== undefined}>
               {(provided) => (
                 <div 
-                  className="space-y-3"
+                  className="space-y-3 p-3 -mx-3 rounded-xl transition-all duration-300 hover:bg-[var(--bg-tertiary)]"
                   ref={provided.innerRef}
                   {...provided.droppableProps}
                 >
@@ -400,8 +400,8 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                             {...provided.draggableProps}
                             {...provided.dragHandleProps}
                             className={cn(
-                              "bg-[var(--card-bg-inner)] border border-[var(--border)] p-3 hover:border-[var(--border-hover)] transition-colors group relative pl-4 overflow-hidden",
-                              snapshot.isDragging && "shadow-lg border-[var(--text-primary)] z-50"
+                              "bg-[var(--card-bg-inner)] border border-[var(--border)] p-3 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:border-[var(--text-secondary)] group relative pl-4 overflow-hidden",
+                              snapshot.isDragging && "shadow-lg border-[var(--text-primary)] z-50 scale-[1.02]"
                             )}
                           >
                             <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: sectorColor }} />
@@ -409,13 +409,13 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                               <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button 
                                   onClick={() => handleEdit(item)}
-                                  className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1"
+                                  className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1.5 bg-[var(--bg-primary)] rounded-md shadow-sm border border-[var(--border)] hover:scale-110 transition-all duration-200"
                                 >
                                   <Edit2 size={14} />
                                 </button>
                                 <button 
                                   onClick={() => handleDelete(item.id)}
-                                  className="text-[var(--text-secondary)] hover:text-red-400 p-1"
+                                  className="text-[var(--text-secondary)] hover:text-red-400 p-1.5 bg-[var(--bg-primary)] rounded-md shadow-sm border border-[var(--border)] hover:scale-110 transition-all duration-200"
                                 >
                                   <Trash2 size={14} />
                                 </button>
@@ -525,25 +525,25 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
           {!isReportView && (
             <div className="flex items-center gap-3">
               {availableRegions.length > 0 && (
-                <div className="flex items-center gap-2 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 relative group">
+                <div className="flex items-center gap-2 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 relative group transition-all duration-300 hover:border-[var(--text-secondary)] hover:shadow-sm cursor-pointer">
                   <span className="text-xs font-mono uppercase text-[var(--text-secondary)]">Region:</span>
-                  <div className="text-xs font-medium text-[var(--text-primary)] cursor-pointer flex items-center gap-1">
+                  <div className="text-xs font-medium text-[var(--text-primary)] flex items-center gap-1">
                     {selectedRegions.length === 0 ? "All" : `${selectedRegions.length} Selected`}
                   </div>
-                  <div className="absolute top-full right-0 mt-2 w-48 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 p-2">
+                  <div className="absolute top-full right-0 mt-2 w-48 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 translate-y-2 group-hover:translate-y-0 z-50 p-2">
                     <div className="space-y-1 max-h-48 overflow-y-auto">
-                      <label className="flex items-center gap-2 p-1.5 hover:bg-[var(--bg-tertiary)] rounded cursor-pointer">
+                      <label className="flex items-center gap-2 p-1.5 hover:bg-[var(--bg-tertiary)] rounded cursor-pointer transition-colors">
                         <input 
                           type="checkbox" 
                           checked={selectedRegions.length === 0}
                           onChange={() => setSelectedRegions([])}
-                          className="rounded border-[var(--border)] text-[var(--text-primary)] focus:ring-0"
+                          className="rounded border-[var(--border)] text-[var(--text-primary)] focus:ring-0 transition-all"
                         />
                         <span className="text-xs text-[var(--text-primary)]">All Regions</span>
                       </label>
                       <div className="h-px bg-[var(--border)] my-1" />
                       {availableRegions.map(region => (
-                        <label key={region} className="flex items-center gap-2 p-1.5 hover:bg-[var(--bg-tertiary)] rounded cursor-pointer">
+                        <label key={region} className="flex items-center gap-2 p-1.5 hover:bg-[var(--bg-tertiary)] rounded cursor-pointer transition-colors">
                           <input 
                             type="checkbox" 
                             checked={selectedRegions.includes(region)}
@@ -554,7 +554,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                                 setSelectedRegions(selectedRegions.filter(r => r !== region));
                               }
                             }}
-                            className="rounded border-[var(--border)] text-[var(--text-primary)] focus:ring-0"
+                            className="rounded border-[var(--border)] text-[var(--text-primary)] focus:ring-0 transition-all"
                           />
                           <span className="text-xs text-[var(--text-primary)]">{region}</span>
                         </label>
@@ -563,7 +563,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                   </div>
                 </div>
               )}
-              <div className="flex items-center gap-2 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg px-3 py-1.5">
+              <div className="flex items-center gap-2 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 transition-all duration-300 hover:border-[var(--text-secondary)] hover:shadow-sm">
                 <span className="text-xs font-mono uppercase text-[var(--text-secondary)]">Sort:</span>
                 <select 
                   value={sortBy} 
@@ -582,10 +582,10 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                     key={filter}
                     onClick={() => setViewFilter(filter)}
                     className={cn(
-                      "px-3 py-1.5 text-xs font-medium rounded transition-colors",
+                      "px-3 py-1.5 text-xs font-medium rounded transition-all duration-300 hover:scale-105 active:scale-95",
                       viewFilter === filter 
-                        ? "bg-[var(--text-primary)] text-[var(--bg-primary)]" 
-                        : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                        ? "bg-[var(--text-primary)] text-[var(--bg-primary)] shadow-sm" 
+                        : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]"
                     )}
                   >
                     {filter === "CS" ? "Supervision" : filter}
@@ -601,7 +601,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                 setNewItem({ type: "RFP", sector: sectors[0]?.name || "", disciplines: [], values: {}, status: "Pending" });
                 setIsModalOpen(true);
               }}
-              className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-all duration-300 hover:scale-105 active:scale-95 shadow-sm hover:shadow-md"
             >
               <Plus size={16} />
               Add Entry
@@ -612,28 +612,28 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6">
+        <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[var(--text-secondary)] group cursor-default">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xs font-mono uppercase text-[var(--text-secondary)]">Total Pipeline Value ({viewFilter})</h3>
-            <DollarSign size={20} className="text-emerald-400" />
+            <h3 className="text-xs font-mono uppercase text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors">Total Pipeline Value ({viewFilter})</h3>
+            <DollarSign size={20} className="text-emerald-400 group-hover:scale-110 transition-transform duration-300" />
           </div>
           <p className="text-3xl font-medium text-[var(--text-primary)]">
             {metrics.totalPipeline.toLocaleString()} <span className="text-sm text-[var(--text-secondary)]">SAR</span>
           </p>
         </div>
-        <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6">
+        <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[var(--text-secondary)] group cursor-default">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xs font-mono uppercase text-[var(--text-secondary)]">RFP Value ({viewFilter})</h3>
-            <Briefcase size={20} className="text-blue-400" />
+            <h3 className="text-xs font-mono uppercase text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors">RFP Value ({viewFilter})</h3>
+            <Briefcase size={20} className="text-blue-400 group-hover:scale-110 transition-transform duration-300" />
           </div>
           <p className="text-3xl font-medium text-[var(--text-primary)]">
             {metrics.totalRFP.toLocaleString()} <span className="text-sm text-[var(--text-secondary)]">SAR</span>
           </p>
         </div>
-        <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6">
+        <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[var(--text-secondary)] group cursor-default">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xs font-mono uppercase text-[var(--text-secondary)]">VO Value</h3>
-            <Layers size={20} className="text-amber-400" />
+            <h3 className="text-xs font-mono uppercase text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors">VO Value</h3>
+            <Layers size={20} className="text-amber-400 group-hover:scale-110 transition-transform duration-300" />
           </div>
           <p className="text-3xl font-medium text-[var(--text-primary)]">
             {metrics.totalVO.toLocaleString()} <span className="text-sm text-[var(--text-secondary)]">SAR</span>
@@ -643,9 +643,9 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Sector Breakdown Chart */}
-        <div className="lg:col-span-1 bg-[var(--card-bg)] border border-[var(--border)] p-6">
-          <h3 className="text-sm font-medium text-[var(--text-primary)] mb-6 flex items-center gap-2">
-            <PieChart size={16} />
+        <div className="lg:col-span-1 bg-[var(--card-bg)] border border-[var(--border)] p-6 transition-all duration-300 hover:border-[var(--text-secondary)] hover:shadow-lg group">
+          <h3 className="text-sm font-medium text-[var(--text-primary)] mb-6 flex items-center gap-2 group-hover:text-emerald-400 transition-colors">
+            <PieChart size={16} className="group-hover:rotate-12 transition-transform" />
             Sector Distribution ({viewFilter})
           </h3>
           <div className="h-64 w-full">
@@ -659,9 +659,10 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                   outerRadius={80}
                   paddingAngle={5}
                   dataKey="value"
+                  className="transition-all duration-300"
                 >
                   {metrics.sectorData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
+                    <Cell key={`cell-${index}`} fill={entry.color} stroke="none" className="hover:opacity-80 transition-opacity cursor-pointer" />
                   ))}
                 </Pie>
                 <Tooltip 
@@ -675,7 +676,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
           </div>
           <div className="mt-6 space-y-3">
             {metrics.sectorData.map((sector, index) => (
-              <div key={sector.name} className="flex items-center justify-between text-xs">
+              <div key={sector.name} className="flex items-center justify-between text-xs hover:bg-[var(--bg-tertiary)] p-1.5 -mx-1.5 rounded transition-colors cursor-default">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sector.color }} />
                   <span className="text-[var(--text-secondary)]">{sector.name}</span>
@@ -692,9 +693,9 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
         </div>
 
         {/* Discipline Breakdown Chart */}
-        <div className="lg:col-span-1 bg-[var(--card-bg)] border border-[var(--border)] p-6">
-          <h3 className="text-sm font-medium text-[var(--text-primary)] mb-6 flex items-center gap-2">
-            <PieChart size={16} />
+        <div className="lg:col-span-1 bg-[var(--card-bg)] border border-[var(--border)] p-6 transition-all duration-300 hover:border-[var(--text-secondary)] hover:shadow-lg group">
+          <h3 className="text-sm font-medium text-[var(--text-primary)] mb-6 flex items-center gap-2 group-hover:text-blue-400 transition-colors">
+            <PieChart size={16} className="group-hover:rotate-12 transition-transform" />
             Revenue by Discipline
           </h3>
           <div className="space-y-6">
@@ -704,7 +705,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                 : 0;
               
               return (
-                <div key={d.name}>
+                <div key={d.name} className="hover:bg-[var(--bg-tertiary)] p-2 -mx-2 rounded transition-colors cursor-default">
                   <div className="flex justify-between text-xs mb-2">
                     <span className="text-[var(--text-secondary)] font-medium">{d.name}</span>
                     <span className="text-[var(--text-primary)] font-mono">{percentage.toFixed(1)}%</span>
@@ -722,7 +723,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
               );
             })}
             
-            <div className="pt-4 border-t border-[var(--border)] flex justify-between items-center">
+            <div className="pt-4 border-t border-[var(--border)] flex justify-between items-center hover:bg-[var(--bg-tertiary)] p-2 -mx-2 rounded transition-colors cursor-default">
               <span className="text-xs text-[var(--text-secondary)]">Total Revenue</span>
               <span className="text-xs font-mono text-[var(--text-primary)]">{metrics.absoluteTotalPipeline.toLocaleString()} SAR</span>
             </div>
@@ -753,7 +754,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                 <button
                   onClick={() => setActiveTab("RFP")}
                   className={cn(
-                    "px-6 py-3 text-sm font-medium transition-colors relative",
+                    "px-6 py-3 text-sm font-medium transition-all duration-300 relative hover:bg-[var(--bg-tertiary)]",
                     activeTab === "RFP" ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                   )}
                 >
@@ -763,7 +764,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                 <button
                   onClick={() => setActiveTab("VO")}
                   className={cn(
-                    "px-6 py-3 text-sm font-medium transition-colors relative",
+                    "px-6 py-3 text-sm font-medium transition-all duration-300 relative hover:bg-[var(--bg-tertiary)]",
                     activeTab === "VO" ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                   )}
                 >
@@ -803,13 +804,13 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
             <div className="flex gap-3">
               <button 
                 onClick={() => setAchievingItem(null)}
-                className="flex-1 py-2 text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)] hover:border-[var(--text-primary)] transition-colors"
+                className="flex-1 py-2 text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)] hover:border-[var(--text-primary)] transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
               >
                 Cancel
               </button>
               <button 
                 onClick={handleStatusUpdate}
-                className="flex-1 py-2 text-sm font-bold uppercase tracking-wider bg-emerald-500 text-white hover:bg-emerald-600 transition-colors"
+                className="flex-1 py-2 text-sm font-bold uppercase tracking-wider bg-emerald-500 text-white hover:bg-emerald-600 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-sm hover:shadow-md"
               >
                 Confirm
               </button>
@@ -824,7 +825,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
           <div className="bg-[var(--card-bg)] border border-[var(--border)] w-full max-w-lg p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-light text-[var(--text-primary)]">{editingId ? "Edit Entry" : "Add New Entry"}</h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
+              <button onClick={() => setIsModalOpen(false)} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-transform duration-300 hover:rotate-90">
                 <X size={20} />
               </button>
             </div>
@@ -1001,7 +1002,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
               <div className="pt-4 flex gap-3">
                 <button 
                   onClick={handleSaveItem}
-                  className="flex-1 bg-[var(--text-primary)] text-[var(--bg-primary)] py-2 text-sm font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors"
+                  className="flex-1 bg-[var(--text-primary)] text-[var(--bg-primary)] py-2 text-sm font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-sm hover:shadow-md"
                 >
                   {editingId ? "Save Changes" : "Add Entry"}
                 </button>
