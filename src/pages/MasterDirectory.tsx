@@ -608,10 +608,14 @@ export function MasterDirectory() {
                                   </div>
                                 )}
                                 {contact.phone && (
-                                  <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)] truncate">
+                                  <a 
+                                    href={`tel:${contact.phone}`}
+                                    className="flex items-center gap-2 text-xs text-[var(--text-secondary)] truncate hover:text-[var(--text-primary)] transition-colors"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
                                     <Phone size={12} />
                                     <span className="truncate">{contact.phone}</span>
-                                  </div>
+                                  </a>
                                 )}
                               </div>
                             </div>
@@ -643,10 +647,13 @@ export function MasterDirectory() {
                   </p>
                   <div className="flex gap-6 text-sm text-[var(--text-secondary)]">
                     {selectedContact.phone && (
-                      <div className="flex items-center gap-2">
+                      <a 
+                        href={`tel:${selectedContact.phone}`}
+                        className="flex items-center gap-2 hover:text-[var(--text-primary)] transition-colors"
+                      >
                         <Phone size={14} />
                         <span>{selectedContact.phone}</span>
-                      </div>
+                      </a>
                     )}
                     {selectedContact.email && (
                       <a 

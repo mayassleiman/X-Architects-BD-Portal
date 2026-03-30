@@ -27,6 +27,7 @@ interface PipelineItem {
   rfpNumber?: string;
   achievedDate?: string;
   sortOrder?: number;
+  region?: string;
 }
 
 interface MarketSector {
@@ -53,6 +54,15 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewFilter, setViewFilter] = useState<"All" | "Architecture" | "Interior" | "CS">("All");
   const [sortBy, setSortBy] = useState<"manual" | "probability" | "value" | "date">("manual");
+  const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
+
+  const availableRegions = useMemo(() => {
+    const regions = new Set<string>();
+    items.forEach(i => {
+      if (i.region) regions.add(i.region);
+    });
+    return Array.from(regions).sort();
+  }, [items]);
 
   const getTotalValue = (item: PipelineItem) => {
     if (item.type === "VO") return item.values.vo || 0;
@@ -122,7 +132,8 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
     sector: "",
     disciplines: [],
     values: {},
-    status: "Pending"
+    status: "Pending",
+    region: ""
   });
 
   const handleSaveItem = async () => {
@@ -140,7 +151,8 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
       probability: newItem.probability,
       rfpNumber: newItem.rfpNumber,
       achievedDate: newItem.achievedDate,
-      sortOrder: newItem.sortOrder || 0
+      sortOrder: newItem.sortOrder || 0,
+      region: newItem.region || ""
     };
 
     try {
@@ -282,8 +294,9 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
       if (viewFilter === "Interior") return d === "Interior";
       if (viewFilter === "CS") return d === "Construction Supervision";
       return false;
-    })))
-  ), [items, searchQuery, viewFilter]);
+    }))) &&
+    (selectedRegions.length === 0 || (i.region && selectedRegions.includes(i.region)))
+  ), [items, searchQuery, viewFilter, selectedRegions]);
 
   const voItems = useMemo(() => items.filter(i => 
     i.type === "VO" &&
@@ -291,8 +304,9 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
     i.status !== "Approved" &&
     ((i.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
      (i.client && i.client.toLowerCase().includes(searchQuery.toLowerCase()))) &&
-    (viewFilter === "All")
-  ), [items, searchQuery, viewFilter]);
+    (viewFilter === "All") &&
+    (selectedRegions.length === 0 || (i.region && selectedRegions.includes(i.region)))
+  ), [items, searchQuery, viewFilter, selectedRegions]);
 
   const groupItems = (list: PipelineItem[]) => {
     const sortedList = sortItems(list);
@@ -420,6 +434,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                                 {item.client && <p className="text-xs text-[var(--text-secondary)] mt-0.5">{item.client}</p>}
                                 <div className="flex items-center gap-3 mt-1.5 text-[10px] text-[var(--text-secondary)] font-mono uppercase tracking-wider">
                                    {item.submissionDate && <span>Submitted: {item.submissionDate}</span>}
+                                   {item.region && <span>Region: {item.region}</span>}
                                    {item.probability && (
                                      <span className={cn(
                                        "px-1.5 py-0.5 rounded font-bold border",
@@ -509,6 +524,45 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
         <div className="flex items-center gap-4">
           {!isReportView && (
             <div className="flex items-center gap-3">
+              {availableRegions.length > 0 && (
+                <div className="flex items-center gap-2 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 relative group">
+                  <span className="text-xs font-mono uppercase text-[var(--text-secondary)]">Region:</span>
+                  <div className="text-xs font-medium text-[var(--text-primary)] cursor-pointer flex items-center gap-1">
+                    {selectedRegions.length === 0 ? "All" : `${selectedRegions.length} Selected`}
+                  </div>
+                  <div className="absolute top-full right-0 mt-2 w-48 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 p-2">
+                    <div className="space-y-1 max-h-48 overflow-y-auto">
+                      <label className="flex items-center gap-2 p-1.5 hover:bg-[var(--bg-tertiary)] rounded cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={selectedRegions.length === 0}
+                          onChange={() => setSelectedRegions([])}
+                          className="rounded border-[var(--border)] text-[var(--text-primary)] focus:ring-0"
+                        />
+                        <span className="text-xs text-[var(--text-primary)]">All Regions</span>
+                      </label>
+                      <div className="h-px bg-[var(--border)] my-1" />
+                      {availableRegions.map(region => (
+                        <label key={region} className="flex items-center gap-2 p-1.5 hover:bg-[var(--bg-tertiary)] rounded cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            checked={selectedRegions.includes(region)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedRegions([...selectedRegions, region]);
+                              } else {
+                                setSelectedRegions(selectedRegions.filter(r => r !== region));
+                              }
+                            }}
+                            className="rounded border-[var(--border)] text-[var(--text-primary)] focus:ring-0"
+                          />
+                          <span className="text-xs text-[var(--text-primary)]">{region}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="flex items-center gap-2 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg px-3 py-1.5">
                 <span className="text-xs font-mono uppercase text-[var(--text-secondary)]">Sort:</span>
                 <select 
@@ -830,6 +884,17 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                   onChange={(e) => setNewItem({...newItem, client: e.target.value})}
                   className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-[var(--text-primary)] focus:outline-none focus:border-[var(--text-primary)]"
                   placeholder="e.g. Emaar"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono uppercase text-[var(--text-secondary)] mb-1">Region (Optional)</label>
+                <input 
+                  type="text"
+                  value={newItem.region || ""}
+                  onChange={(e) => setNewItem({...newItem, region: e.target.value})}
+                  className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-[var(--text-primary)] focus:outline-none focus:border-[var(--text-primary)]"
+                  placeholder="e.g. Middle East, Europe, North America"
                 />
               </div>
 

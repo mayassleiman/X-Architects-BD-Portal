@@ -93,7 +93,8 @@ db.exec(`
     probability TEXT, -- 'High', 'Medium', 'Low'
     rfp_number TEXT,
     achieved_date TEXT,
-    sort_order INTEGER DEFAULT 0
+    sort_order INTEGER DEFAULT 0,
+    region TEXT
   );
 
   CREATE TABLE IF NOT EXISTS targets (
@@ -177,6 +178,13 @@ try {
 // Migration: Add sort_order column if it doesn't exist
 try {
   db.exec("ALTER TABLE pipeline_items ADD COLUMN sort_order INTEGER DEFAULT 0");
+} catch (error) {
+  // Column likely already exists, ignore
+}
+
+// Migration: Add region column if it doesn't exist
+try {
+  db.exec("ALTER TABLE pipeline_items ADD COLUMN region TEXT");
 } catch (error) {
   // Column likely already exists, ignore
 }

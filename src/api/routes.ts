@@ -240,7 +240,8 @@ router.get('/pipeline', (req, res) => {
       probability: i.probability,
       rfpNumber: i.rfp_number,
       achievedDate: i.achieved_date,
-      sortOrder: i.sort_order
+      sortOrder: i.sort_order,
+      region: i.region
     };
   });
   res.json(parsedItems);
@@ -248,18 +249,18 @@ router.get('/pipeline', (req, res) => {
 
 // Create Pipeline Item
 router.post('/pipeline', (req, res) => {
-  const { name, client, type, sector, disciplines, values, status, submissionDate, probability, rfpNumber, achievedDate, sortOrder } = req.body;
-  const stmt = db.prepare('INSERT INTO pipeline_items (name, client, type, sector, disciplines, item_values, status, submission_date, probability, rfp_number, achieved_date, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-  const info = stmt.run(name, client, type, sector, JSON.stringify(disciplines || []), JSON.stringify(values || {}), status || 'Pending', submissionDate, probability, rfpNumber, achievedDate, sortOrder || 0);
+  const { name, client, type, sector, disciplines, values, status, submissionDate, probability, rfpNumber, achievedDate, sortOrder, region } = req.body;
+  const stmt = db.prepare('INSERT INTO pipeline_items (name, client, type, sector, disciplines, item_values, status, submission_date, probability, rfp_number, achieved_date, sort_order, region) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+  const info = stmt.run(name, client, type, sector, JSON.stringify(disciplines || []), JSON.stringify(values || {}), status || 'Pending', submissionDate, probability, rfpNumber, achievedDate, sortOrder || 0, region);
   res.json({ id: String(info.lastInsertRowid) });
 });
 
 // Update Pipeline Item
 router.put('/pipeline/:id', (req, res) => {
   const { id } = req.params;
-  const { name, client, type, sector, disciplines, values, status, submissionDate, probability, rfpNumber, achievedDate, sortOrder } = req.body;
-  const stmt = db.prepare('UPDATE pipeline_items SET name = ?, client = ?, type = ?, sector = ?, disciplines = ?, item_values = ?, status = ?, submission_date = ?, probability = ?, rfp_number = ?, achieved_date = ?, sort_order = ? WHERE id = ?');
-  stmt.run(name, client, type, sector, JSON.stringify(disciplines || []), JSON.stringify(values || {}), status, submissionDate, probability, rfpNumber, achievedDate, sortOrder || 0, id);
+  const { name, client, type, sector, disciplines, values, status, submissionDate, probability, rfpNumber, achievedDate, sortOrder, region } = req.body;
+  const stmt = db.prepare('UPDATE pipeline_items SET name = ?, client = ?, type = ?, sector = ?, disciplines = ?, item_values = ?, status = ?, submission_date = ?, probability = ?, rfp_number = ?, achieved_date = ?, sort_order = ?, region = ? WHERE id = ?');
+  stmt.run(name, client, type, sector, JSON.stringify(disciplines || []), JSON.stringify(values || {}), status, submissionDate, probability, rfpNumber, achievedDate, sortOrder || 0, region, id);
   res.json({ success: true });
 });
 
