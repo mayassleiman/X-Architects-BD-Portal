@@ -92,7 +92,8 @@ db.exec(`
     submission_date TEXT,
     probability TEXT, -- 'High', 'Medium', 'Low'
     rfp_number TEXT,
-    achieved_date TEXT
+    achieved_date TEXT,
+    sort_order INTEGER DEFAULT 0
   );
 
   CREATE TABLE IF NOT EXISTS targets (
@@ -169,6 +170,13 @@ try {
 // Migration: Add achieved_date column if it doesn't exist
 try {
   db.exec("ALTER TABLE pipeline_items ADD COLUMN achieved_date TEXT");
+} catch (error) {
+  // Column likely already exists, ignore
+}
+
+// Migration: Add sort_order column if it doesn't exist
+try {
+  db.exec("ALTER TABLE pipeline_items ADD COLUMN sort_order INTEGER DEFAULT 0");
 } catch (error) {
   // Column likely already exists, ignore
 }

@@ -223,7 +223,7 @@ router.delete('/meetings/:id', (req, res) => {
 
 // Get Pipeline Items
 router.get('/pipeline', (req, res) => {
-  const stmt = db.prepare('SELECT * FROM pipeline_items');
+  const stmt = db.prepare('SELECT * FROM pipeline_items ORDER BY sort_order ASC');
   const items = stmt.all();
   const parsedItems = items.map((i: any) => {
     const parsedDisciplines = i.disciplines ? JSON.parse(i.disciplines) : [];
@@ -239,7 +239,8 @@ router.get('/pipeline', (req, res) => {
       submissionDate: i.submission_date,
       probability: i.probability,
       rfpNumber: i.rfp_number,
-      achievedDate: i.achieved_date
+      achievedDate: i.achieved_date,
+      sortOrder: i.sort_order
     };
   });
   res.json(parsedItems);
@@ -247,18 +248,18 @@ router.get('/pipeline', (req, res) => {
 
 // Create Pipeline Item
 router.post('/pipeline', (req, res) => {
-  const { name, client, type, sector, disciplines, values, status, submissionDate, probability, rfpNumber, achievedDate } = req.body;
-  const stmt = db.prepare('INSERT INTO pipeline_items (name, client, type, sector, disciplines, item_values, status, submission_date, probability, rfp_number, achieved_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-  const info = stmt.run(name, client, type, sector, JSON.stringify(disciplines || []), JSON.stringify(values || {}), status || 'Pending', submissionDate, probability, rfpNumber, achievedDate);
+  const { name, client, type, sector, disciplines, values, status, submissionDate, probability, rfpNumber, achievedDate, sortOrder } = req.body;
+  const stmt = db.prepare('INSERT INTO pipeline_items (name, client, type, sector, disciplines, item_values, status, submission_date, probability, rfp_number, achieved_date, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+  const info = stmt.run(name, client, type, sector, JSON.stringify(disciplines || []), JSON.stringify(values || {}), status || 'Pending', submissionDate, probability, rfpNumber, achievedDate, sortOrder || 0);
   res.json({ id: String(info.lastInsertRowid) });
 });
 
 // Update Pipeline Item
 router.put('/pipeline/:id', (req, res) => {
   const { id } = req.params;
-  const { name, client, type, sector, disciplines, values, status, submissionDate, probability, rfpNumber, achievedDate } = req.body;
-  const stmt = db.prepare('UPDATE pipeline_items SET name = ?, client = ?, type = ?, sector = ?, disciplines = ?, item_values = ?, status = ?, submission_date = ?, probability = ?, rfp_number = ?, achieved_date = ? WHERE id = ?');
-  stmt.run(name, client, type, sector, JSON.stringify(disciplines || []), JSON.stringify(values || {}), status, submissionDate, probability, rfpNumber, achievedDate, id);
+  const { name, client, type, sector, disciplines, values, status, submissionDate, probability, rfpNumber, achievedDate, sortOrder } = req.body;
+  const stmt = db.prepare('UPDATE pipeline_items SET name = ?, client = ?, type = ?, sector = ?, disciplines = ?, item_values = ?, status = ?, submission_date = ?, probability = ?, rfp_number = ?, achieved_date = ?, sort_order = ? WHERE id = ?');
+  stmt.run(name, client, type, sector, JSON.stringify(disciplines || []), JSON.stringify(values || {}), status, submissionDate, probability, rfpNumber, achievedDate, sortOrder || 0, id);
   res.json({ success: true });
 });
 

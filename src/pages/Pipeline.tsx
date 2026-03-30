@@ -3,6 +3,7 @@ import { Plus, Briefcase, DollarSign, PieChart, Layers, Check, X, Edit2, Trash2 
 import { cn } from "../lib/utils";
 import { PieChart as RePieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { useSearch } from "../context/SearchContext";
+import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 
 type Sector = string;
 type Discipline = "Architecture" | "Interior" | "Construction Supervision";
@@ -25,6 +26,7 @@ interface PipelineItem {
   probability?: "High" | "Medium" | "Low";
   rfpNumber?: string;
   achievedDate?: string;
+  sortOrder?: number;
 }
 
 interface MarketSector {
@@ -50,6 +52,42 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewFilter, setViewFilter] = useState<"All" | "Architecture" | "Interior" | "CS">("All");
+  const [sortBy, setSortBy] = useState<"manual" | "probability" | "value" | "date">("manual");
+
+  const getTotalValue = (item: PipelineItem) => {
+    if (item.type === "VO") return item.values.vo || 0;
+    return (item.values.architecture || 0) + (item.values.interior || 0) + (item.values.cs || 0);
+  };
+
+  const getFilteredValue = (item: PipelineItem) => {
+    if (item.type === "VO") {
+      return viewFilter === "All" ? (item.values.vo || 0) : 0;
+    }
+    if (viewFilter === "All") return getTotalValue(item);
+    if (viewFilter === "Architecture") return item.values.architecture || 0;
+    if (viewFilter === "Interior") return item.values.interior || 0;
+    if (viewFilter === "CS") return item.values.cs || 0;
+    return 0;
+  };
+
+  const sortItems = (itemsList: PipelineItem[]) => {
+    return [...itemsList].sort((a, b) => {
+      if (sortBy === "probability") {
+        const probWeight = { "High": 3, "Medium": 2, "Low": 1, undefined: 0 };
+        return (probWeight[b.probability as keyof typeof probWeight] || 0) - (probWeight[a.probability as keyof typeof probWeight] || 0);
+      }
+      if (sortBy === "value") {
+        return getFilteredValue(b) - getFilteredValue(a);
+      }
+      if (sortBy === "date") {
+        const dateA = a.submissionDate ? new Date(a.submissionDate).getTime() : 0;
+        const dateB = b.submissionDate ? new Date(b.submissionDate).getTime() : 0;
+        return dateB - dateA;
+      }
+      // manual
+      return (a.sortOrder || 0) - (b.sortOrder || 0);
+    });
+  };
 
   // Fetch items and sectors on mount
   useEffect(() => {
@@ -87,22 +125,6 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
     status: "Pending"
   });
 
-  const getTotalValue = (item: PipelineItem) => {
-    if (item.type === "VO") return item.values.vo || 0;
-    return (item.values.architecture || 0) + (item.values.interior || 0) + (item.values.cs || 0);
-  };
-
-  const getFilteredValue = (item: PipelineItem) => {
-    if (item.type === "VO") {
-      return viewFilter === "All" ? (item.values.vo || 0) : 0;
-    }
-    if (viewFilter === "All") return getTotalValue(item);
-    if (viewFilter === "Architecture") return item.values.architecture || 0;
-    if (viewFilter === "Interior") return item.values.interior || 0;
-    if (viewFilter === "CS") return item.values.cs || 0;
-    return 0;
-  };
-
   const handleSaveItem = async () => {
     if (!newItem.name) return;
     
@@ -117,7 +139,8 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
       submissionDate: newItem.submissionDate,
       probability: newItem.probability,
       rfpNumber: newItem.rfpNumber,
-      achievedDate: newItem.achievedDate
+      achievedDate: newItem.achievedDate,
+      sortOrder: newItem.sortOrder || 0
     };
 
     try {
@@ -272,9 +295,10 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
   ), [items, searchQuery, viewFilter]);
 
   const groupItems = (list: PipelineItem[]) => {
+    const sortedList = sortItems(list);
     const grouped: Record<string, PipelineItem[]> = {};
     sectors.forEach(sector => {
-      const sectorItems = list.filter(i => i.sector === sector.name);
+      const sectorItems = sortedList.filter(i => i.sector === sector.name);
       if (sectorItems.length > 0) {
         grouped[sector.name] = sectorItems;
       }
@@ -282,112 +306,197 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
     return grouped;
   };
 
-  const rfpGrouped = useMemo(() => groupItems(rfpItems), [rfpItems]);
-  const voGrouped = useMemo(() => groupItems(voItems), [voItems]);
+  const rfpGrouped = useMemo(() => groupItems(rfpItems), [rfpItems, sortBy]);
+  const voGrouped = useMemo(() => groupItems(voItems), [voItems, sortBy]);
+
+  const onDragEnd = async (result: DropResult) => {
+    if (!result.destination) return;
+    
+    const { source, destination } = result;
+    
+    // Only allow reordering within the same sector (droppableId = sector name)
+    if (source.droppableId !== destination.droppableId) return;
+    if (source.index === destination.index) return;
+
+    const sectorName = source.droppableId;
+    const sectorItems: PipelineItem[] = (activeTab === "RFP" ? rfpGrouped : voGrouped)[sectorName] || [];
+    
+    const newSectorItems = [...sectorItems];
+    const [removed] = newSectorItems.splice(source.index, 1);
+    newSectorItems.splice(destination.index, 0, removed);
+
+    // Update sortOrder for these items
+    const updatedItems: PipelineItem[] = newSectorItems.map((item, index) => ({
+      ...item,
+      sortOrder: index
+    }));
+
+    // Update local state immediately
+    setItems(prevItems => {
+      const otherItems = prevItems.filter(i => i.sector !== sectorName || i.type !== activeTab || i.status === "Achieved" || i.status === "Approved");
+      return [...otherItems, ...updatedItems];
+    });
+
+    // If not in manual sort mode, switch to manual
+    if (sortBy !== "manual") {
+      setSortBy("manual");
+    }
+
+    // Update backend
+    try {
+      await Promise.all(updatedItems.map(item => 
+        fetch(`/api/pipeline/${item.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(item)
+        })
+      ));
+    } catch (err) {
+      console.error("Failed to save new order", err);
+    }
+  };
 
   const renderGroupedItems = (grouped: Record<string, PipelineItem[]>) => (
-    <div className="space-y-8">
-      {(Object.entries(grouped) as [string, PipelineItem[]][]).map(([sector, sectorItems]) => (
-        <div key={sector} className="space-y-3">
-          <h4 className="text-xs font-mono uppercase text-[var(--text-secondary)] tracking-wider flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-secondary)]" />
-            {sector}
-          </h4>
-          <div className="grid gap-3">
-            {sectorItems.map((item) => (
-              <div key={item.id} className="bg-[var(--card-bg-inner)] border border-[var(--border)] p-4 hover:border-[var(--border-hover)] transition-colors group relative pl-6 overflow-hidden">
-                <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: sectors.find(s => s.name === item.sector)?.color || '#ccc' }} />
-                {!isReportView && (
-                  <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button 
-                      onClick={() => handleEdit(item)}
-                      className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1"
-                    >
-                      <Edit2 size={14} />
-                    </button>
-                    <button 
-                      onClick={() => handleDelete(item.id)}
-                      className="text-[var(--text-secondary)] hover:text-red-400 p-1"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                )}
+    <DragDropContext onDragEnd={onDragEnd}>
+      <div className="space-y-8">
+        {(Object.entries(grouped) as [string, PipelineItem[]][]).map(([sector, sectorItems]) => {
+          const sectorColor = sectors.find(s => s.name === sector)?.color || 'var(--text-secondary)';
+          return (
+            <Droppable droppableId={sector} key={sector} isDropDisabled={sortBy !== "manual" && sortBy !== undefined}>
+              {(provided) => (
+                <div 
+                  className="space-y-3"
+                  ref={provided.innerRef}
+                  {...provided.droppableProps}
+                >
+                  <h4 
+                    className="text-xs font-mono uppercase tracking-wider flex items-center gap-2"
+                    style={{ color: sectorColor }}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: sectorColor }} />
+                    {sector}
+                  </h4>
+                  <div className="grid gap-2">
+                    {sectorItems.map((item, index) => (
+                      // @ts-ignore
+                      <Draggable key={item.id} draggableId={item.id} index={index} isDragDisabled={sortBy !== "manual"}>
+                        {(provided, snapshot) => (
+                          <div 
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            {...provided.dragHandleProps}
+                            className={cn(
+                              "bg-[var(--card-bg-inner)] border border-[var(--border)] p-3 hover:border-[var(--border-hover)] transition-colors group relative pl-4 overflow-hidden",
+                              snapshot.isDragging && "shadow-lg border-[var(--text-primary)] z-50"
+                            )}
+                          >
+                            <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: sectorColor }} />
+                            {!isReportView && (
+                              <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button 
+                                  onClick={() => handleEdit(item)}
+                                  className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1"
+                                >
+                                  <Edit2 size={14} />
+                                </button>
+                                <button 
+                                  onClick={() => handleDelete(item.id)}
+                                  className="text-[var(--text-secondary)] hover:text-red-400 p-1"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            )}
 
-                <div className="flex justify-between items-start pr-16">
-                  <div>
-                    <h5 
-                      className="text-sm font-medium transition-colors"
-                      style={{ color: sectors.find(s => s.name === item.sector)?.color || 'inherit' }}
-                    >
-                      {item.rfpNumber && <span className="font-mono text-xs opacity-70 mr-2">{item.rfpNumber}</span>}
-                      {item.name}
-                    </h5>
-                    {item.client && <p className="text-xs text-[var(--text-secondary)] mt-1">{item.client}</p>}
-                    <div className="flex gap-4 mt-2 text-[10px] text-[var(--text-secondary)] font-mono uppercase tracking-wider">
-                       {item.submissionDate && <span>Submitted: {item.submissionDate}</span>}
-                       {item.probability && (
-                         <span className={cn(
-                           item.probability === "High" ? "text-emerald-400" : 
-                           item.probability === "Medium" ? "text-amber-400" : "text-red-400"
-                         )}>
-                           Prob: {item.probability}
-                         </span>
-                       )}
-                    </div>
-                  </div>
-                  <div className="text-right flex flex-col items-end gap-2">
-                    <div>
-                      <span className="text-sm font-mono text-[var(--text-primary)] block">{getFilteredValue(item).toLocaleString()} SAR</span>
-                      {viewFilter !== "All" && (
-                        <span className="text-[10px] text-[var(--text-secondary)]">of {getTotalValue(item).toLocaleString()} Total</span>
-                      )}
-                    </div>
-                    {!isReportView && (
-                      <button 
-                        onClick={() => {
-                          setAchievingItem({ item, status: item.type === "RFP" ? "Achieved" : "Approved" });
-                          setAchievementDate(new Date().toISOString().split('T')[0]);
-                        }}
-                        className="flex items-center gap-1 px-2 py-1 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white rounded text-[10px] font-bold uppercase tracking-wider transition-colors"
-                        title={item.type === "RFP" ? "Mark as Achieved" : "Mark as Approved"}
-                      >
-                        <Check size={12} />
-                        {item.type === "RFP" ? "Achieved" : "Approved"}
-                      </button>
-                    )}
+                            <div className="flex justify-between items-start pr-16">
+                              <div>
+                                <h5 
+                                  className="text-sm font-medium transition-colors"
+                                  style={{ color: sectorColor }}
+                                >
+                                  {item.rfpNumber && <span className="font-mono text-xs opacity-70 mr-2">{item.rfpNumber}</span>}
+                                  {item.name}
+                                </h5>
+                                {item.client && <p className="text-xs text-[var(--text-secondary)] mt-0.5">{item.client}</p>}
+                                <div className="flex items-center gap-3 mt-1.5 text-[10px] text-[var(--text-secondary)] font-mono uppercase tracking-wider">
+                                   {item.submissionDate && <span>Submitted: {item.submissionDate}</span>}
+                                   {item.probability && (
+                                     <span className={cn(
+                                       "px-1.5 py-0.5 rounded font-bold border",
+                                       item.probability === "High" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : 
+                                       item.probability === "Medium" ? "bg-amber-500/10 text-amber-500 border-amber-500/20" : "bg-red-500/10 text-red-500 border-red-500/20"
+                                     )}>
+                                       Prob: {item.probability}
+                                     </span>
+                                   )}
+                                </div>
+                              </div>
+                              <div className="text-right flex flex-col items-end gap-1.5">
+                                <div>
+                                  <span className="text-sm font-mono text-[var(--text-primary)] block">{getFilteredValue(item).toLocaleString()} SAR</span>
+                                  {viewFilter !== "All" && (
+                                    <span className="text-[10px] text-[var(--text-secondary)]">of {getTotalValue(item).toLocaleString()} Total</span>
+                                  )}
+                                </div>
+                                {!isReportView && (
+                                  <button 
+                                    onClick={() => {
+                                      setAchievingItem({ item, status: item.type === "RFP" ? "Achieved" : "Approved" });
+                                      setAchievementDate(new Date().toISOString().split('T')[0]);
+                                    }}
+                                    className="flex items-center gap-1 px-2 py-1 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white rounded text-[10px] font-bold uppercase tracking-wider transition-colors"
+                                    title={item.type === "RFP" ? "Mark as Achieved" : "Mark as Approved"}
+                                  >
+                                    <Check size={12} />
+                                    {item.type === "RFP" ? "Achieved" : "Approved"}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            
+                            {item.type === "RFP" && Array.isArray(item.disciplines) && (
+                              <div className="mt-2 flex flex-wrap gap-1.5">
+                                {item.disciplines.map((d) => {
+                                  const isSelected = viewFilter === "All" || 
+                                                    (viewFilter === "Architecture" && d === "Architecture") ||
+                                                    (viewFilter === "Interior" && d === "Interior") ||
+                                                    (viewFilter === "CS" && d === "Construction Supervision");
+                                  const color = DISCIPLINE_COLORS[d] || 'var(--text-secondary)';
+                                  return (
+                                    <span key={d} className={cn(
+                                      "text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border",
+                                      !isSelected && "opacity-40 grayscale"
+                                    )}
+                                    style={{
+                                      borderColor: color,
+                                      color: color,
+                                      backgroundColor: `${color}1A`
+                                    }}>
+                                      {d === "Construction Supervision" ? "CS" : d}
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
                   </div>
                 </div>
-                
-                {item.type === "RFP" && Array.isArray(item.disciplines) && (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {item.disciplines.map((d) => (
-                      <span key={d} className={cn(
-                        "text-[10px] uppercase tracking-wider px-2 py-1 rounded border border-[var(--border)]",
-                        (viewFilter === "All" || 
-                         (viewFilter === "Architecture" && d === "Architecture") ||
-                         (viewFilter === "Interior" && d === "Interior") ||
-                         (viewFilter === "CS" && d === "Construction Supervision"))
-                         ? "text-[var(--text-primary)] bg-[var(--bg-tertiary)] border-[var(--text-primary)]"
-                         : "text-[var(--text-tertiary)] bg-[var(--bg-primary)] opacity-50"
-                      )}>
-                        {d}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+              )}
+            </Droppable>
+          );
+        })}
+        
+        {Object.keys(grouped).length === 0 && (
+          <div className="text-center py-12 text-[var(--text-secondary)]">
+            No items found for this category.
           </div>
-        </div>
-      ))}
-      
-      {Object.keys(grouped).length === 0 && (
-        <div className="text-center py-12 text-[var(--text-secondary)]">
-          No items found for this category.
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </DragDropContext>
   );
 
   return (
@@ -399,21 +508,36 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
         </div>
         <div className="flex items-center gap-4">
           {!isReportView && (
-            <div className="flex bg-[var(--card-bg)] border border-[var(--border)] rounded-lg p-1">
-              {(["All", "Architecture", "Interior", "CS"] as const).map((filter) => (
-                <button
-                  key={filter}
-                  onClick={() => setViewFilter(filter)}
-                  className={cn(
-                    "px-3 py-1.5 text-xs font-medium rounded transition-colors",
-                    viewFilter === filter 
-                      ? "bg-[var(--text-primary)] text-[var(--bg-primary)]" 
-                      : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                  )}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg px-3 py-1.5">
+                <span className="text-xs font-mono uppercase text-[var(--text-secondary)]">Sort:</span>
+                <select 
+                  value={sortBy} 
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  className="bg-transparent text-xs font-medium text-[var(--text-primary)] focus:outline-none cursor-pointer"
                 >
-                  {filter === "CS" ? "Supervision" : filter}
-                </button>
-              ))}
+                  <option value="manual">Manual (Drag)</option>
+                  <option value="probability">Probability</option>
+                  <option value="value">Value</option>
+                  <option value="date">Date</option>
+                </select>
+              </div>
+              <div className="flex bg-[var(--card-bg)] border border-[var(--border)] rounded-lg p-1">
+                {(["All", "Architecture", "Interior", "CS"] as const).map((filter) => (
+                  <button
+                    key={filter}
+                    onClick={() => setViewFilter(filter)}
+                    className={cn(
+                      "px-3 py-1.5 text-xs font-medium rounded transition-colors",
+                      viewFilter === filter 
+                        ? "bg-[var(--text-primary)] text-[var(--bg-primary)]" 
+                        : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                    )}
+                  >
+                    {filter === "CS" ? "Supervision" : filter}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           {!isReportView && (

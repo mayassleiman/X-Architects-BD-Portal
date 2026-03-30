@@ -32,7 +32,12 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
   const [isEditingTarget, setIsEditingTarget] = useState(false);
   const [newTarget, setNewTarget] = useState(0);
   const [expandedQuarters, setExpandedQuarters] = useState<number[]>([1, 2, 3, 4]);
-  const [editingItemNumber, setEditingItemNumber] = useState<{ id: string, number: string } | null>(null);
+  const [editingItem, setEditingItem] = useState<{
+    id: string;
+    number: string;
+    date: string;
+    values: { architecture?: number; interior?: number; cs?: number; vo?: number };
+  } | null>(null);
   const [itemToDelete, setItemToDelete] = useState<any | null>(null);
   const chartRef = useRef<HTMLDivElement>(null);
 
@@ -82,30 +87,35 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
     );
   };
 
-  const handleUpdateItemNumber = async () => {
-    if (!editingItemNumber) return;
+  const handleUpdateItem = async () => {
+    if (!editingItem) return;
     try {
       // Find the item in local state
-      const item = data.items.find(i => i.id === editingItemNumber.id);
+      const item = data.items.find(i => i.id === editingItem.id);
       if (!item) return;
 
       // Optimistic update to prevent UI flicker
+      const updatedItem = { 
+        ...item, 
+        rfpNumber: editingItem.number,
+        achievedDate: editingItem.date,
+        values: editingItem.values
+      };
+
       const updatedItems = data.items.map(i => 
-        i.id === item.id ? { ...i, rfpNumber: editingItemNumber.number } : i
+        i.id === item.id ? updatedItem : i
       );
       setData({ ...data, items: updatedItems });
 
-      const updatedItem = { ...item, rfpNumber: editingItemNumber.number };
-      
       await fetch(`/api/pipeline/${item.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedItem)
       });
       
-      setEditingItemNumber(null);
+      setEditingItem(null);
     } catch (error) {
-      console.error("Failed to update item number", error);
+      console.error("Failed to update item", error);
       fetchData();
     }
   };
@@ -126,6 +136,13 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
     } catch (error) {
       console.error("Failed to delete item", error);
     }
+  };
+
+  const formatDateForInput = (dateStr: string) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "";
+    return d.toISOString().split('T')[0];
   };
 
   const metrics = useMemo(() => {
@@ -572,30 +589,20 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
                                 <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-[var(--bg-tertiary)] text-[var(--text-secondary)]">
                                   {item.type === "RFP" ? "Project" : item.type}
                                 </span>
-                                {editingItemNumber?.id === item.id && !isReportView ? (
+                                {editingItem?.id === item.id && !isReportView ? (
                                   <div className="flex items-center gap-1">
                                     <input 
                                       type="text" 
-                                      value={editingItemNumber.number}
-                                      onChange={(e) => setEditingItemNumber({ ...editingItemNumber, number: e.target.value })}
+                                      value={editingItem.number}
+                                      onChange={(e) => setEditingItem({ ...editingItem, number: e.target.value })}
                                       className="bg-[var(--bg-primary)] border border-[var(--border)] px-1 py-0.5 rounded text-xs font-mono w-24 focus:outline-none focus:border-[var(--text-primary)]"
                                       autoFocus
                                     />
-                                    <button onClick={handleUpdateItemNumber} className="text-emerald-500 hover:text-emerald-400"><Check size={12} /></button>
-                                    <button onClick={() => setEditingItemNumber(null)} className="text-rose-500 hover:text-rose-400"><X size={12} /></button>
                                   </div>
                                 ) : (
-                                  <button 
-                                    onClick={() => !isReportView && setEditingItemNumber({ id: item.id, number: item.rfpNumber || "" })}
-                                    className={cn(
-                                      "text-xs font-mono text-[var(--text-secondary)] flex items-center gap-1 group",
-                                      !isReportView && "hover:text-[var(--text-primary)]"
-                                    )}
-                                    disabled={isReportView}
-                                  >
+                                  <span className="text-xs font-mono text-[var(--text-secondary)]">
                                     {item.rfpNumber || "No #"}
-                                    {!isReportView && <Edit2 size={10} className="opacity-0 group-hover:opacity-100 transition-opacity" />}
-                                  </button>
+                                  </span>
                                 )}
                               </div>
                               {/* Discipline Breakdown */}
@@ -629,22 +636,82 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
                           </div>
                         </td>
                         <td className="px-4 py-2 text-center font-mono text-xs text-[var(--text-secondary)]">
-                          {new Date(item.achievedDate || item.submissionDate).toLocaleDateString()}
+                          {editingItem?.id === item.id ? (
+                            <input 
+                              type="date"
+                              value={editingItem.date}
+                              onChange={(e) => setEditingItem({ ...editingItem, date: e.target.value })}
+                              className="bg-[var(--bg-primary)] border border-[var(--border)] px-1 py-0.5 rounded text-xs font-mono w-28 focus:outline-none focus:border-[var(--text-primary)]"
+                            />
+                          ) : (
+                            new Date(item.achievedDate || item.submissionDate).toLocaleDateString()
+                          )}
                         </td>
                         <td className="px-4 py-2 text-right text-[var(--text-tertiary)]">-</td>
-                        <td className="px-4 py-2 text-right font-mono text-[var(--text-primary)]">{totalValue.toLocaleString()}</td>
+                        <td className="px-4 py-2 text-right font-mono text-[var(--text-primary)]">
+                          {editingItem?.id === item.id ? (
+                            <div className="flex flex-col gap-1 items-end">
+                              {item.type === "RFP" ? (
+                                <>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[10px] text-[var(--text-secondary)]">Arch:</span>
+                                    <input type="number" value={editingItem.values.architecture || ""} onChange={e => setEditingItem({ ...editingItem, values: { ...editingItem.values, architecture: e.target.value ? Number(e.target.value) : undefined }})} className="w-20 bg-[var(--bg-primary)] border border-[var(--border)] px-1 py-0.5 rounded text-xs text-right" />
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[10px] text-[var(--text-secondary)]">Int:</span>
+                                    <input type="number" value={editingItem.values.interior || ""} onChange={e => setEditingItem({ ...editingItem, values: { ...editingItem.values, interior: e.target.value ? Number(e.target.value) : undefined }})} className="w-20 bg-[var(--bg-primary)] border border-[var(--border)] px-1 py-0.5 rounded text-xs text-right" />
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[10px] text-[var(--text-secondary)]">CS:</span>
+                                    <input type="number" value={editingItem.values.cs || ""} onChange={e => setEditingItem({ ...editingItem, values: { ...editingItem.values, cs: e.target.value ? Number(e.target.value) : undefined }})} className="w-20 bg-[var(--bg-primary)] border border-[var(--border)] px-1 py-0.5 rounded text-xs text-right" />
+                                  </div>
+                                </>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] text-[var(--text-secondary)]">VO:</span>
+                                  <input type="number" value={editingItem.values.vo || ""} onChange={e => setEditingItem({ ...editingItem, values: { ...editingItem.values, vo: e.target.value ? Number(e.target.value) : undefined }})} className="w-20 bg-[var(--bg-primary)] border border-[var(--border)] px-1 py-0.5 rounded text-xs text-right" />
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            totalValue.toLocaleString()
+                          )}
+                        </td>
                         <td className="px-4 py-2 text-right text-[var(--text-tertiary)]">-</td>
                         <td className="px-4 py-2 text-right text-[var(--text-tertiary)]">-</td>
                         <td className="px-4 py-2 text-right text-[var(--text-tertiary)]">-</td>
                         <td className="px-4 py-2 text-center">
                           {!isReportView && (
-                            <button 
-                              onClick={() => setItemToDelete(item)}
-                              className="text-[var(--text-secondary)] hover:text-rose-400 transition-colors p-1"
-                              title="Remove from Achieved"
-                            >
-                              <Trash2 size={14} />
-                            </button>
+                            <div className="flex items-center justify-center gap-1">
+                              {editingItem?.id === item.id ? (
+                                <>
+                                  <button onClick={handleUpdateItem} className="text-emerald-500 hover:text-emerald-400 p-1"><Check size={14} /></button>
+                                  <button onClick={() => setEditingItem(null)} className="text-rose-500 hover:text-rose-400 p-1"><X size={14} /></button>
+                                </>
+                              ) : (
+                                <>
+                                  <button 
+                                    onClick={() => setEditingItem({ 
+                                      id: item.id, 
+                                      number: item.rfpNumber || "", 
+                                      date: formatDateForInput(item.achievedDate || item.submissionDate),
+                                      values: item.values || {}
+                                    })}
+                                    className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors p-1"
+                                    title="Edit Item"
+                                  >
+                                    <Edit2 size={14} />
+                                  </button>
+                                  <button 
+                                    onClick={() => setItemToDelete(item)}
+                                    className="text-[var(--text-secondary)] hover:text-rose-400 transition-colors p-1"
+                                    title="Remove from Achieved"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </>
+                              )}
+                            </div>
                           )}
                         </td>
                       </tr>
