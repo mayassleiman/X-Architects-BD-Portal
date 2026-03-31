@@ -1,5 +1,5 @@
 import React from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { AppLayout } from "./components/layout/AppLayout";
 import { Dashboard } from "./pages/Dashboard";
 
@@ -18,7 +18,8 @@ import { MasterDirectory } from "./pages/MasterDirectory";
 import { EmailGun } from "./pages/EmailGun";
 import { FollowUpReminder } from "./components/features/FollowUpReminder";
 import { SearchProvider } from "./context/SearchContext";
-import { UserProvider } from "./context/UserContext";
+import { UserProvider, useUser } from "./context/UserContext";
+import { Login } from "./pages/Login";
 
 // Placeholder components for other routes
 const Placeholder = ({ title }: { title: string }) => (
@@ -30,6 +31,47 @@ const Placeholder = ({ title }: { title: string }) => (
     <p className="text-sm font-mono text-neutral-600">Module under construction</p>
   </div>
 );
+
+function PrivateRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useUser();
+  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
+}
+
+function AppRoutes() {
+  const { isAuthenticated } = useUser();
+
+  return (
+    <Routes>
+      <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <Login />} />
+      <Route
+        path="/*"
+        element={
+          <PrivateRoute>
+            <SearchProvider>
+              <AppLayout>
+                <Routes>
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/achieved-target" element={<AchievedTarget />} />
+                  <Route path="/actions" element={<Actions />} />
+                  <Route path="/directory" element={<MasterDirectory />} />
+                  <Route path="/email-gun" element={<EmailGun />} />
+                  <Route path="/registrations" element={<Registrations />} />
+                  <Route path="/meetings" element={<Meetings />} />
+                  <Route path="/pipeline" element={<Pipeline />} />
+                  <Route path="/tasks" element={<Tasks />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/report" element={<FullReport />} />
+                </Routes>
+                <FollowUpReminder />
+              </AppLayout>
+            </SearchProvider>
+          </PrivateRoute>
+        }
+      />
+    </Routes>
+  );
+}
 
 export default function App() {
   React.useEffect(() => {
@@ -57,25 +99,7 @@ export default function App() {
 
   return (
     <UserProvider>
-      <SearchProvider>
-        <AppLayout>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/achieved-target" element={<AchievedTarget />} />
-            <Route path="/actions" element={<Actions />} />
-            <Route path="/directory" element={<MasterDirectory />} />
-            <Route path="/email-gun" element={<EmailGun />} />
-            <Route path="/registrations" element={<Registrations />} />
-            <Route path="/meetings" element={<Meetings />} />
-            <Route path="/pipeline" element={<Pipeline />} />
-            <Route path="/tasks" element={<Tasks />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/report" element={<FullReport />} />
-          </Routes>
-          <FollowUpReminder />
-        </AppLayout>
-      </SearchProvider>
+      <AppRoutes />
     </UserProvider>
   );
 }

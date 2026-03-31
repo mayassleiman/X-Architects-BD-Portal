@@ -1,17 +1,30 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 
-interface UserProfile {
+export interface UserProfile {
+  id: string;
+  username: string;
+  password?: string;
   name: string;
   role: string;
   email: string;
+  image?: string;
 }
 
 interface UserContextType {
-  profile: UserProfile;
+  profile: UserProfile | null;
+  isAuthenticated: boolean;
+  users: UserProfile[];
+  login: (username: string, password?: string) => boolean;
+  logout: () => void;
   updateProfile: (newProfile: UserProfile) => void;
+  addUser: (newUser: UserProfile) => void;
+  deleteUser: (id: string) => void;
 }
 
-const defaultProfile: UserProfile = {
+const defaultAdmin: UserProfile = {
+  id: "admin-1",
+  username: "admin",
+  password: "DHCP818ftp",
   name: "Director BD",
   role: "Business Development",
   email: "admin@x-arch.com"
@@ -20,21 +33,65 @@ const defaultProfile: UserProfile = {
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
-  const [profile, setProfile] = useState<UserProfile>(() => {
+  const [users, setUsers] = useState<UserProfile[]>(() => {
+    const saved = localStorage.getItem("portalUsers");
+    return saved ? JSON.parse(saved) : [defaultAdmin];
+  });
+
+  const [profile, setProfile] = useState<UserProfile | null>(() => {
     const saved = localStorage.getItem("userProfile");
-    return saved ? JSON.parse(saved) : defaultProfile;
+    return saved ? JSON.parse(saved) : null;
   });
 
   useEffect(() => {
-    localStorage.setItem("userProfile", JSON.stringify(profile));
+    localStorage.setItem("portalUsers", JSON.stringify(users));
+  }, [users]);
+
+  useEffect(() => {
+    if (profile) {
+      localStorage.setItem("userProfile", JSON.stringify(profile));
+    } else {
+      localStorage.removeItem("userProfile");
+    }
   }, [profile]);
+
+  const login = (username: string, password?: string) => {
+    const user = users.find(u => u.username === username && u.password === password);
+    if (user) {
+      setProfile(user);
+      return true;
+    }
+    return false;
+  };
+
+  const logout = () => {
+    setProfile(null);
+  };
 
   const updateProfile = (newProfile: UserProfile) => {
     setProfile(newProfile);
+    setUsers(prev => prev.map(u => u.id === newProfile.id ? newProfile : u));
+  };
+
+  const addUser = (newUser: UserProfile) => {
+    setUsers(prev => [...prev, newUser]);
+  };
+
+  const deleteUser = (id: string) => {
+    setUsers(prev => prev.filter(u => u.id !== id));
   };
 
   return (
-    <UserContext.Provider value={{ profile, updateProfile }}>
+    <UserContext.Provider value={{ 
+      profile, 
+      isAuthenticated: !!profile, 
+      users, 
+      login, 
+      logout, 
+      updateProfile, 
+      addUser,
+      deleteUser
+    }}>
       {children}
     </UserContext.Provider>
   );

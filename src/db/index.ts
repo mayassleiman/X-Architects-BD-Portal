@@ -189,4 +189,11 @@ try {
   // Column likely already exists, ignore
 }
 
+// Migration: Add minutes column to meetings if it doesn't exist
+try {
+  db.exec("ALTER TABLE meetings ADD COLUMN minutes TEXT");
+} catch (error) {
+  // Column likely already exists, ignore
+}
+
 export default db;

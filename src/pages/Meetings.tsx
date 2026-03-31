@@ -11,6 +11,7 @@ interface Meeting {
   time: string;
   attendees: string[];
   level: number;
+  minutes?: string;
 }
 
 const LEVELS = [
@@ -34,7 +35,8 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
     date: new Date().toISOString().split('T')[0],
     time: "10:00",
     attendees: "",
-    level: 1
+    level: 1,
+    minutes: ""
   });
 
   const fetchMeetings = () => {
@@ -168,7 +170,8 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
       date: meeting.date,
       time: meeting.time,
       attendees: meeting.attendees.join(", "),
-      level: meeting.level
+      level: meeting.level,
+      minutes: meeting.minutes || ""
     });
     setIsModalOpen(true);
   };
@@ -192,7 +195,7 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
       if (res.ok) {
         setIsModalOpen(false);
         setEditingId(null);
-        setFormData({ title: "", date: new Date().toISOString().split('T')[0], time: "10:00", attendees: "", level: 1 });
+        setFormData({ title: "", date: new Date().toISOString().split('T')[0], time: "10:00", attendees: "", level: 1, minutes: "" });
         fetchMeetings();
       } else {
         console.error("Failed to save meeting");
@@ -363,7 +366,7 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
             <button 
               onClick={() => {
                 setEditingId(null);
-                setFormData({ title: "", date: new Date().toISOString().split('T')[0], time: "10:00", attendees: "", level: 1 });
+                setFormData({ title: "", date: new Date().toISOString().split('T')[0], time: "10:00", attendees: "", level: 1, minutes: "" });
                 setIsModalOpen(true);
               }}
               className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors"
@@ -549,49 +552,54 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
             filteredMeetings.map((meeting) => {
               const levelInfo = LEVELS.find(l => l.id === meeting.level) || LEVELS[0];
               return (
-                <div key={meeting.id} className="bg-[var(--card-bg)] border border-[var(--border)] p-6 group hover:border-[var(--border-hover)] transition-colors relative flex flex-col break-inside-avoid">
+                <div key={meeting.id} className="bg-[var(--card-bg)] border border-[var(--border)] p-4 group hover:border-[var(--border-hover)] transition-colors relative flex flex-col break-inside-avoid shadow-sm hover:shadow-md">
                   {!isReportView && (
-                    <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity no-print">
+                    <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity no-print">
                       <button 
                         onClick={() => handleEdit(meeting)}
                         className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
                       >
-                        <Edit2 size={16} />
+                        <Edit2 size={14} />
                       </button>
                       <button 
                         onClick={() => handleDelete(meeting.id)}
                         className="text-[var(--text-secondary)] hover:text-red-400 transition-colors"
                       >
-                        <Trash2 size={16} />
+                        <Trash2 size={14} />
                       </button>
                     </div>
                   )}
                   
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className={cn("text-[10px] uppercase tracking-wider px-2 py-1 rounded border", levelInfo.tagClass)}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className={cn("text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded border", levelInfo.tagClass)}>
                       {levelInfo.label}
                     </span>
                   </div>
 
-                  <h3 className="text-lg font-medium text-[var(--text-primary)] mb-4">{meeting.title}</h3>
+                  <h3 className="text-base font-medium text-[var(--text-primary)] mb-3 pr-12">{meeting.title}</h3>
                   
-                  <div className="space-y-3 mt-auto">
-                    <div className="flex items-center gap-3 text-sm text-[var(--text-secondary)]">
-                      <CalendarIcon size={14} />
+                  <div className="space-y-2 mt-auto">
+                    <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+                      <CalendarIcon size={12} />
                       <span>{meeting.date}</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm text-[var(--text-secondary)]">
-                      <Clock size={14} />
+                      <Clock size={12} className="ml-2" />
                       <span>{meeting.time}</span>
                     </div>
                     {meeting.attendees && meeting.attendees.length > 0 && (
-                      <div className="flex items-start gap-3 text-sm text-[var(--text-secondary)] pt-2 border-t border-[var(--border)]">
-                        <User size={14} className="mt-0.5" />
+                      <div className="flex items-start gap-2 text-xs text-[var(--text-secondary)] pt-2 border-t border-[var(--border)]">
+                        <User size={12} className="mt-0.5" />
                         <div className="flex flex-wrap gap-1">
                           {meeting.attendees.map((att, i) => (
-                            <span key={i} className="bg-[var(--bg-tertiary)] px-1.5 py-0.5 rounded text-xs">{att}</span>
+                            <span key={i} className="bg-[var(--bg-tertiary)] px-1.5 py-0.5 rounded text-[10px]">{att}</span>
                           ))}
                         </div>
+                      </div>
+                    )}
+                    {meeting.minutes && (
+                      <div className="pt-2 mt-2 border-t border-[var(--border)]">
+                        <p className="text-xs text-[var(--text-secondary)] line-clamp-3 italic">
+                          "{meeting.minutes}"
+                        </p>
                       </div>
                     )}
                   </div>
@@ -628,13 +636,13 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
                       draggable
                       onDragStart={(e) => handleDragStart(e, meeting.id)}
                       onClick={() => handleEdit(meeting)}
-                      className={cn("p-2 rounded-r text-xs mb-2 cursor-pointer hover:brightness-110 shadow-sm transition-all", levelInfo.cardClass)}
+                      className={cn("p-1.5 rounded-r text-[10px] mb-1.5 cursor-pointer hover:brightness-110 shadow-sm transition-all", levelInfo.cardClass)}
                     >
-                      <div className="flex justify-between items-center mb-1">
+                      <div className="flex justify-between items-center mb-0.5">
                         <span className="font-bold">{meeting.time}</span>
-                        <span className="text-[9px] opacity-75 uppercase tracking-wider">{levelInfo.label}</span>
+                        <span className="text-[8px] opacity-75 uppercase tracking-wider">{levelInfo.label}</span>
                       </div>
-                      <div className="font-medium leading-tight">{meeting.title}</div>
+                      <div className="font-medium leading-tight line-clamp-2">{meeting.title}</div>
                     </div>
                   );
                 })}
@@ -709,6 +717,15 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
                   onChange={e => setFormData({...formData, attendees: e.target.value})}
                   className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-[var(--text-primary)] text-sm focus:border-[var(--text-primary)] focus:outline-none"
                   placeholder="Client, John Doe, Jane Smith"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-mono uppercase text-[var(--text-secondary)] mb-1">Minutes (Optional)</label>
+                <textarea 
+                  value={formData.minutes}
+                  onChange={e => setFormData({...formData, minutes: e.target.value})}
+                  className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-[var(--text-primary)] text-sm focus:border-[var(--text-primary)] focus:outline-none min-h-[80px] resize-y"
+                  placeholder="Notes discussed during the meeting..."
                 />
               </div>
               <button 

@@ -198,18 +198,18 @@ router.get('/meetings', (req, res) => {
 
 // Create Meeting
 router.post('/meetings', (req, res) => {
-  const { title, date, time, attendees, level } = req.body;
-  const stmt = db.prepare('INSERT INTO meetings (title, date, time, attendees, level) VALUES (?, ?, ?, ?, ?)');
-  const info = stmt.run(title, date, time, JSON.stringify(attendees || []), level || 1);
+  const { title, date, time, attendees, level, minutes } = req.body;
+  const stmt = db.prepare('INSERT INTO meetings (title, date, time, attendees, level, minutes) VALUES (?, ?, ?, ?, ?, ?)');
+  const info = stmt.run(title, date, time, JSON.stringify(attendees || []), level || 1, minutes || '');
   res.json({ id: info.lastInsertRowid });
 });
 
 // Update Meeting
 router.put('/meetings/:id', (req, res) => {
   const { id } = req.params;
-  const { title, date, time, attendees, level } = req.body;
-  const stmt = db.prepare('UPDATE meetings SET title = ?, date = ?, time = ?, attendees = ?, level = ? WHERE id = ?');
-  stmt.run(title, date, time, JSON.stringify(attendees || []), level, id);
+  const { title, date, time, attendees, level, minutes } = req.body;
+  const stmt = db.prepare('UPDATE meetings SET title = ?, date = ?, time = ?, attendees = ?, level = ?, minutes = ? WHERE id = ?');
+  stmt.run(title, date, time, JSON.stringify(attendees || []), level, minutes || '', id);
   res.json({ success: true });
 });
 

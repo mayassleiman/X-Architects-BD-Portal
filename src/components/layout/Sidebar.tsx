@@ -37,13 +37,13 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
-  const { profile } = useUser();
+  const { profile, logout } = useUser();
   const navigate = useNavigate();
 
   const handleLogout = () => {
     if (confirm("Are you sure you want to logout?")) {
-      localStorage.removeItem("userProfile");
-      window.location.reload();
+      logout();
+      navigate("/login");
     }
   };
 
@@ -147,15 +147,19 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
             "flex items-center gap-3 w-full hover:bg-[var(--border)] rounded-lg p-2 transition-colors",
             isCollapsed ? "justify-center" : "text-left"
           )}
-          title={isCollapsed ? profile.name : undefined}
+          title={isCollapsed ? profile?.name : undefined}
         >
-          <div className="w-8 h-8 rounded-full bg-[var(--bg-tertiary)] flex items-center justify-center border border-[var(--border)] shrink-0">
-            <User size={14} className="text-[var(--text-secondary)]" />
+          <div className="w-8 h-8 rounded-full bg-[var(--bg-tertiary)] flex items-center justify-center border border-[var(--border)] shrink-0 overflow-hidden">
+            {profile?.image ? (
+              <img src={profile.image} alt={profile.name} className="w-full h-full object-cover" />
+            ) : (
+              <User size={14} className="text-[var(--text-secondary)]" />
+            )}
           </div>
           {!isCollapsed && (
             <div className="flex flex-col overflow-hidden">
-              <span className="text-xs font-medium text-[var(--text-primary)] truncate">{profile.name}</span>
-              <span className="text-[10px] text-[var(--text-secondary)] truncate">{profile.email}</span>
+              <span className="text-xs font-medium text-[var(--text-primary)] truncate">{profile?.name}</span>
+              <span className="text-[10px] text-[var(--text-secondary)] truncate">{profile?.email}</span>
             </div>
           )}
         </NavLink>
