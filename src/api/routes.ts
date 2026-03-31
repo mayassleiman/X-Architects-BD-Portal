@@ -291,6 +291,38 @@ router.post('/contacts', (req, res) => {
   res.json({ id: info.lastInsertRowid });
 });
 
+// Bulk Create Contacts
+router.post('/contacts/bulk', (req, res) => {
+  const contacts = req.body.contacts;
+  if (!Array.isArray(contacts)) {
+    return res.status(400).json({ error: 'Expected an array of contacts' });
+  }
+  
+  const stmt = db.prepare('INSERT INTO contacts (client_organization, location, client_contact, position, phone, email, category) VALUES (?, ?, ?, ?, ?, ?, ?)');
+  
+  const insertMany = db.transaction((contactsList) => {
+    for (const contact of contactsList) {
+      stmt.run(
+        contact.client_organization || '',
+        contact.location || '',
+        contact.client_contact || '',
+        contact.position || '',
+        contact.phone || '',
+        contact.email || '',
+        contact.category || ''
+      );
+    }
+  });
+
+  try {
+    insertMany(contacts);
+    res.json({ success: true, count: contacts.length });
+  } catch (error) {
+    console.error("Bulk insert failed:", error);
+    res.status(500).json({ error: 'Bulk insert failed' });
+  }
+});
+
 // Update Contact
 router.put('/contacts/:id', (req, res) => {
   const { id } = req.params;

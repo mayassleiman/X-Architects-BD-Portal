@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Search, Plus, Edit2, Trash2, Phone, Mail, MapPin, 
   Briefcase, Calendar, MessageSquare, Bell, ChevronDown, ChevronRight, User,
-  History, X, Download, Building2
+  History, X, Download, Building2, Upload
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useSearch } from '../context/SearchContext';
@@ -81,6 +81,88 @@ export function MasterDirectory() {
   const [followUpForm, setFollowUpForm] = useState<{id?: number, date: string, description: string, status?: 'Pending' | 'Done'}>({ date: '', description: '' });
 
   const [companyTypes, setCompanyTypes] = useState<{id: number, name: string, color: string}[]>([]);
+
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const text = event.target?.result as string;
+      if (!text) return;
+
+      const lines = text.split('\n').filter(line => line.trim() !== '');
+      if (lines.length < 2) {
+        alert("CSV file seems empty or missing data rows.");
+        return;
+      }
+
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/["']/g, ''));
+      
+      const contactsToImport = [];
+      for (let i = 1; i < lines.length; i++) {
+        // Basic CSV parsing handling quotes
+        const row = [];
+        let inQuotes = false;
+        let currentCell = '';
+        for (let char of lines[i]) {
+          if (char === '"') inQuotes = !inQuotes;
+          else if (char === ',' && !inQuotes) {
+            row.push(currentCell.trim().replace(/["']/g, ''));
+            currentCell = '';
+          } else {
+            currentCell += char;
+          }
+        }
+        row.push(currentCell.trim().replace(/["']/g, ''));
+
+        const contact: any = {};
+        headers.forEach((header, index) => {
+          if (header.includes('organization') || header.includes('company')) contact.client_organization = row[index] || '';
+          else if (header.includes('location') || header.includes('city')) contact.location = row[index] || '';
+          else if (header.includes('contact') || header.includes('name')) contact.client_contact = row[index] || '';
+          else if (header.includes('position') || header.includes('title')) contact.position = row[index] || '';
+          else if (header.includes('phone')) contact.phone = row[index] || '';
+          else if (header.includes('email')) contact.email = row[index] || '';
+          else if (header.includes('category') || header.includes('type')) contact.category = row[index] || '';
+        });
+
+        if (contact.client_contact || contact.client_organization) {
+          contactsToImport.push(contact);
+        }
+      }
+
+      if (contactsToImport.length > 0) {
+        try {
+          const res = await fetch('/api/contacts/bulk', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contacts: contactsToImport })
+          });
+          
+          if (res.ok) {
+            const data = await res.json();
+            alert(`Successfully imported ${data.count} contacts!`);
+            fetchContacts();
+          } else {
+            alert("Failed to import contacts.");
+          }
+        } catch (error) {
+          console.error("Import error:", error);
+          alert("An error occurred during import.");
+        }
+      } else {
+        alert("No valid contacts found in the CSV.");
+      }
+      
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    };
+    reader.readAsText(file);
+  };
 
   useEffect(() => {
     fetchContacts();
@@ -411,9 +493,28 @@ export function MasterDirectory() {
       <div className="w-1/3 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg flex flex-col">
         {/* ... header ... */}
         <div className="p-4 border-b border-[var(--border)] flex justify-between items-center">
-          <h2 className="font-light text-[var(--text-primary)]">DIRECTORY</h2>
-          <div className="flex gap-2">
+          <h2 className="font-light text-[var(--text-primary)] flex items-center gap-2">
+            DIRECTORY
+            <span className="text-xs font-mono text-[var(--text-secondary)] bg-[var(--bg-tertiary)] px-2 py-0.5 rounded-full">
+              {contacts.length}
+            </span>
+          </h2>
+          <div className="flex gap-2 items-center">
             {/* ... existing buttons ... */}
+            <input 
+              type="file" 
+              accept=".csv" 
+              className="hidden" 
+              ref={fileInputRef}
+              onChange={handleImportCSV}
+            />
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              className="p-2 hover:bg-[var(--bg-tertiary)] rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              title="Import Contacts (CSV)"
+            >
+              <Upload size={18} />
+            </button>
             <button 
               onClick={() => { 
                 window.history.pushState({}, "", "/email-gun");
@@ -559,7 +660,7 @@ export function MasterDirectory() {
                   {Object.entries(contactsByLocation).map(([location, locContacts]) => (
                     <div key={location} className="bg-[var(--bg-tertiary)]/20 rounded-2xl p-6 border border-[var(--border)]">
                       <div className="flex items-center gap-3 mb-6 pb-3 border-b border-[var(--border)]">
-                        <div className="p-2 bg-[var(--bg-tertiary)] rounded-full text-[var(--text-secondary)]">
+                        <div className="p-2 bg-[var(--bg-tertiary)] rounded-full text-rose-400">
                           <MapPin size={18} />
                         </div>
                         <h3 className="text-lg font-medium text-[var(--text-primary)] uppercase tracking-wide">{location}</h3>
@@ -603,7 +704,7 @@ export function MasterDirectory() {
                               <div className="space-y-1.5 pt-2 border-t border-[var(--border)]/50">
                                 {contact.email && (
                                   <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)] truncate">
-                                    <Mail size={12} />
+                                    <Mail size={12} className="text-indigo-400" />
                                     <span className="truncate">{contact.email}</span>
                                   </div>
                                 )}
@@ -613,7 +714,7 @@ export function MasterDirectory() {
                                     className="flex items-center gap-2 text-xs text-[var(--text-secondary)] truncate hover:text-[var(--text-primary)] transition-colors"
                                     onClick={(e) => e.stopPropagation()}
                                   >
-                                    <Phone size={12} />
+                                    <Phone size={12} className="text-emerald-400" />
                                     <span className="truncate">{contact.phone}</span>
                                   </a>
                                 )}
@@ -651,7 +752,7 @@ export function MasterDirectory() {
                         href={`tel:${selectedContact.phone}`}
                         className="flex items-center gap-2 hover:text-[var(--text-primary)] transition-colors"
                       >
-                        <Phone size={14} />
+                        <Phone size={14} className="text-emerald-400" />
                         <span>{selectedContact.phone}</span>
                       </a>
                     )}
@@ -660,13 +761,13 @@ export function MasterDirectory() {
                         href={`mailto:${selectedContact.email}`}
                         className="flex items-center gap-2 hover:text-[var(--text-primary)] transition-colors"
                       >
-                        <Mail size={14} />
+                        <Mail size={14} className="text-indigo-400" />
                         <span>{selectedContact.email}</span>
                       </a>
                     )}
                     {selectedContact.location && (
                       <div className="flex items-center gap-2">
-                        <MapPin size={14} />
+                        <MapPin size={14} className="text-rose-400" />
                         <span>{selectedContact.location}</span>
                       </div>
                     )}
