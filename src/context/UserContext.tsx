@@ -14,7 +14,7 @@ interface UserContextType {
   profile: UserProfile | null;
   isAuthenticated: boolean;
   users: UserProfile[];
-  login: (username: string, password?: string) => boolean;
+  login: (username: string, password?: string) => Promise<boolean>;
   logout: () => void;
   updateProfile: (newProfile: UserProfile) => void;
   addUser: (newUser: UserProfile) => void;
@@ -55,12 +55,37 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   }, [profile]);
 
-  const login = (username: string, password?: string) => {
-    const user = users.find(u => u.username === username && u.password === password);
-    if (user) {
-      setProfile(user);
+  const login = async (username: string, password?: string) => {
+    // Check local users first (admin, etc)
+    const localUser = users.find(u => u.username === username && u.password === password);
+    if (localUser) {
+      setProfile(localUser);
       return true;
     }
+
+    // Check registrations
+    try {
+      const res = await fetch('/api/registrations');
+      if (res.ok) {
+        const registrations = await res.json();
+        const regUser = registrations.find((r: any) => r.username === username && r.password === password);
+        if (regUser) {
+          // Create a profile object for the registered user
+          const regProfile: UserProfile = {
+            id: `reg-${regUser.id}`,
+            username: regUser.username,
+            name: regUser.contact_name || regUser.client,
+            role: "Client",
+            email: "" // Registrations don't currently have email, could add later
+          };
+          setProfile(regProfile);
+          return true;
+        }
+      }
+    } catch (error) {
+      console.error("Error checking registrations for login", error);
+    }
+
     return false;
   };
 

@@ -129,18 +129,18 @@ router.get('/registrations', (req, res) => {
 
 // Create Registration
 router.post('/registrations', (req, res) => {
-  const { client, contact_name, registration_date, portal_link, status, due_date, follow_up_log, last_week_follow_up } = req.body;
-  const stmt = db.prepare('INSERT INTO registrations (client, contact_name, registration_date, portal_link, status, due_date, follow_up_log, last_week_follow_up) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
-  const info = stmt.run(client, contact_name, registration_date, portal_link, status || 'pending', due_date, follow_up_log, last_week_follow_up);
+  const { client, contact_name, registration_date, portal_link, status, due_date, follow_up_log, last_week_follow_up, username, password } = req.body;
+  const stmt = db.prepare('INSERT INTO registrations (client, contact_name, registration_date, portal_link, status, due_date, follow_up_log, last_week_follow_up, username, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+  const info = stmt.run(client, contact_name, registration_date, portal_link, status || 'pending', due_date, follow_up_log, last_week_follow_up, username, password);
   res.json({ id: info.lastInsertRowid });
 });
 
 // Update Registration
 router.put('/registrations/:id', (req, res) => {
   const { id } = req.params;
-  const { client, contact_name, registration_date, portal_link, status, due_date, follow_up_log, last_week_follow_up } = req.body;
-  const stmt = db.prepare('UPDATE registrations SET client = ?, contact_name = ?, registration_date = ?, portal_link = ?, status = ?, due_date = ?, follow_up_log = ?, last_week_follow_up = ? WHERE id = ?');
-  stmt.run(client, contact_name, registration_date, portal_link, status, due_date, follow_up_log, last_week_follow_up, id);
+  const { client, contact_name, registration_date, portal_link, status, due_date, follow_up_log, last_week_follow_up, username, password } = req.body;
+  const stmt = db.prepare('UPDATE registrations SET client = ?, contact_name = ?, registration_date = ?, portal_link = ?, status = ?, due_date = ?, follow_up_log = ?, last_week_follow_up = ?, username = ?, password = ? WHERE id = ?');
+  stmt.run(client, contact_name, registration_date, portal_link, status, due_date, follow_up_log, last_week_follow_up, username, password, id);
   res.json({ success: true });
 });
 
@@ -646,6 +646,32 @@ router.delete('/company-types/:id', (req, res) => {
   const { id } = req.params;
   const stmt = db.prepare('DELETE FROM company_types WHERE id = ?');
   stmt.run(id);
+  res.json({ success: true });
+});
+
+// --- Settings API ---
+
+// Get all settings
+router.get('/settings', (req, res) => {
+  const stmt = db.prepare('SELECT * FROM settings');
+  const rows = stmt.all();
+  const settings: Record<string, string> = {};
+  rows.forEach((row: any) => {
+    settings[row.key] = row.value;
+  });
+  res.json(settings);
+});
+
+// Update a setting
+router.put('/settings/:key', (req, res) => {
+  const { key } = req.params;
+  const { value } = req.body;
+  const stmt = db.prepare(`
+    INSERT INTO settings (key, value) 
+    VALUES (?, ?) 
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value
+  `);
+  stmt.run(key, value);
   res.json({ success: true });
 });
 

@@ -23,6 +23,7 @@ export function EmailGun() {
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState(""); // HTML content
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [senderEmail, setSenderEmail] = useState("");
   const editorRef = useRef<RichTextEditorRef>(null);
 
   useEffect(() => {
@@ -30,6 +31,15 @@ export function EmailGun() {
       .then(res => res.json())
       .then(data => setContacts(data))
       .catch(err => console.error("Failed to fetch contacts", err));
+
+    fetch('/api/settings')
+      .then(res => res.json())
+      .then(data => {
+        if (data.senderEmail) {
+          setSenderEmail(data.senderEmail);
+        }
+      })
+      .catch(err => console.error("Failed to fetch settings", err));
   }, []);
 
   // Derived State
@@ -84,7 +94,9 @@ export function EmailGun() {
     const processedSubject = processTemplate(subject, contact);
     const processedBody = processTemplate(body, contact);
     
-    return `To: "${contact.client_contact}" <${contact.email}>
+    const fromHeader = senderEmail ? `From: ${senderEmail}\n` : '';
+
+    return `${fromHeader}To: "${contact.client_contact}" <${contact.email}>
 Subject: ${processedSubject}
 X-Unsent: 1
 Content-Type: text/html; charset="utf-8"

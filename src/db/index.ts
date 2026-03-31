@@ -113,6 +113,11 @@ db.exec(`
     name TEXT UNIQUE NOT NULL,
     color TEXT DEFAULT '#000000'
   );
+
+  CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT
+  );
 `);
 
 // Seed default market sectors if empty
@@ -192,6 +197,18 @@ try {
 // Migration: Add minutes column to meetings if it doesn't exist
 try {
   db.exec("ALTER TABLE meetings ADD COLUMN minutes TEXT");
+} catch (error) {
+  // Column likely already exists, ignore
+}
+
+// Migration: Add username and password columns to registrations if they don't exist
+try {
+  db.exec("ALTER TABLE registrations ADD COLUMN username TEXT");
+} catch (error) {
+  // Column likely already exists, ignore
+}
+try {
+  db.exec("ALTER TABLE registrations ADD COLUMN password TEXT");
 } catch (error) {
   // Column likely already exists, ignore
 }

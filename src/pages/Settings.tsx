@@ -39,6 +39,10 @@ export function Settings() {
   // Export/Import State
   const [selectedPage, setSelectedPage] = useState<string>("contacts");
 
+  // Email Settings State
+  const [senderEmail, setSenderEmail] = useState("");
+  const [isSavingEmail, setIsSavingEmail] = useState(false);
+
   const PAGES = [
     { id: 'contacts', name: 'Master Directory (Contacts)', endpoint: '/api/contacts' },
     { id: 'engagements', name: 'Engagements', endpoint: '/api/engagements/search?all=true' },
@@ -53,7 +57,41 @@ export function Settings() {
   useEffect(() => {
     fetchSectors();
     fetchCompanyTypes();
+    fetchSettings();
   }, []);
+
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch('/api/settings');
+      const data = await res.json();
+      if (data.senderEmail) {
+        setSenderEmail(data.senderEmail);
+      }
+    } catch (error) {
+      console.error("Failed to fetch settings", error);
+    }
+  };
+
+  const handleSaveEmail = async () => {
+    setIsSavingEmail(true);
+    try {
+      const res = await fetch('/api/settings/senderEmail', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: senderEmail })
+      });
+      if (res.ok) {
+        alert("Email configuration saved successfully.");
+      } else {
+        alert("Failed to save email configuration.");
+      }
+    } catch (error) {
+      console.error("Error saving email:", error);
+      alert("Error saving email configuration.");
+    } finally {
+      setIsSavingEmail(false);
+    }
+  };
 
   const fetchSectors = async () => {
     try {
@@ -617,6 +655,35 @@ export function Settings() {
                   onChange={handleLogoUpload}
                 />
               </label>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6">
+          <h3 className="text-lg font-medium text-[var(--text-primary)] mb-4">Email Configuration</h3>
+          <div className="space-y-4">
+            <div className="flex flex-col gap-2">
+              <label className="text-sm text-[var(--text-secondary)]">Sender Email Address (For .eml downloads)</label>
+              <div className="flex gap-2">
+                <input 
+                  type="email" 
+                  value={senderEmail}
+                  onChange={(e) => setSenderEmail(e.target.value)}
+                  placeholder="your.email@company.com"
+                  className="flex-1 bg-[var(--bg-primary)] border border-[var(--border)] px-3 py-2 rounded text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--text-primary)]"
+                />
+                <button 
+                  onClick={handleSaveEmail}
+                  disabled={isSavingEmail}
+                  className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] rounded hover:opacity-90 transition-opacity disabled:opacity-50"
+                >
+                  <Save size={16} />
+                  {isSavingEmail ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+              <p className="text-xs text-[var(--text-secondary)] mt-1">
+                This email will be used as the "From" address when downloading .eml files from the Email Gun, making it easier to send directly from your Outlook drafts.
+              </p>
             </div>
           </div>
         </div>

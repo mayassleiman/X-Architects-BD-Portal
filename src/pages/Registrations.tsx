@@ -15,6 +15,8 @@ interface Registration {
   due_date: string;
   follow_up_log: string;
   last_week_follow_up: string;
+  username?: string;
+  password?: string;
 }
 
 export function Registrations({ isReportView = false, currentDateOnly = false }: { isReportView?: boolean, currentDateOnly?: boolean }) {
@@ -31,7 +33,9 @@ export function Registrations({ isReportView = false, currentDateOnly = false }:
     status: "Pending",
     due_date: "",
     follow_up_log: "",
-    last_week_follow_up: ""
+    last_week_follow_up: "",
+    username: "",
+    password: ""
   });
 
   const [selectedStatuses, setSelectedStatuses] = React.useState<string[]>([]);
@@ -134,7 +138,9 @@ export function Registrations({ isReportView = false, currentDateOnly = false }:
       status: reg.status || "Pending",
       due_date: reg.due_date || "",
       follow_up_log: reg.follow_up_log || "",
-      last_week_follow_up: reg.last_week_follow_up || ""
+      last_week_follow_up: reg.last_week_follow_up || "",
+      username: reg.username || "",
+      password: reg.password || ""
     });
     setIsModalOpen(true);
   };
@@ -161,7 +167,9 @@ export function Registrations({ isReportView = false, currentDateOnly = false }:
           status: "Pending", 
           due_date: "", 
           follow_up_log: "",
-          last_week_follow_up: ""
+          last_week_follow_up: "",
+          username: "",
+          password: ""
         });
         fetchRegistrations();
       }
@@ -356,6 +364,22 @@ export function Registrations({ isReportView = false, currentDateOnly = false }:
                       </a>
                     </div>
                   )}
+                  {(reg.username || reg.password) && (
+                    <div className="bg-[var(--bg-tertiary)] p-2 rounded text-xs space-y-1">
+                      {reg.username && (
+                        <div className="flex justify-between">
+                          <span className="text-[var(--text-secondary)]">Username:</span>
+                          <span className="text-[var(--text-primary)] font-mono">{reg.username}</span>
+                        </div>
+                      )}
+                      {reg.password && (
+                        <div className="flex justify-between">
+                          <span className="text-[var(--text-secondary)]">Password:</span>
+                          <span className="text-[var(--text-primary)] font-mono">{reg.password}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 
                 <div className="space-y-3 pt-4 border-t border-[var(--border)]">
@@ -423,6 +447,22 @@ export function Registrations({ isReportView = false, currentDateOnly = false }:
                       <span className="text-xs uppercase tracking-wider">{isReportView ? "Follow Up:" : "Follow Up:"}</span>
                       <span className="font-mono text-[var(--text-primary)]">{reg.due_date || "-"}</span>
                     </div>
+                    {(reg.username || reg.password) && (
+                      <div className="col-span-3 flex gap-4 text-xs bg-[var(--bg-tertiary)] p-2 rounded mt-2">
+                        {reg.username && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-[var(--text-secondary)]">User:</span>
+                            <span className="text-[var(--text-primary)] font-mono">{reg.username}</span>
+                          </div>
+                        )}
+                        {reg.password && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-[var(--text-secondary)]">Pass:</span>
+                            <span className="text-[var(--text-primary)] font-mono">{reg.password}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -494,6 +534,28 @@ export function Registrations({ isReportView = false, currentDateOnly = false }:
                   className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-[var(--text-primary)] text-sm focus:border-[var(--text-primary)] focus:outline-none"
                   placeholder="https://..."
                 />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-mono uppercase text-[var(--text-secondary)] mb-1">Username</label>
+                  <input 
+                    type="text" 
+                    value={formData.username}
+                    onChange={e => setFormData({...formData, username: e.target.value})}
+                    className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-[var(--text-primary)] text-sm focus:border-[var(--text-primary)] focus:outline-none"
+                    placeholder="Username"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono uppercase text-[var(--text-secondary)] mb-1">Password</label>
+                  <input 
+                    type="text" 
+                    value={formData.password}
+                    onChange={e => setFormData({...formData, password: e.target.value})}
+                    className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-[var(--text-primary)] text-sm focus:border-[var(--text-primary)] focus:outline-none"
+                    placeholder="Password"
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
