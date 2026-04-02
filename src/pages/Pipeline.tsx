@@ -3,6 +3,7 @@ import { Plus, Briefcase, DollarSign, PieChart, Layers, Check, X, Edit2, Trash2 
 import { cn } from "../lib/utils";
 import { PieChart as RePieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { useSearch } from "../context/SearchContext";
+import { useCurrency } from "../context/CurrencyContext";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 
 type Sector = string;
@@ -45,11 +46,15 @@ const DISCIPLINE_COLORS: Record<string, string> = {
 
 const DISCIPLINES: Discipline[] = ["Architecture", "Interior", "Construction Supervision"];
 
+type TabType = "Submitted Proposals" | "Proposals to be Submitted" | "Approved VOs" | "Potential VOs";
+
 export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
   const { searchQuery } = useSearch();
+  const { currency } = useCurrency();
   const [items, setItems] = useState<PipelineItem[]>([]);
   const [sectors, setSectors] = useState<MarketSector[]>([]);
-  const [activeTab, setActiveTab] = useState<"RFP" | "VO">("RFP");
+  const [activeTab, setActiveTab] = useState<TabType>("Submitted Proposals");
+  const [selectedSectorFilter, setSelectedSectorFilter] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewFilter, setViewFilter] = useState<"All" | "Architecture" | "Interior" | "CS">("All");
@@ -220,10 +225,18 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
     });
   };
 
+  const getTabForItem = (item: PipelineItem): TabType | null => {
+    if (item.type === "RFP" && item.status === "Submitted") return "Submitted Proposals";
+    if (item.type === "RFP" && item.status === "Pending") return "Proposals to be Submitted";
+    if (item.type === "VO" && item.status === "Approved") return "Approved VOs";
+    if (item.type === "VO" && (item.status === "Pending" || item.status === "Submitted")) return "Potential VOs";
+    return null;
+  };
+
   // Calculations
   const metrics = useMemo(() => {
-    // Filter out Achieved and Approved items from calculations
-    const activeItems = items.filter(i => i.status !== "Achieved" && i.status !== "Approved");
+    // Include items that belong to any of the 4 tabs
+    const activeItems = items.filter(i => getTabForItem(i) !== null);
 
     const totalRFP = activeItems.filter(i => i.type === "RFP").reduce((acc, curr) => acc + getFilteredValue(curr), 0);
     const totalVO = activeItems.filter(i => i.type === "VO").reduce((acc, curr) => acc + getFilteredValue(curr), 0);
@@ -282,11 +295,25 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
     }
   };
 
-  // Filter out Achieved/Approved items from the main pipeline view
-  const rfpItems = useMemo(() => items.filter(i => 
-    i.type === "RFP" &&
-    i.status !== "Achieved" && 
-    i.status !== "Approved" &&
+  const getGroupedItemsForTab = (tab: TabType) => {
+    const tabItems = items.filter(i => 
+      getTabForItem(i) === tab &&
+      ((i.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+       (i.client && i.client.toLowerCase().includes(searchQuery.toLowerCase()))) &&
+      (viewFilter === "All" || (Array.isArray(i.disciplines) && i.disciplines.some(d => {
+        if (viewFilter === "Architecture") return d === "Architecture";
+        if (viewFilter === "Interior") return d === "Interior";
+        if (viewFilter === "CS") return d === "Construction Supervision";
+        return false;
+      }))) &&
+      (selectedRegions.length === 0 || (i.region && selectedRegions.includes(i.region))) &&
+      (selectedSectorFilter === null || i.sector === selectedSectorFilter)
+    );
+    return groupItems(tabItems);
+  };
+
+  const currentTabItems = useMemo(() => items.filter(i => 
+    getTabForItem(i) === activeTab &&
     ((i.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
      (i.client && i.client.toLowerCase().includes(searchQuery.toLowerCase()))) &&
     (viewFilter === "All" || (Array.isArray(i.disciplines) && i.disciplines.some(d => {
@@ -295,18 +322,9 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
       if (viewFilter === "CS") return d === "Construction Supervision";
       return false;
     }))) &&
-    (selectedRegions.length === 0 || (i.region && selectedRegions.includes(i.region)))
-  ), [items, searchQuery, viewFilter, selectedRegions]);
-
-  const voItems = useMemo(() => items.filter(i => 
-    i.type === "VO" &&
-    i.status !== "Achieved" && 
-    i.status !== "Approved" &&
-    ((i.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-     (i.client && i.client.toLowerCase().includes(searchQuery.toLowerCase()))) &&
-    (viewFilter === "All") &&
-    (selectedRegions.length === 0 || (i.region && selectedRegions.includes(i.region)))
-  ), [items, searchQuery, viewFilter, selectedRegions]);
+    (selectedRegions.length === 0 || (i.region && selectedRegions.includes(i.region))) &&
+    (selectedSectorFilter === null || i.sector === selectedSectorFilter)
+  ), [items, activeTab, searchQuery, viewFilter, selectedRegions, selectedSectorFilter]);
 
   const groupItems = (list: PipelineItem[]) => {
     const sortedList = sortItems(list);
@@ -320,11 +338,39 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
     return grouped;
   };
 
-  const rfpGrouped = useMemo(() => groupItems(rfpItems), [rfpItems, sortBy]);
-  const voGrouped = useMemo(() => groupItems(voItems), [voItems, sortBy]);
+  const groupedItems = useMemo(() => groupItems(currentTabItems), [currentTabItems, sortBy]);
+
+  const [sectorOrder, setSectorOrder] = useState<string[]>(() => {
+    const saved = localStorage.getItem('pipelineSectorOrder');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  useEffect(() => {
+    if (sectors.length > 0) {
+      const currentNames = sectors.map(s => s.name);
+      const newOrder = [...sectorOrder];
+      currentNames.forEach(name => {
+        if (!newOrder.includes(name)) newOrder.push(name);
+      });
+      const finalOrder = newOrder.filter(name => currentNames.includes(name));
+      if (JSON.stringify(finalOrder) !== JSON.stringify(sectorOrder)) {
+        setSectorOrder(finalOrder);
+        localStorage.setItem('pipelineSectorOrder', JSON.stringify(finalOrder));
+      }
+    }
+  }, [sectors]);
 
   const onDragEnd = async (result: DropResult) => {
     if (!result.destination) return;
+    
+    if (result.type === "sector") {
+      const newOrder = Array.from(sectorOrder);
+      const [removed] = newOrder.splice(result.source.index, 1);
+      newOrder.splice(result.destination.index, 0, removed);
+      setSectorOrder(newOrder);
+      localStorage.setItem('pipelineSectorOrder', JSON.stringify(newOrder));
+      return;
+    }
     
     const { source, destination } = result;
     
@@ -333,7 +379,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
     if (source.index === destination.index) return;
 
     const sectorName = source.droppableId;
-    const sectorItems: PipelineItem[] = (activeTab === "RFP" ? rfpGrouped : voGrouped)[sectorName] || [];
+    const sectorItems: PipelineItem[] = groupedItems[sectorName] || [];
     
     const newSectorItems = [...sectorItems];
     const [removed] = newSectorItems.splice(source.index, 1);
@@ -347,7 +393,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
 
     // Update local state immediately
     setItems(prevItems => {
-      const otherItems = prevItems.filter(i => i.sector !== sectorName || i.type !== activeTab || i.status === "Achieved" || i.status === "Approved");
+      const otherItems = prevItems.filter(i => i.sector !== sectorName || getTabForItem(i) !== activeTab);
       return [...otherItems, ...updatedItems];
     });
 
@@ -370,149 +416,185 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
     }
   };
 
-  const renderGroupedItems = (grouped: Record<string, PipelineItem[]>) => (
-    <DragDropContext onDragEnd={onDragEnd}>
-      <div className="space-y-8">
-        {(Object.entries(grouped) as [string, PipelineItem[]][]).map(([sector, sectorItems]) => {
-          const sectorColor = sectors.find(s => s.name === sector)?.color || 'var(--text-secondary)';
-          return (
-            <Droppable droppableId={sector} key={sector} isDropDisabled={sortBy !== "manual" && sortBy !== undefined}>
-              {(provided) => (
-                <div 
-                  className="space-y-3 p-3 -mx-3 rounded-xl transition-all duration-300 hover:bg-[var(--bg-tertiary)]"
-                  ref={provided.innerRef}
-                  {...provided.droppableProps}
-                >
-                  <h4 
-                    className="text-xs font-mono uppercase tracking-wider flex items-center gap-2"
-                    style={{ color: sectorColor }}
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: sectorColor }} />
-                    {sector}
-                  </h4>
-                  <div className="grid gap-2">
-                    {sectorItems.map((item, index) => (
-                      // @ts-ignore
-                      <Draggable key={item.id} draggableId={item.id} index={index} isDragDisabled={sortBy !== "manual"}>
-                        {(provided, snapshot) => (
-                          <div 
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            {...provided.dragHandleProps}
-                            className={cn(
-                              "bg-[var(--card-bg-inner)] border border-[var(--border)] p-3 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:border-[var(--text-secondary)] group relative pl-4 overflow-hidden",
-                              snapshot.isDragging && "shadow-lg border-[var(--text-primary)] z-50 scale-[1.02]"
-                            )}
-                          >
-                            <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: sectorColor }} />
-                            {!isReportView && (
-                              <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button 
-                                  onClick={() => handleEdit(item)}
-                                  className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1.5 bg-[var(--bg-primary)] rounded-md shadow-sm border border-[var(--border)] hover:scale-110 transition-all duration-200"
-                                >
-                                  <Edit2 size={14} />
-                                </button>
-                                <button 
-                                  onClick={() => handleDelete(item.id)}
-                                  className="text-[var(--text-secondary)] hover:text-red-400 p-1.5 bg-[var(--bg-primary)] rounded-md shadow-sm border border-[var(--border)] hover:scale-110 transition-all duration-200"
-                                >
-                                  <Trash2 size={14} />
-                                </button>
-                              </div>
-                            )}
+  const renderGroupedItems = (grouped: Record<string, PipelineItem[]>) => {
+    const orderedSectors = sectorOrder.filter(s => grouped[s]).length > 0 
+      ? sectorOrder.filter(s => grouped[s])
+      : Object.keys(grouped);
 
-                            <div className="flex justify-between items-start pr-16">
-                              <div>
-                                <h5 
-                                  className="text-sm font-medium transition-colors"
-                                  style={{ color: sectorColor }}
-                                >
-                                  {item.rfpNumber && <span className="font-mono text-xs opacity-70 mr-2">{item.rfpNumber}</span>}
-                                  {item.name}
-                                </h5>
-                                {item.client && <p className="text-xs text-[var(--text-secondary)] mt-0.5">{item.client}</p>}
-                                <div className="flex items-center gap-3 mt-1.5 text-[10px] text-[var(--text-secondary)] font-mono uppercase tracking-wider">
-                                   {item.submissionDate && <span>Submitted: {item.submissionDate}</span>}
-                                   {item.region && <span>Region: {item.region}</span>}
-                                   {item.probability && (
-                                     <span className={cn(
-                                       "px-1.5 py-0.5 rounded font-bold border",
-                                       item.probability === "High" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : 
-                                       item.probability === "Medium" ? "bg-amber-500/10 text-amber-500 border-amber-500/20" : "bg-red-500/10 text-red-500 border-red-500/20"
-                                     )}>
-                                       Prob: {item.probability}
-                                     </span>
-                                   )}
-                                </div>
-                              </div>
-                              <div className="text-right flex flex-col items-end gap-1.5">
-                                <div>
-                                  <span className="text-sm font-mono text-[var(--text-primary)] block">{getFilteredValue(item).toLocaleString()} SAR</span>
-                                  {viewFilter !== "All" && (
-                                    <span className="text-[10px] text-[var(--text-secondary)]">of {getTotalValue(item).toLocaleString()} Total</span>
-                                  )}
-                                </div>
-                                {!isReportView && (
-                                  <button 
-                                    onClick={() => {
-                                      setAchievingItem({ item, status: item.type === "RFP" ? "Achieved" : "Approved" });
-                                      setAchievementDate(new Date().toISOString().split('T')[0]);
-                                    }}
-                                    className="flex items-center gap-1 px-2 py-1 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white rounded text-[10px] font-bold uppercase tracking-wider transition-colors"
-                                    title={item.type === "RFP" ? "Mark as Achieved" : "Mark as Approved"}
-                                  >
-                                    <Check size={12} />
-                                    {item.type === "RFP" ? "Achieved" : "Approved"}
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                            
-                            {item.type === "RFP" && Array.isArray(item.disciplines) && (
-                              <div className="mt-2 flex flex-wrap gap-1.5">
-                                {item.disciplines.map((d) => {
-                                  const isSelected = viewFilter === "All" || 
-                                                    (viewFilter === "Architecture" && d === "Architecture") ||
-                                                    (viewFilter === "Interior" && d === "Interior") ||
-                                                    (viewFilter === "CS" && d === "Construction Supervision");
-                                  const color = DISCIPLINE_COLORS[d] || 'var(--text-secondary)';
-                                  return (
-                                    <span key={d} className={cn(
-                                      "text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border",
-                                      !isSelected && "opacity-40 grayscale"
-                                    )}
-                                    style={{
-                                      borderColor: color,
-                                      color: color,
-                                      backgroundColor: `${color}1A`
-                                    }}>
-                                      {d === "Construction Supervision" ? "CS" : d}
-                                    </span>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
+    return (
+      <DragDropContext onDragEnd={onDragEnd}>
+        <Droppable droppableId="sectors-container" type="sector">
+          {(provided) => (
+            <div 
+              className="space-y-4"
+              ref={provided.innerRef}
+              {...provided.droppableProps}
+            >
+              {orderedSectors.map((sector, index) => {
+                const sectorItems = grouped[sector];
+                if (!sectorItems) return null;
+                const sectorColor = sectors.find(s => s.name === sector)?.color || 'var(--text-secondary)';
+                return (
+                  // @ts-ignore
+                  <Draggable key={`sector-${sector}`} draggableId={`sector-${sector}`} index={index} isDragDisabled={sortBy !== "manual" && sortBy !== undefined}>
+                    {(provided, snapshot) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        className={cn(
+                          "bg-[var(--card-bg)] rounded-xl border border-[var(--border)] overflow-hidden transition-all duration-300",
+                          snapshot.isDragging && "shadow-xl border-[var(--text-primary)] z-50"
                         )}
-                      </Draggable>
-                    ))}
-                    {provided.placeholder}
-                  </div>
-                </div>
-              )}
-            </Droppable>
-          );
-        })}
+                      >
+                        <div 
+                          {...provided.dragHandleProps}
+                          className="p-3 bg-[var(--bg-tertiary)] border-b border-[var(--border)] flex items-center gap-2 cursor-grab active:cursor-grabbing"
+                        >
+                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: sectorColor }} />
+                          <h4 
+                            className="text-xs font-mono uppercase tracking-wider font-bold"
+                            style={{ color: sectorColor }}
+                          >
+                            {sector}
+                          </h4>
+                        </div>
+                        <Droppable droppableId={sector} type="item" isDropDisabled={sortBy !== "manual" && sortBy !== undefined}>
+                          {(provided) => (
+                            <div 
+                              className="p-3 space-y-2"
+                              ref={provided.innerRef}
+                              {...provided.droppableProps}
+                            >
+                              {sectorItems.map((item, itemIndex) => (
+                                // @ts-ignore
+                                <Draggable key={item.id} draggableId={item.id} index={itemIndex} isDragDisabled={sortBy !== "manual"}>
+                                  {(provided, snapshot) => (
+                                    <div 
+                                      ref={provided.innerRef}
+                                      {...provided.draggableProps}
+                                      {...provided.dragHandleProps}
+                                      className={cn(
+                                        "bg-[var(--card-bg-inner)] border border-[var(--border)] p-3 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:border-[var(--text-secondary)] group relative pl-4 overflow-hidden",
+                                        snapshot.isDragging && "shadow-lg border-[var(--text-primary)] z-50 scale-[1.02]"
+                                      )}
+                                    >
+                                      <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: sectorColor }} />
+                                      
+                                      <div className="flex justify-between items-start pr-16">
+                                        <div>
+                                          <h5 
+                                            className="text-sm font-medium transition-colors"
+                                            style={{ color: sectorColor }}
+                                          >
+                                            {item.rfpNumber && <span className="font-mono text-xs opacity-70 mr-2">{item.rfpNumber}</span>}
+                                            {item.name}
+                                          </h5>
+                                          {item.client && <p className="text-xs text-[var(--text-secondary)] mt-0.5">{item.client}</p>}
+                                          <div className="flex items-center gap-3 mt-1.5 text-[10px] text-[var(--text-secondary)] font-mono uppercase tracking-wider">
+                                             {item.submissionDate && <span>Submitted: {item.submissionDate}</span>}
+                                             {item.region && <span>Region: {item.region}</span>}
+                                             {item.probability && (
+                                               <span className={cn(
+                                                 "px-1.5 py-0.5 rounded font-bold border",
+                                                 item.probability === "High" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : 
+                                                 item.probability === "Medium" ? "bg-amber-500/10 text-amber-500 border-amber-500/20" : "bg-red-500/10 text-red-500 border-red-500/20"
+                                               )}>
+                                                 Prob: {item.probability}
+                                               </span>
+                                             )}
+                                          </div>
+                                        </div>
+                                        <div className="text-right flex flex-col items-end gap-1.5">
+                                          <div>
+                                            <span className="text-sm font-mono text-[var(--text-primary)] block">{getFilteredValue(item).toLocaleString()} {currency}</span>
+                                            {viewFilter !== "All" && (
+                                              <span className="text-[10px] text-[var(--text-secondary)]">of {getTotalValue(item).toLocaleString()} Total</span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                      
+                                      {item.type === "RFP" && Array.isArray(item.disciplines) && (
+                                        <div className="mt-2 flex flex-wrap gap-1.5">
+                                          {item.disciplines.map((d) => {
+                                            const isSelected = viewFilter === "All" || 
+                                                              (viewFilter === "Architecture" && d === "Architecture") ||
+                                                              (viewFilter === "Interior" && d === "Interior") ||
+                                                              (viewFilter === "CS" && d === "Construction Supervision");
+                                            const color = DISCIPLINE_COLORS[d] || 'var(--text-secondary)';
+                                            return (
+                                              <span key={d} className={cn(
+                                                "text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border",
+                                                !isSelected && "opacity-40 grayscale"
+                                              )}
+                                              style={{
+                                                borderColor: color,
+                                                color: color,
+                                                backgroundColor: `${color}1A`
+                                              }}>
+                                                {d === "Construction Supervision" ? "CS" : d}
+                                              </span>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+
+                                      {/* Action Buttons Container (Hidden by default, shown on hover at the end) */}
+                                      {!isReportView && (
+                                        <div className="absolute top-0 right-0 bottom-0 flex items-center gap-1 px-3 bg-gradient-to-l from-[var(--card-bg-inner)] via-[var(--card-bg-inner)] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 translate-x-4 group-hover:translate-x-0">
+                                          <button 
+                                            onClick={() => {
+                                              setAchievingItem({ item, status: item.type === "RFP" ? "Achieved" : "Approved" });
+                                              setAchievementDate(new Date().toISOString().split('T')[0]);
+                                            }}
+                                            className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white rounded-full text-[10px] font-bold uppercase tracking-wider transition-colors shadow-sm"
+                                            title={item.type === "RFP" ? "Mark as Achieved" : "Mark as Approved"}
+                                          >
+                                            <Check size={12} />
+                                            {item.type === "RFP" ? "Achieved" : "Approved"}
+                                          </button>
+                                          <button 
+                                            onClick={() => handleEdit(item)}
+                                            className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-2 bg-[var(--bg-primary)] rounded-full shadow-sm border border-[var(--border)] hover:scale-110 transition-all duration-200"
+                                            title="Edit"
+                                          >
+                                            <Edit2 size={14} />
+                                          </button>
+                                          <button 
+                                            onClick={() => handleDelete(item.id)}
+                                            className="text-[var(--text-secondary)] hover:text-red-400 p-2 bg-[var(--bg-primary)] rounded-full shadow-sm border border-[var(--border)] hover:scale-110 transition-all duration-200"
+                                            title="Delete"
+                                          >
+                                            <Trash2 size={14} />
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </Draggable>
+                              ))}
+                              {provided.placeholder}
+                            </div>
+                          )}
+                        </Droppable>
+                      </div>
+                    )}
+                  </Draggable>
+                );
+              })}
+              {provided.placeholder}
+            </div>
+          )}
+        </Droppable>
         
         {Object.keys(grouped).length === 0 && (
           <div className="text-center py-12 text-[var(--text-secondary)]">
             No items found for this category.
           </div>
         )}
-      </div>
-    </DragDropContext>
-  );
+      </DragDropContext>
+    );
+  };
 
   return (
     <div className="space-y-8">
@@ -618,7 +700,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
             <DollarSign size={20} className="text-emerald-400 group-hover:scale-110 transition-transform duration-300" />
           </div>
           <p className="text-3xl font-medium text-[var(--text-primary)]">
-            {metrics.totalPipeline.toLocaleString()} <span className="text-sm text-[var(--text-secondary)]">SAR</span>
+            {metrics.totalPipeline.toLocaleString()} <span className="text-sm text-[var(--text-secondary)]">{currency}</span>
           </p>
         </div>
         <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[var(--text-secondary)] group cursor-default">
@@ -627,7 +709,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
             <Briefcase size={20} className="text-blue-400 group-hover:scale-110 transition-transform duration-300" />
           </div>
           <p className="text-3xl font-medium text-[var(--text-primary)]">
-            {metrics.totalRFP.toLocaleString()} <span className="text-sm text-[var(--text-secondary)]">SAR</span>
+            {metrics.totalRFP.toLocaleString()} <span className="text-sm text-[var(--text-secondary)]">{currency}</span>
           </p>
         </div>
         <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[var(--text-secondary)] group cursor-default">
@@ -636,7 +718,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
             <Layers size={20} className="text-amber-400 group-hover:scale-110 transition-transform duration-300" />
           </div>
           <p className="text-3xl font-medium text-[var(--text-primary)]">
-            {metrics.totalVO.toLocaleString()} <span className="text-sm text-[var(--text-secondary)]">SAR</span>
+            {metrics.totalVO.toLocaleString()} <span className="text-sm text-[var(--text-secondary)]">{currency}</span>
           </p>
         </div>
       </div>
@@ -659,16 +741,29 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                   outerRadius={80}
                   paddingAngle={5}
                   dataKey="value"
-                  className="transition-all duration-300"
+                  className="transition-all duration-300 outline-none"
+                  onClick={(data) => {
+                    if (selectedSectorFilter === data.name) {
+                      setSelectedSectorFilter(null);
+                    } else {
+                      setSelectedSectorFilter(data.name);
+                    }
+                  }}
                 >
                   {metrics.sectorData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} stroke="none" className="hover:opacity-80 transition-opacity cursor-pointer" />
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={entry.color} 
+                      stroke="none" 
+                      opacity={selectedSectorFilter && selectedSectorFilter !== entry.name ? 0.3 : 1}
+                      className="hover:opacity-80 transition-opacity cursor-pointer outline-none" 
+                    />
                   ))}
                 </Pie>
                 <Tooltip 
                   contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff' }}
                   itemStyle={{ color: '#fff' }}
-                  formatter={(value: number) => `${value.toLocaleString()} SAR`}
+                  formatter={(value: number) => `${value.toLocaleString()} ${currency}`}
                 />
                 <Legend />
               </RePieChart>
@@ -682,7 +777,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                   <span className="text-[var(--text-secondary)]">{sector.name}</span>
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className="text-[var(--text-primary)] font-mono">{sector.value.toLocaleString()} SAR</span>
+                  <span className="text-[var(--text-primary)] font-mono">{sector.value.toLocaleString()} {currency}</span>
                   <span className="text-[var(--text-tertiary)] w-8 text-right">
                     {((sector.value / metrics.totalPipeline) * 100).toFixed(1)}%
                   </span>
@@ -717,7 +812,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                     />
                   </div>
                   <div className="text-right text-[10px] text-[var(--text-tertiary)] mt-1 font-mono">
-                    {d.value.toLocaleString()} SAR
+                    {d.value.toLocaleString()} {currency}
                   </div>
                 </div>
               );
@@ -725,7 +820,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
             
             <div className="pt-4 border-t border-[var(--border)] flex justify-between items-center hover:bg-[var(--bg-tertiary)] p-2 -mx-2 rounded transition-colors cursor-default">
               <span className="text-xs text-[var(--text-secondary)]">Total Revenue</span>
-              <span className="text-xs font-mono text-[var(--text-primary)]">{metrics.absoluteTotalPipeline.toLocaleString()} SAR</span>
+              <span className="text-xs font-mono text-[var(--text-primary)]">{metrics.absoluteTotalPipeline.toLocaleString()} {currency}</span>
             </div>
           </div>
         </div>
@@ -734,47 +829,36 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
         <div className="lg:col-span-2 space-y-6">
           {isReportView ? (
             <div className="space-y-12">
-              <section>
-                <div className="mb-4 border-b border-[var(--border)] pb-2">
-                  <h3 className="text-lg font-light text-[var(--text-primary)]">Current RFPs</h3>
-                </div>
-                {renderGroupedItems(rfpGrouped)}
-              </section>
-              <section>
-                <div className="mb-4 border-b border-[var(--border)] pb-2">
-                  <h3 className="text-lg font-light text-[var(--text-primary)]">Potential VOs</h3>
-                </div>
-                {renderGroupedItems(voGrouped)}
-              </section>
+              {(["Submitted Proposals", "Proposals to be Submitted", "Approved VOs", "Potential VOs"] as TabType[]).map(tab => (
+                <section key={tab}>
+                  <div className="mb-4 border-b border-[var(--border)] pb-2">
+                    <h3 className="text-lg font-light text-[var(--text-primary)]">{tab}</h3>
+                  </div>
+                  {renderGroupedItems(getGroupedItemsForTab(tab))}
+                </section>
+              ))}
             </div>
           ) : (
             <>
               {/* Tabs */}
-              <div className="flex border-b border-[var(--border)]">
-                <button
-                  onClick={() => setActiveTab("RFP")}
-                  className={cn(
-                    "px-6 py-3 text-sm font-medium transition-all duration-300 relative hover:bg-[var(--bg-tertiary)]",
-                    activeTab === "RFP" ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                  )}
-                >
-                  Current RFPs
-                  {activeTab === "RFP" && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[var(--text-primary)]" />}
-                </button>
-                <button
-                  onClick={() => setActiveTab("VO")}
-                  className={cn(
-                    "px-6 py-3 text-sm font-medium transition-all duration-300 relative hover:bg-[var(--bg-tertiary)]",
-                    activeTab === "VO" ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                  )}
-                >
-                  Potential VOs
-                  {activeTab === "VO" && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[var(--text-primary)]" />}
-                </button>
+              <div className="flex border-b border-[var(--border)] overflow-x-auto no-scrollbar">
+                {(["Submitted Proposals", "Proposals to be Submitted", "Approved VOs", "Potential VOs"] as TabType[]).map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={cn(
+                      "px-6 py-3 text-sm font-medium transition-all duration-300 relative hover:bg-[var(--bg-tertiary)] whitespace-nowrap",
+                      activeTab === tab ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                    )}
+                  >
+                    {tab}
+                    {activeTab === tab && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[var(--text-primary)]" />}
+                  </button>
+                ))}
               </div>
 
               {/* List Content */}
-              {renderGroupedItems(activeTab === "RFP" ? rfpGrouped : voGrouped)}
+              {renderGroupedItems(groupedItems)}
             </>
           )}
         </div>
@@ -949,7 +1033,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
 
                   {newItem.disciplines?.includes("Architecture") && (
                     <div>
-                      <label className="block text-xs font-mono uppercase text-[var(--text-secondary)] mb-1">Architecture Budget (SAR)</label>
+                      <label className="block text-xs font-mono uppercase text-[var(--text-secondary)] mb-1">Architecture Budget ({currency})</label>
                       <input 
                         type="number"
                         value={newItem.values?.architecture || ""}
@@ -962,7 +1046,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
 
                   {newItem.disciplines?.includes("Interior") && (
                     <div>
-                      <label className="block text-xs font-mono uppercase text-[var(--text-secondary)] mb-1">Interior Budget (SAR)</label>
+                      <label className="block text-xs font-mono uppercase text-[var(--text-secondary)] mb-1">Interior Budget ({currency})</label>
                       <input 
                         type="number"
                         value={newItem.values?.interior || ""}
@@ -975,7 +1059,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
 
                   {newItem.disciplines?.includes("Construction Supervision") && (
                     <div>
-                      <label className="block text-xs font-mono uppercase text-[var(--text-secondary)] mb-1">Supervision Budget (SAR)</label>
+                      <label className="block text-xs font-mono uppercase text-[var(--text-secondary)] mb-1">Supervision Budget ({currency})</label>
                       <input 
                         type="number"
                         value={newItem.values?.cs || ""}
@@ -988,7 +1072,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                 </>
               ) : (
                 <div>
-                  <label className="block text-xs font-mono uppercase text-[var(--text-secondary)] mb-1">VO Value (SAR)</label>
+                  <label className="block text-xs font-mono uppercase text-[var(--text-secondary)] mb-1">VO Value ({currency})</label>
                   <input 
                     type="number"
                     value={newItem.values?.vo || ""}

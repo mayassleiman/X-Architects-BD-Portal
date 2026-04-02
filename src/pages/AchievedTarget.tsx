@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { TrendingUp, Edit2, Save, PieChart, ChevronDown, ChevronRight, Check, X, Trash2, Layers, Download, LineChart as LineChartIcon } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { PieChart as RePieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, LabelList, AreaChart, Area, ReferenceLine } from 'recharts';
+import { PieChart as RePieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, LabelList, ComposedChart, Area, Line, ReferenceLine } from 'recharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
+import { useCurrency } from '../context/CurrencyContext';
 
 interface AchievedTargetData {
   year: number;
@@ -26,12 +27,13 @@ const DISCIPLINE_COLORS: Record<string, string> = {
 };
 
 export function AchievedTarget({ isReportView = false }: { isReportView?: boolean }) {
+  const { currency } = useCurrency();
   const [year, setYear] = useState(new Date().getFullYear());
   const [data, setData] = useState<AchievedTargetData>({ year: new Date().getFullYear(), target: 0, items: [] });
   const [sectors, setSectors] = useState<MarketSector[]>([]);
   const [isEditingTarget, setIsEditingTarget] = useState(false);
   const [newTarget, setNewTarget] = useState(0);
-  const [expandedQuarters, setExpandedQuarters] = useState<number[]>([1, 2, 3, 4]);
+  const [expandedQuarters, setExpandedQuarters] = useState<number[]>([Math.floor(new Date().getMonth() / 3) + 1]);
   const [editingItem, setEditingItem] = useState<{
     id: string;
     number: string;
@@ -40,6 +42,18 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
   } | null>(null);
   const [itemToDelete, setItemToDelete] = useState<any | null>(null);
   const chartRef = useRef<HTMLDivElement>(null);
+  const chartContainerRef = useRef<HTMLDivElement>(null);
+  const [zoomDomain, setZoomDomain] = useState<[number, number] | null>(() => {
+    const saved = localStorage.getItem(`achievedTargetZoomDomain_${new Date().getFullYear()}`);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {}
+    }
+    return null;
+  });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState<{ x: number, domainMin: number, domainMax: number } | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -236,44 +250,300 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
     })).filter(d => d.value > 0);
 
     // Cumulative Chart Data
-    const sortedItems = [...data.items].sort((a, b) => {
+    const startOfYear = new Date(data.year, 0, 1).getTime();
+    const endOfYear = new Date(data.year, 11, 31, 23, 59, 59).getTime();
+    const today = new Date().getTime();
+    const msInYear = endOfYear - startOfYear;
+
+    const sortedItems = [...data.items].filter(i => {
+      const d = new Date(i.achievedDate || i.submissionDate);
+      return !isNaN(d.getTime()) && d.getFullYear() === data.year;
+    }).sort((a, b) => {
       const dateA = new Date(a.achievedDate || a.submissionDate).getTime();
       const dateB = new Date(b.achievedDate || b.submissionDate).getTime();
       return dateA - dateB;
     });
 
     let cumulativeValue = 0;
-    const chartData = sortedItems.map(item => {
+    const chartData: any[] = [];
+
+    chartData.push({
+      timestamp: startOfYear,
+      date: '01 Jan',
+      fullDate: `01/01/${data.year}`,
+      cumulative: 0,
+      name: 'Start of Year',
+      linearTarget: 0
+    });
+
+    sortedItems.forEach(item => {
       const dateStr = item.achievedDate || item.submissionDate;
       const date = new Date(dateStr);
+      const timestamp = date.getTime();
+
       const vals = item.values || {};
       const total = (Number(vals.architecture) || 0) + (Number(vals.interior) || 0) + (Number(vals.cs) || 0) + (Number(vals.vo) || 0);
       cumulativeValue += total;
       
-      return {
-        date: isNaN(date.getTime()) ? 'Unknown' : date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
-        fullDate: isNaN(date.getTime()) ? 'Unknown' : date.toLocaleDateString(),
+      const linearTarget = ((timestamp - startOfYear) / msInYear) * data.target;
+
+      chartData.push({
+        timestamp,
+        date: date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
+        fullDate: date.toLocaleDateString(),
         value: total,
         cumulative: cumulativeValue,
         name: item.name,
-        target: data.target // Flat target line
-      };
+        linearTarget
+      });
     });
 
-    // Add start point at 0 for better visualization
-    if (chartData.length > 0) {
-       chartData.unshift({ 
-         date: '01 Jan', 
-         fullDate: `01/01/${data.year}`, 
-         value: 0, 
-         cumulative: 0, 
-         name: 'Start of Year', 
-         target: data.target 
-       });
+    // Add a point for today if we are in the current year
+    if (today > startOfYear && today < endOfYear) {
+      const linearTarget = ((today - startOfYear) / msInYear) * data.target;
+      chartData.push({
+        timestamp: today,
+        date: 'Today',
+        fullDate: new Date().toLocaleDateString(),
+        cumulative: cumulativeValue,
+        name: 'Today',
+        linearTarget
+      });
     }
+
+    chartData.push({
+      timestamp: endOfYear,
+      date: '31 Dec',
+      fullDate: `31/12/${data.year}`,
+      cumulative: today > endOfYear ? cumulativeValue : null,
+      name: 'End of Year',
+      linearTarget: data.target
+    });
+
+    chartData.sort((a, b) => a.timestamp - b.timestamp);
 
     return { quarters, totalAchieved, totalDeficiency, totalAchievedPercent, totalDeficiencyPercent, sectorData, disciplineData, chartData };
   }, [data]);
+
+  // Load saved zoom domain when year changes
+  useEffect(() => {
+    const saved = localStorage.getItem(`achievedTargetZoomDomain_${year}`);
+    if (saved) {
+      try {
+        setZoomDomain(JSON.parse(saved));
+        return;
+      } catch (e) {
+        console.error("Failed to parse saved zoom domain", e);
+      }
+    }
+    setZoomDomain(null);
+  }, [year]);
+
+  // Set default domain if null
+  useEffect(() => {
+    if (metrics.chartData.length > 0 && !zoomDomain && data.year === year) {
+      const min = metrics.chartData[0].timestamp;
+      const max = metrics.chartData[metrics.chartData.length - 1].timestamp;
+      setZoomDomain([min, max]);
+    }
+  }, [metrics.chartData, zoomDomain, data.year, year]);
+
+  // Save zoom domain when it changes
+  useEffect(() => {
+    if (zoomDomain) {
+      localStorage.setItem(`achievedTargetZoomDomain_${year}`, JSON.stringify(zoomDomain));
+    }
+  }, [zoomDomain, year]);
+
+  useEffect(() => {
+    const container = chartContainerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      if (metrics.chartData.length === 0) return;
+      
+      setZoomDomain(prevDomain => {
+        const currentDomain = prevDomain || [
+          metrics.chartData[0].timestamp,
+          metrics.chartData[metrics.chartData.length - 1].timestamp
+        ];
+        
+        const [min, max] = currentDomain;
+        const range = max - min;
+        
+        const rect = container.getBoundingClientRect();
+        const yAxisWidth = 40;
+        const chartWidth = rect.width - yAxisWidth;
+        let mouseX = e.clientX - rect.left - yAxisWidth;
+        if (mouseX < 0) mouseX = 0;
+        if (mouseX > chartWidth) mouseX = chartWidth;
+        
+        const mousePercent = mouseX / chartWidth;
+        const zoomFactor = 0.15;
+        const direction = e.deltaY > 0 ? 1 : -1;
+        const zoomAmount = range * zoomFactor * direction;
+        
+        let newMin = min - (zoomAmount * mousePercent);
+        let newMax = max + (zoomAmount * (1 - mousePercent));
+        
+        const dataMin = metrics.chartData[0].timestamp;
+        const dataMax = metrics.chartData[metrics.chartData.length - 1].timestamp;
+        
+        if (newMin < dataMin) newMin = dataMin;
+        if (newMax > dataMax) newMax = dataMax;
+        
+        if (newMax - newMin < 86400000 * 7) { // Min 1 week
+          const center = (newMin + newMax) / 2;
+          newMin = center - (86400000 * 7) / 2;
+          newMax = center + (86400000 * 7) / 2;
+        }
+        
+        return [newMin, newMax];
+      });
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => container.removeEventListener('wheel', handleWheel);
+  }, [metrics.chartData]);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    const currentDomain = zoomDomain || [
+      metrics.chartData[0]?.timestamp,
+      metrics.chartData[metrics.chartData.length - 1]?.timestamp
+    ];
+    if (!currentDomain[0] || !currentDomain[1]) return;
+    setIsPanning(true);
+    setPanStart({ x: e.clientX, domainMin: currentDomain[0], domainMax: currentDomain[1] });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isPanning || !panStart || !zoomDomain || !chartContainerRef.current) return;
+    
+    const dx = e.clientX - panStart.x;
+    const chartWidth = chartContainerRef.current.clientWidth;
+    
+    const range = panStart.domainMax - panStart.domainMin;
+    const timeShift = (dx / chartWidth) * range;
+    
+    let newMin = panStart.domainMin - timeShift;
+    let newMax = panStart.domainMax - timeShift;
+    
+    const dataMin = metrics.chartData[0].timestamp;
+    const dataMax = metrics.chartData[metrics.chartData.length - 1].timestamp;
+    
+    if (newMin < dataMin) {
+      newMin = dataMin;
+      newMax = dataMin + range;
+    }
+    if (newMax > dataMax) {
+      newMax = dataMax;
+      newMin = dataMax - range;
+    }
+    
+    setZoomDomain([newMin, newMax]);
+  };
+
+  const handleMouseUp = () => {
+    setIsPanning(false);
+    setPanStart(null);
+  };
+
+  const xAxisTicks = useMemo(() => {
+    const currentDomain = zoomDomain || [
+      metrics.chartData[0]?.timestamp || 0,
+      metrics.chartData[metrics.chartData.length - 1]?.timestamp || 0
+    ];
+    
+    if (!currentDomain[0] || !currentDomain[1]) return undefined;
+    
+    const [min, max] = currentDomain;
+    const range = max - min;
+    const days = range / (1000 * 60 * 60 * 24);
+    
+    const ticks = [];
+    
+    if (days > 180) {
+      // Ticks at the start of every month
+      const startDate = new Date(min);
+      startDate.setDate(1);
+      startDate.setHours(0, 0, 0, 0);
+      
+      let current = new Date(startDate);
+      while (current.getTime() <= max) {
+        if (current.getTime() >= min) {
+          ticks.push(current.getTime());
+        }
+        current.setMonth(current.getMonth() + 1);
+      }
+    } else if (days > 60) {
+      // Ticks 1st and 15th
+      const startDate = new Date(min);
+      startDate.setDate(1);
+      startDate.setHours(0, 0, 0, 0);
+      
+      let current = new Date(startDate);
+      while (current.getTime() <= max) {
+        if (current.getTime() >= min) ticks.push(current.getTime());
+        
+        const midMonth = new Date(current);
+        midMonth.setDate(15);
+        if (midMonth.getTime() >= min && midMonth.getTime() <= max) {
+          ticks.push(midMonth.getTime());
+        }
+        
+        current.setMonth(current.getMonth() + 1);
+      }
+    } else if (days > 14) {
+      // Ticks every week (Monday)
+      const startDate = new Date(min);
+      startDate.setHours(0, 0, 0, 0);
+      const day = startDate.getDay();
+      const diff = startDate.getDate() - day + (day === 0 ? -6 : 1);
+      startDate.setDate(diff);
+      
+      let current = new Date(startDate);
+      while (current.getTime() <= max) {
+        if (current.getTime() >= min) ticks.push(current.getTime());
+        current.setDate(current.getDate() + 7);
+      }
+    } else {
+      // Ticks every day
+      const startDate = new Date(min);
+      startDate.setHours(0, 0, 0, 0);
+      
+      let current = new Date(startDate);
+      while (current.getTime() <= max) {
+        if (current.getTime() >= min) ticks.push(current.getTime());
+        current.setDate(current.getDate() + 1);
+      }
+    }
+    
+    return ticks;
+  }, [zoomDomain, metrics.chartData]);
+
+  const formatXAxisTick = (tick: number) => {
+    const date = new Date(tick);
+    const currentDomain = zoomDomain || [
+      metrics.chartData[0]?.timestamp || 0,
+      metrics.chartData[metrics.chartData.length - 1]?.timestamp || 0
+    ];
+    
+    if (!currentDomain[0] || !currentDomain[1]) return '';
+    
+    const range = currentDomain[1] - currentDomain[0];
+    const days = range / (1000 * 60 * 60 * 24);
+    
+    if (days > 180) {
+      return date.toLocaleDateString('en-GB', { month: 'short' });
+    } else if (days > 60) {
+      return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    } else if (days > 14) {
+      return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    } else {
+      return date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+    }
+  };
 
   const handleExportPDF = async () => {
     const doc = new jsPDF();
@@ -308,8 +578,8 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
     doc.setFontSize(10);
     doc.setTextColor(100);
     doc.text(`Generated on: ${timestamp}`, 14, 28);
-    doc.text(`Total Target: ${data.target.toLocaleString()} SAR`, 14, 34);
-    doc.text(`Total Achieved: ${metrics.totalAchieved.toLocaleString()} SAR (${metrics.totalAchievedPercent.toFixed(1)}%)`, 14, 40);
+    doc.text(`Total Target: ${data.target.toLocaleString()} ${currency}`, 14, 34);
+    doc.text(`Total Achieved: ${metrics.totalAchieved.toLocaleString()} ${currency} (${metrics.totalAchievedPercent.toFixed(1)}%)`, 14, 40);
 
     let currentY = 50;
 
@@ -392,7 +662,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
     });
 
     autoTable(doc, {
-      head: [['Ref #', 'Project Name', 'Date', 'Type', 'Value (SAR)']],
+      head: [['Ref #', 'Project Name', 'Date', 'Type', `Value (${currency})`]],
       body: detailsBody,
       startY: currentY + 5,
       styles: { fontSize: 9, cellPadding: 3 },
@@ -464,7 +734,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
             ) : (
               <div className="flex items-center gap-4">
                 <span className="text-3xl font-light text-[var(--text-primary)]">
-                  {data.target.toLocaleString()} <span className="text-sm text-[var(--text-secondary)]">SAR</span>
+                  {data.target.toLocaleString()} <span className="text-sm text-[var(--text-secondary)]">{currency}</span>
                 </span>
                 {!isReportView && (
                   <button 
@@ -485,9 +755,16 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
             <LineChartIcon size={16} />
             Cumulative Achievement Trend
           </h3>
-          <div className="h-64 w-full">
+          <div 
+            className={cn("h-64 w-full select-none", isPanning ? "cursor-grabbing" : "cursor-grab")}
+            ref={chartContainerRef}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+          >
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={metrics.chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+              <ComposedChart data={metrics.chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorAchieved" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
@@ -496,12 +773,19 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#333" />
                 <XAxis 
-                  dataKey="date" 
+                  dataKey="timestamp" 
+                  type="number"
+                  scale="time"
+                  domain={zoomDomain || ['dataMin', 'dataMax']}
+                  allowDataOverflow={true}
+                  ticks={xAxisTicks}
                   tick={{ fill: '#888', fontSize: 12 }} 
                   axisLine={false}
                   tickLine={false}
+                  tickFormatter={formatXAxisTick}
                 />
                 <YAxis 
+                  allowDataOverflow={true}
                   tick={{ fill: '#888', fontSize: 12 }} 
                   axisLine={false}
                   tickLine={false}
@@ -510,37 +794,59 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
                 <Tooltip 
                   contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff' }}
                   itemStyle={{ color: '#fff' }}
-                  formatter={(value: number, name: string) => [value.toLocaleString() + ' SAR', name === 'cumulative' ? 'Cumulative Achieved' : 'Target']}
-                  labelFormatter={(label) => `Date: ${label}`}
+                  formatter={(value: number, name: string) => {
+                    if (name === 'linearTarget') return [`${value.toLocaleString()} ${currency}`, 'Target'];
+                    if (name === 'cumulative') return [`${value.toLocaleString()} ${currency}`, 'Cumulative Achieved'];
+                    return [value, name];
+                  }}
+                  labelFormatter={(label, payload) => {
+                    if (payload && payload.length > 0) {
+                      const data = payload[0].payload;
+                      return `Date: ${data.fullDate}${data.name && data.name !== 'Start of Year' && data.name !== 'End of Year' && data.name !== 'Today' ? ` - ${data.name}` : ''}`;
+                    }
+                    return `Date: ${new Date(label).toLocaleDateString()}`;
+                  }}
                 />
-                <ReferenceLine y={data.target} stroke="#f59e0b" strokeDasharray="3 3" label={{ position: 'top', value: 'Target', fill: '#f59e0b', fontSize: 12 }} />
+                {new Date().getFullYear() === data.year && (
+                  <ReferenceLine x={new Date().getTime()} stroke="#3b82f6" strokeDasharray="3 3" label={{ position: 'insideTopRight', value: 'Today', fill: '#3b82f6', fontSize: 12 }} />
+                )}
+                <Line 
+                  type="linear" 
+                  dataKey="linearTarget" 
+                  stroke="#f59e0b" 
+                  strokeDasharray="5 5" 
+                  strokeWidth={2}
+                  dot={false}
+                  name="linearTarget"
+                />
                 <Area 
-                  type="monotone" 
+                  type="linear" 
                   dataKey="cumulative" 
                   stroke="#10b981" 
                   fillOpacity={1} 
                   fill="url(#colorAchieved)" 
                   strokeWidth={2}
-                  name="Cumulative Achieved"
+                  name="cumulative"
+                  connectNulls={false}
                   dot={{ r: 4, fill: '#10b981', stroke: '#fff', strokeWidth: 2 }}
                   activeDot={{ r: 6, fill: '#10b981', stroke: '#fff', strokeWidth: 2 }}
                 />
-              </AreaChart>
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* Quarterly Table */}
-        <div className="overflow-x-auto">
+        <div className="overflow-auto max-h-[400px]">
           <table className="w-full text-sm text-left">
-            <thead className="text-xs text-[var(--text-secondary)] uppercase bg-[var(--bg-tertiary)] border-y border-[var(--border)]">
+            <thead className="text-xs text-[var(--text-secondary)] uppercase bg-[var(--bg-tertiary)] border-y border-[var(--border)] sticky top-0 z-10">
               <tr>
                 <th className="px-4 py-3 font-mono w-1/3">Quarter / Project</th>
                 <th className="px-4 py-3 font-mono text-center">Date</th>
-                <th className="px-4 py-3 font-mono text-right">Target (SAR)</th>
-                <th className="px-4 py-3 font-mono text-right">Achieved (SAR)</th>
+                <th className="px-4 py-3 font-mono text-right">Target ({currency})</th>
+                <th className="px-4 py-3 font-mono text-right">Achieved ({currency})</th>
                 <th className="px-4 py-3 font-mono text-right">% Achieved</th>
-                <th className="px-4 py-3 font-mono text-right">Deficiency (SAR)</th>
+                <th className="px-4 py-3 font-mono text-right">Deficiency ({currency})</th>
                 <th className="px-4 py-3 font-mono text-right">% Deficiency</th>
                 <th className="px-4 py-3 font-mono text-center w-10"></th>
               </tr>
@@ -766,7 +1072,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
                   itemStyle={{ color: '#fff' }}
                   formatter={(value: number, name: string, props: any) => {
                     const share = props.payload.share;
-                    return [`${value.toLocaleString()} SAR (${share.toFixed(1)}%)`, name];
+                    return [`${value.toLocaleString()} ${currency} (${share.toFixed(1)}%)`, name];
                   }}
                 />
                 <Legend />
@@ -799,7 +1105,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
                   contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff' }}
                   formatter={(value: number, name: string, props: any) => {
                     const share = props.payload.share;
-                    return [`${value.toLocaleString()} SAR (${share.toFixed(1)}%)`, 'Value'];
+                    return [`${value.toLocaleString()} ${currency} (${share.toFixed(1)}%)`, 'Value'];
                   }}
                 />
                 <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={30}>

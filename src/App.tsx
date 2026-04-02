@@ -19,6 +19,7 @@ import { EmailGun } from "./pages/EmailGun";
 import { FollowUpReminder } from "./components/features/FollowUpReminder";
 import { SearchProvider } from "./context/SearchContext";
 import { UserProvider, useUser } from "./context/UserContext";
+import { CurrencyProvider } from "./context/CurrencyContext";
 import { Login } from "./pages/Login";
 
 // Placeholder components for other routes
@@ -99,7 +100,9 @@ export default function App() {
 
   return (
     <UserProvider>
-      <AppRoutes />
+      <CurrencyProvider>
+        <AppRoutes />
+      </CurrencyProvider>
     </UserProvider>
   );
 }

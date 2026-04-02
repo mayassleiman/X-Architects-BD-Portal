@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Search, Mail, Download, Check, X, Filter, User, ArrowRight } from 'lucide-react';
+import { Search, Mail, Download, Check, X, Filter, User, ArrowRight, ChevronDown, ChevronRight, Building2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
@@ -18,6 +18,7 @@ export function EmailGun() {
   const [selectedContactIds, setSelectedContactIds] = useState<Set<number>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
   const [orgFilter, setOrgFilter] = useState<string>("All");
+  const [expandedOrgs, setExpandedOrgs] = useState<string[]>([]);
   
   // Email Content State
   const [subject, setSubject] = useState("");
@@ -50,13 +51,43 @@ export function EmailGun() {
 
   const filteredContacts = useMemo(() => {
     return contacts.filter(c => {
+      if (!c.email || c.email.trim() === '') return false; // Filter out contacts with no email
+
+      const cleanPhone = ((c as any).phone || "").replace(/\D/g, "");
+      const cleanSearch = searchQuery.replace(/\D/g, "");
+      const phoneMatch = ((c as any).phone || "").toLowerCase().includes(searchQuery.toLowerCase()) || 
+                         (cleanSearch.length > 0 && cleanPhone.includes(cleanSearch));
+
       const matchesSearch = (c.client_contact || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
                             (c.email || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            (c.client_organization || "").toLowerCase().includes(searchQuery.toLowerCase());
+                            (c.client_organization || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            phoneMatch;
       const matchesOrg = orgFilter === "All" || c.client_organization === orgFilter;
       return matchesSearch && matchesOrg;
     });
   }, [contacts, searchQuery, orgFilter]);
+
+  const groupedFilteredContacts = useMemo(() => {
+    const groups: Record<string, Contact[]> = {};
+    filteredContacts.forEach(c => {
+      const org = c.client_organization || 'Unassigned';
+      if (!groups[org]) groups[org] = [];
+      groups[org].push(c);
+    });
+    return groups;
+  }, [filteredContacts]);
+
+  useEffect(() => {
+    if (searchQuery.trim().length > 0) {
+      setExpandedOrgs(Object.keys(groupedFilteredContacts));
+    }
+  }, [searchQuery, groupedFilteredContacts]);
+
+  const toggleOrg = (org: string) => {
+    setExpandedOrgs(prev => 
+      prev.includes(org) ? prev.filter(o => o !== org) : [...prev, org]
+    );
+  };
 
   // Helper to get short name (First Name)
   const getShortName = (fullName: string) => {
@@ -215,32 +246,54 @@ ${processedBody}
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
-          {filteredContacts.map(contact => (
-            <div 
-              key={contact.id}
-              onClick={() => toggleContact(contact.id)}
-              className={cn(
-                "flex items-center gap-3 p-3 rounded cursor-pointer border transition-colors",
-                selectedContactIds.has(contact.id) 
-                  ? "bg-[var(--bg-tertiary)] border-[var(--text-primary)]" 
-                  : "bg-transparent border-transparent hover:bg-[var(--bg-tertiary)]"
+        <div className="flex-1 overflow-y-auto p-2 space-y-2">
+          {Object.entries(groupedFilteredContacts).map(([org, orgContacts]: [string, Contact[]]) => (
+            <div key={org} className="border border-[var(--border)] rounded overflow-hidden">
+              <div 
+                className="flex items-center justify-between p-2 bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] transition-colors cursor-pointer"
+                onClick={() => toggleOrg(org)}
+              >
+                <div className="flex items-center gap-2">
+                  <Building2 size={14} className="text-[var(--text-secondary)]" />
+                  <span className="font-bold text-xs text-[var(--text-primary)] uppercase tracking-wide">{org}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-[var(--text-secondary)]">{orgContacts.length}</span>
+                  {expandedOrgs.includes(org) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                </div>
+              </div>
+              
+              {expandedOrgs.includes(org) && (
+                <div className="divide-y divide-[var(--border)]">
+                  {orgContacts.map(contact => (
+                    <div 
+                      key={contact.id}
+                      onClick={() => toggleContact(contact.id)}
+                      className={cn(
+                        "flex items-center gap-3 p-3 cursor-pointer transition-colors",
+                        selectedContactIds.has(contact.id) 
+                          ? "bg-[var(--bg-tertiary)]" 
+                          : "bg-transparent hover:bg-[var(--bg-tertiary)]"
+                      )}
+                    >
+                      <div className={cn(
+                        "w-4 h-4 rounded border flex items-center justify-center transition-colors shrink-0",
+                        selectedContactIds.has(contact.id) ? "bg-[var(--text-primary)] border-[var(--text-primary)]" : "border-[var(--text-secondary)]"
+                      )}>
+                        {selectedContactIds.has(contact.id) && <Check size={10} className="text-[var(--bg-primary)]" />}
+                      </div>
+                      <div className="overflow-hidden flex-1">
+                        <h4 className="text-sm font-medium text-[var(--text-primary)] truncate">{contact.client_contact}</h4>
+                        <p className="text-xs text-[var(--text-secondary)] truncate">{contact.position || "No position specified"}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
-            >
-              <div className={cn(
-                "w-4 h-4 rounded border flex items-center justify-center transition-colors",
-                selectedContactIds.has(contact.id) ? "bg-[var(--text-primary)] border-[var(--text-primary)]" : "border-[var(--text-secondary)]"
-              )}>
-                {selectedContactIds.has(contact.id) && <Check size={10} className="text-[var(--bg-primary)]" />}
-              </div>
-              <div className="overflow-hidden">
-                <h4 className="text-sm font-medium text-[var(--text-primary)] truncate">{contact.client_contact}</h4>
-                <p className="text-xs text-[var(--text-secondary)] truncate">{contact.client_organization}</p>
-              </div>
             </div>
           ))}
           {filteredContacts.length === 0 && (
-            <div className="p-4 text-center text-xs text-[var(--text-secondary)] italic">No contacts found.</div>
+            <div className="p-4 text-center text-xs text-[var(--text-secondary)] italic">No contacts found with email addresses.</div>
           )}
         </div>
       </div>

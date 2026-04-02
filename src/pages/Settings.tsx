@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Database, Download, FileSpreadsheet, Upload, Image as ImageIcon, Plus, Trash2, Save, X, Check, Edit2, Palette } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
+import { useCurrency } from "../context/CurrencyContext";
 import * as XLSX from 'xlsx';
 
 interface MarketSector {
@@ -17,6 +18,7 @@ interface CompanyType {
 
 export function Settings() {
   const { theme, toggleTheme } = useTheme();
+  const { currency, setCurrency } = useCurrency();
   const [sectors, setSectors] = useState<MarketSector[]>([]);
   const [companyTypes, setCompanyTypes] = useState<CompanyType[]>([]);
   
@@ -655,6 +657,24 @@ export function Settings() {
                   onChange={handleLogoUpload}
                 />
               </label>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-[var(--text-secondary)]">Display Currency</span>
+              <select
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+                className="bg-[var(--bg-primary)] border border-[var(--border)] px-3 py-1.5 rounded text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--text-primary)]"
+              >
+                <option value="SAR">SAR (Saudi Riyal)</option>
+                <option value="USD">USD (US Dollar)</option>
+                <option value="EUR">EUR (Euro)</option>
+                <option value="GBP">GBP (British Pound)</option>
+                <option value="AED">AED (UAE Dirham)</option>
+                <option value="QAR">QAR (Qatari Riyal)</option>
+                <option value="BHD">BHD (Bahraini Dinar)</option>
+                <option value="OMR">OMR (Omani Rial)</option>
+                <option value="KWD">KWD (Kuwaiti Dinar)</option>
+              </select>
             </div>
           </div>
         </div>

@@ -228,11 +228,17 @@ export function MasterDirectory() {
 
   // Group contacts by organization
   const groupedContacts = useMemo(() => {
-    const filtered = contacts.filter(c => 
-      (c.client_contact || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (c.client_organization || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (c.email || "").toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filtered = contacts.filter(c => {
+      const cleanPhone = (c.phone || "").replace(/\D/g, "");
+      const cleanSearch = searchQuery.replace(/\D/g, "");
+      const phoneMatch = (c.phone || "").toLowerCase().includes(searchQuery.toLowerCase()) || 
+                         (cleanSearch.length > 0 && cleanPhone.includes(cleanSearch));
+
+      return (c.client_contact || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+             (c.client_organization || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+             (c.email || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+             phoneMatch;
+    });
 
     const groups: Record<string, Contact[]> = {};
     filtered.forEach(c => {
@@ -242,6 +248,13 @@ export function MasterDirectory() {
     });
     return groups;
   }, [contacts, searchQuery]);
+
+  useEffect(() => {
+    if (searchQuery.trim().length > 0) {
+      // Auto-expand all matching organizations when searching
+      setExpandedOrgs(Object.keys(groupedContacts));
+    }
+  }, [searchQuery, groupedContacts]);
 
   const contactsByLocation: Record<string, Contact[]> = useMemo(() => {
     if (!selectedOrg || !groupedContacts[selectedOrg]) return {};
