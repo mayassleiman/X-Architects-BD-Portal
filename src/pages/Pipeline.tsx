@@ -46,7 +46,7 @@ const DISCIPLINE_COLORS: Record<string, string> = {
 
 const DISCIPLINES: Discipline[] = ["Architecture", "Interior", "Construction Supervision"];
 
-type TabType = "Submitted Proposals" | "Proposals to be Submitted" | "Approved VOs" | "Potential VOs";
+type TabType = "Submitted Proposals" | "Proposals to be Submitted" | "Potential VOs";
 
 export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
   const { searchQuery } = useSearch();
@@ -228,7 +228,6 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
   const getTabForItem = (item: PipelineItem): TabType | null => {
     if (item.type === "RFP" && item.status === "Submitted") return "Submitted Proposals";
     if (item.type === "RFP" && item.status === "Pending") return "Proposals to be Submitted";
-    if (item.type === "VO" && item.status === "Approved") return "Approved VOs";
     if (item.type === "VO" && (item.status === "Pending" || item.status === "Submitted")) return "Potential VOs";
     return null;
   };
@@ -295,15 +294,8 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
     }
   };
 
-  const handleQuickStatusToggle = async (item: PipelineItem) => {
-    let newStatus: PipelineItem["status"];
-    if (item.type === "RFP") {
-      newStatus = item.status === "Pending" ? "Submitted" : "Pending";
-    } else {
-      newStatus = item.status === "Approved" ? "Pending" : "Approved";
-    }
-
-    if (newStatus === "Approved") {
+  const handleQuickStatusToggle = async (item: PipelineItem, newStatus: PipelineItem["status"]) => {
+    if (newStatus === "Achieved" || newStatus === "Approved") {
        setAchievingItem({ item, status: newStatus });
        setAchievementDate(new Date().toISOString().split('T')[0]);
        return;
@@ -319,8 +311,8 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
       
       setItems(items.map(i => i.id === item.id ? updatedItem : i));
     } catch (err) {
-      console.error('Failed to toggle item status:', err);
-      alert('Failed to toggle status. Please try again.');
+      console.error('Failed to update item status:', err);
+      alert('Failed to update status. Please try again.');
     }
   };
 
@@ -531,20 +523,11 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                                                  Prob: {item.probability}
                                                </span>
                                              )}
-                                             <button
-                                               onClick={(e) => {
-                                                 e.stopPropagation();
-                                                 handleQuickStatusToggle(item);
-                                               }}
-                                               className="px-1.5 py-0.5 rounded font-bold border bg-[var(--bg-tertiary)] text-[var(--text-primary)] border-[var(--border)] hover:bg-[var(--text-primary)] hover:text-[var(--bg-primary)] transition-colors flex items-center gap-1"
-                                               title="Click to move to other section"
+                                             <span
+                                               className="px-1.5 py-0.5 rounded font-bold border bg-[var(--bg-tertiary)] text-[var(--text-primary)] border-[var(--border)]"
                                              >
-                                               <ArrowRightLeft size={10} />
-                                               {item.status === "Pending" && item.type === "RFP" ? "To Be Submitted" : 
-                                                item.status === "Submitted" && item.type === "RFP" ? "Submitted" :
-                                                item.status === "Pending" && item.type === "VO" ? "Potential" :
-                                                item.status === "Approved" && item.type === "VO" ? "Approved" : item.status}
-                                             </button>
+                                               {item.status}
+                                             </span>
                                           </div>
                                         </div>
                                         <div className="text-right flex flex-col items-end gap-1.5">
@@ -585,22 +568,29 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                                       {/* Action Buttons Container (Hidden by default, shown on hover at the end) */}
                                       {!isReportView && (
                                         <div className="absolute top-0 right-0 bottom-0 flex items-center gap-1 px-3 bg-gradient-to-l from-[var(--card-bg-inner)] via-[var(--card-bg-inner)] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 translate-x-4 group-hover:translate-x-0">
-                                          <button 
-                                            onClick={() => handleQuickStatusToggle(item)}
-                                            className="flex items-center gap-1 px-3 py-1.5 bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white rounded-full text-[10px] font-bold uppercase tracking-wider transition-colors shadow-sm"
-                                            title="Move Item"
-                                          >
-                                            <ArrowRightLeft size={12} />
-                                            {item.type === "RFP" 
-                                              ? (item.status === "Pending" ? "To Submitted" : "To Pending")
-                                              : (item.status === "Approved" ? "To Potential" : "To Approved")}
-                                          </button>
-                                          {item.type === "RFP" && item.status !== "Achieved" && (
+                                          {item.type === "RFP" && item.status === "Pending" && (
                                             <button 
-                                              onClick={() => {
-                                                setAchievingItem({ item, status: "Achieved" });
-                                                setAchievementDate(new Date().toISOString().split('T')[0]);
-                                              }}
+                                              onClick={() => handleQuickStatusToggle(item, "Submitted")}
+                                              className="flex items-center gap-1 px-3 py-1.5 bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white rounded-full text-[10px] font-bold uppercase tracking-wider transition-colors shadow-sm"
+                                              title="Move to Submitted"
+                                            >
+                                              <ArrowRightLeft size={12} />
+                                              To Submitted
+                                            </button>
+                                          )}
+                                          {item.type === "VO" && (item.status === "Pending" || item.status === "Submitted") && (
+                                            <button 
+                                              onClick={() => handleQuickStatusToggle(item, "Approved")}
+                                              className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white rounded-full text-[10px] font-bold uppercase tracking-wider transition-colors shadow-sm"
+                                              title="Approve"
+                                            >
+                                              <Check size={12} />
+                                              Approve
+                                            </button>
+                                          )}
+                                          {item.type === "RFP" && item.status === "Submitted" && (
+                                            <button 
+                                              onClick={() => handleQuickStatusToggle(item, "Achieved")}
                                               className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white rounded-full text-[10px] font-bold uppercase tracking-wider transition-colors shadow-sm"
                                               title="Mark as Achieved"
                                             >
@@ -884,7 +874,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
         <div className="lg:col-span-2 space-y-6">
           {isReportView ? (
             <div className="space-y-12">
-              {(["Submitted Proposals", "Proposals to be Submitted", "Approved VOs", "Potential VOs"] as TabType[]).map(tab => (
+              {(["Submitted Proposals", "Proposals to be Submitted", "Potential VOs"] as TabType[]).map(tab => (
                 <section key={tab}>
                   <div className="mb-4 border-b border-[var(--border)] pb-2">
                     <h3 className="text-lg font-light text-[var(--text-primary)]">{tab}</h3>
@@ -897,7 +887,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
             <>
               {/* Tabs */}
               <div className="flex border-b border-[var(--border)] overflow-x-auto no-scrollbar">
-                {(["Submitted Proposals", "Proposals to be Submitted", "Approved VOs", "Potential VOs"] as TabType[]).map(tab => (
+                {(["Submitted Proposals", "Proposals to be Submitted", "Potential VOs"] as TabType[]).map(tab => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
@@ -1061,30 +1051,6 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                     <option value="Low">Low</option>
                   </select>
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-mono uppercase text-[var(--text-secondary)] mb-1">Status</label>
-                <select 
-                  value={newItem.status}
-                  onChange={(e) => setNewItem({...newItem, status: e.target.value as any})}
-                  className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-[var(--text-primary)] focus:outline-none focus:border-[var(--text-primary)]"
-                >
-                  {newItem.type === "RFP" ? (
-                    <>
-                      <option value="Pending">Proposals to be Submitted</option>
-                      <option value="Submitted">Submitted Proposals</option>
-                      <option value="Achieved">Achieved</option>
-                      <option value="Lost">Lost</option>
-                    </>
-                  ) : (
-                    <>
-                      <option value="Pending">Potential VOs</option>
-                      <option value="Approved">Approved VOs</option>
-                      <option value="Lost">Lost</option>
-                    </>
-                  )}
-                </select>
               </div>
 
               {newItem.type === "RFP" ? (

@@ -290,7 +290,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
       chartData.push({
         timestamp,
         date: date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
-        fullDate: date.toLocaleDateString(),
+        fullDate: date.toLocaleDateString('en-GB'),
         value: total,
         cumulative: cumulativeValue,
         name: item.name,
@@ -304,7 +304,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
       chartData.push({
         timestamp: today,
         date: 'Today',
-        fullDate: new Date().toLocaleDateString(),
+        fullDate: new Date().toLocaleDateString('en-GB'),
         cumulative: cumulativeValue,
         name: 'Today',
         linearTarget
@@ -653,7 +653,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
           detailsBody.push([
             item.rfpNumber || "No #",
             item.name,
-            new Date(item.achievedDate || item.submissionDate).toLocaleDateString(),
+            new Date(item.achievedDate || item.submissionDate).toLocaleDateString('en-GB'),
             item.type === "RFP" ? "Project" : item.type,
             totalValue.toLocaleString()
           ]);
@@ -804,7 +804,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
                       const data = payload[0].payload;
                       return `Date: ${data.fullDate}${data.name && data.name !== 'Start of Year' && data.name !== 'End of Year' && data.name !== 'Today' ? ` - ${data.name}` : ''}`;
                     }
-                    return `Date: ${new Date(label).toLocaleDateString()}`;
+                    return `Date: ${new Date(label).toLocaleDateString('en-GB')}`;
                   }}
                 />
                 {new Date().getFullYear() === data.year && (
@@ -950,7 +950,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
                               className="bg-[var(--bg-primary)] border border-[var(--border)] px-1 py-0.5 rounded text-xs font-mono w-28 focus:outline-none focus:border-[var(--text-primary)]"
                             />
                           ) : (
-                            new Date(item.achievedDate || item.submissionDate).toLocaleDateString()
+                            new Date(item.achievedDate || item.submissionDate).toLocaleDateString('en-GB')
                           )}
                         </td>
                         <td className="px-4 py-2 text-right text-[var(--text-tertiary)]">-</td>
