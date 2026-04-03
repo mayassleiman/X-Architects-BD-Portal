@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Plus, Briefcase, DollarSign, PieChart, Layers, Check, X, Edit2, Trash2 } from "lucide-react";
+import { Plus, Briefcase, DollarSign, PieChart, Layers, Check, X, Edit2, Trash2, ArrowRightLeft } from "lucide-react";
 import { cn } from "../lib/utils";
 import { PieChart as RePieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { useSearch } from "../context/SearchContext";
@@ -295,6 +295,35 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
     }
   };
 
+  const handleQuickStatusToggle = async (item: PipelineItem) => {
+    let newStatus: PipelineItem["status"];
+    if (item.type === "RFP") {
+      newStatus = item.status === "Pending" ? "Submitted" : "Pending";
+    } else {
+      newStatus = item.status === "Approved" ? "Pending" : "Approved";
+    }
+
+    if (newStatus === "Approved") {
+       setAchievingItem({ item, status: newStatus });
+       setAchievementDate(new Date().toISOString().split('T')[0]);
+       return;
+    }
+
+    try {
+      const updatedItem = { ...item, status: newStatus };
+      await fetch(`/api/pipeline/${item.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedItem)
+      });
+      
+      setItems(items.map(i => i.id === item.id ? updatedItem : i));
+    } catch (err) {
+      console.error('Failed to toggle item status:', err);
+      alert('Failed to toggle status. Please try again.');
+    }
+  };
+
   const getGroupedItemsForTab = (tab: TabType) => {
     const tabItems = items.filter(i => 
       getTabForItem(i) === tab &&
@@ -502,6 +531,20 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                                                  Prob: {item.probability}
                                                </span>
                                              )}
+                                             <button
+                                               onClick={(e) => {
+                                                 e.stopPropagation();
+                                                 handleQuickStatusToggle(item);
+                                               }}
+                                               className="px-1.5 py-0.5 rounded font-bold border bg-[var(--bg-tertiary)] text-[var(--text-primary)] border-[var(--border)] hover:bg-[var(--text-primary)] hover:text-[var(--bg-primary)] transition-colors flex items-center gap-1"
+                                               title="Click to move to other section"
+                                             >
+                                               <ArrowRightLeft size={10} />
+                                               {item.status === "Pending" && item.type === "RFP" ? "To Be Submitted" : 
+                                                item.status === "Submitted" && item.type === "RFP" ? "Submitted" :
+                                                item.status === "Pending" && item.type === "VO" ? "Potential" :
+                                                item.status === "Approved" && item.type === "VO" ? "Approved" : item.status}
+                                             </button>
                                           </div>
                                         </div>
                                         <div className="text-right flex flex-col items-end gap-1.5">
@@ -543,16 +586,28 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                                       {!isReportView && (
                                         <div className="absolute top-0 right-0 bottom-0 flex items-center gap-1 px-3 bg-gradient-to-l from-[var(--card-bg-inner)] via-[var(--card-bg-inner)] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 translate-x-4 group-hover:translate-x-0">
                                           <button 
-                                            onClick={() => {
-                                              setAchievingItem({ item, status: item.type === "RFP" ? "Achieved" : "Approved" });
-                                              setAchievementDate(new Date().toISOString().split('T')[0]);
-                                            }}
-                                            className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white rounded-full text-[10px] font-bold uppercase tracking-wider transition-colors shadow-sm"
-                                            title={item.type === "RFP" ? "Mark as Achieved" : "Mark as Approved"}
+                                            onClick={() => handleQuickStatusToggle(item)}
+                                            className="flex items-center gap-1 px-3 py-1.5 bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white rounded-full text-[10px] font-bold uppercase tracking-wider transition-colors shadow-sm"
+                                            title="Move Item"
                                           >
-                                            <Check size={12} />
-                                            {item.type === "RFP" ? "Achieved" : "Approved"}
+                                            <ArrowRightLeft size={12} />
+                                            {item.type === "RFP" 
+                                              ? (item.status === "Pending" ? "To Submitted" : "To Pending")
+                                              : (item.status === "Approved" ? "To Potential" : "To Approved")}
                                           </button>
+                                          {item.type === "RFP" && item.status !== "Achieved" && (
+                                            <button 
+                                              onClick={() => {
+                                                setAchievingItem({ item, status: "Achieved" });
+                                                setAchievementDate(new Date().toISOString().split('T')[0]);
+                                              }}
+                                              className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white rounded-full text-[10px] font-bold uppercase tracking-wider transition-colors shadow-sm"
+                                              title="Mark as Achieved"
+                                            >
+                                              <Check size={12} />
+                                              Achieved
+                                            </button>
+                                          )}
                                           <button 
                                             onClick={() => handleEdit(item)}
                                             className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-2 bg-[var(--bg-primary)] rounded-full shadow-sm border border-[var(--border)] hover:scale-110 transition-all duration-200"
@@ -1006,6 +1061,30 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                     <option value="Low">Low</option>
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono uppercase text-[var(--text-secondary)] mb-1">Status</label>
+                <select 
+                  value={newItem.status}
+                  onChange={(e) => setNewItem({...newItem, status: e.target.value as any})}
+                  className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-[var(--text-primary)] focus:outline-none focus:border-[var(--text-primary)]"
+                >
+                  {newItem.type === "RFP" ? (
+                    <>
+                      <option value="Pending">Proposals to be Submitted</option>
+                      <option value="Submitted">Submitted Proposals</option>
+                      <option value="Achieved">Achieved</option>
+                      <option value="Lost">Lost</option>
+                    </>
+                  ) : (
+                    <>
+                      <option value="Pending">Potential VOs</option>
+                      <option value="Approved">Approved VOs</option>
+                      <option value="Lost">Lost</option>
+                    </>
+                  )}
+                </select>
               </div>
 
               {newItem.type === "RFP" ? (
