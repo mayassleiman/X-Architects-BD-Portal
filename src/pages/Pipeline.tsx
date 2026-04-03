@@ -512,7 +512,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                                           </h5>
                                           {item.client && <p className="text-xs text-[var(--text-secondary)] mt-0.5">{item.client}</p>}
                                           <div className="flex items-center gap-3 mt-1.5 text-[10px] text-[var(--text-secondary)] font-mono uppercase tracking-wider">
-                                             {item.submissionDate && <span>Submitted: {item.submissionDate}</span>}
+                                             {item.submissionDate && <span>{activeTab === "Proposals to be Submitted" ? "Submission Date" : "Submitted"}: {item.submissionDate}</span>}
                                              {item.region && <span>Region: {item.region}</span>}
                                              {item.probability && (
                                                <span className={cn(
