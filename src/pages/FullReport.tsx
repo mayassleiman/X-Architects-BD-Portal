@@ -166,17 +166,15 @@ export function FullReport() {
             </td>
           </tr>
         </tbody>
-        <tfoot className="print:table-footer-group hidden">
-          <tr>
-            <td className="pt-12 align-bottom h-24">
-              <div className="border-t border-[var(--border)] pt-4 flex justify-between items-center text-[var(--text-secondary)] text-xs font-mono uppercase tracking-wider">
-                <span>Confidential Internal Report</span>
-                <span>{currentDate}</span>
-              </div>
-            </td>
-          </tr>
-        </tfoot>
       </table>
+      
+      {/* Fixed Print Footer */}
+      <div className="hidden print:flex fixed bottom-0 left-0 w-full bg-white pt-4 pb-4 border-t border-[var(--border)] flex-col gap-2 text-[var(--text-secondary)] text-xs font-mono uppercase tracking-wider z-50">
+        <div className="flex justify-between items-center px-8">
+          <span>Confidential Internal Report</span>
+          <span>{currentDate}</span>
+        </div>
+      </div>
       
       {/* Screen-only Footer */}
       <div className="print:hidden mt-12 pt-6 border-t border-[var(--border)] flex flex-col gap-2 text-[var(--text-secondary)] text-xs font-mono uppercase tracking-wider">

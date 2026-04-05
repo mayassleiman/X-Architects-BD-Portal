@@ -1088,9 +1088,24 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
                     return [`${value.toLocaleString()} ${currency} (${share.toFixed(1)}%)`, name];
                   }}
                 />
-                <Legend />
               </RePieChart>
             </ResponsiveContainer>
+          </div>
+          <div className="mt-6 space-y-3">
+            {metrics.sectorData.map((sector, index) => (
+              <div key={sector.name} className="flex items-center justify-between text-xs hover:bg-[var(--bg-tertiary)] p-1.5 -mx-1.5 rounded transition-colors cursor-default">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sector.color }} />
+                  <span className="text-[var(--text-secondary)]">{sector.name}</span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <span className="text-[var(--text-primary)] font-mono">{sector.value.toLocaleString()} {currency}</span>
+                  <span className="text-[var(--text-tertiary)] w-8 text-right">
+                    {sector.share.toFixed(1)}%
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -1100,40 +1115,27 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
             <Layers size={16} />
             Achieved by Discipline
           </h3>
-          <div className="h-80 print:h-56 w-full min-w-0 min-h-0 overflow-hidden">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={metrics.disciplineData} layout="vertical" margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#333" />
-                <XAxis type="number" hide />
-                <YAxis 
-                  dataKey="name" 
-                  type="category" 
-                  width={150} 
-                  tick={{ fill: '#888', fontSize: 12 }} 
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip 
-                  cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                  contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff' }}
-                  formatter={(value: number, name: string, props: any) => {
-                    const share = props.payload.share;
-                    return [`${value.toLocaleString()} ${currency} (${share.toFixed(1)}%)`, 'Value'];
-                  }}
-                />
-                <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={30}>
-                  {metrics.disciplineData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                  <LabelList 
-                    dataKey="share" 
-                    position="right" 
-                    formatter={(val: number) => `${val.toFixed(1)}%`}
-                    style={{ fill: '#888', fontSize: 12 }}
+          <div className="space-y-6">
+            {metrics.disciplineData.map((d) => (
+              <div key={d.name} className="hover:bg-[var(--bg-tertiary)] p-2 -mx-2 rounded transition-colors cursor-default">
+                <div className="flex justify-between text-xs mb-2">
+                  <span className="text-[var(--text-secondary)] font-medium">{d.name}</span>
+                  <div className="flex items-center gap-4">
+                    <span className="text-[var(--text-primary)] font-mono">{d.value.toLocaleString()} {currency}</span>
+                    <span className="text-[var(--text-tertiary)] w-8 text-right">{d.share.toFixed(1)}%</span>
+                  </div>
+                </div>
+                <div className="h-1.5 bg-[var(--bg-tertiary)] rounded-full overflow-hidden">
+                  <div 
+                    className="h-full rounded-full transition-all duration-1000 ease-out"
+                    style={{ 
+                      width: `${d.share}%`,
+                      backgroundColor: d.color
+                    }}
                   />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>

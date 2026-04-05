@@ -387,11 +387,11 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
                 {!isReportView && <span className="text-[var(--text-secondary)] font-normal ml-2 text-xs">- Click to View Schedule</span>}
               </span>
             </h3>
-            <div className="h-64 print:h-48 w-full cursor-pointer min-w-0 min-h-0 overflow-hidden">
+            <div className="h-64 print:h-48 w-full cursor-pointer min-w-0 min-h-0">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart 
                   data={stats.weeklyData}
-                  margin={{ top: 10, right: 10, left: -20, bottom: 20 }}
+                  margin={{ top: 10, right: 10, left: -20, bottom: 30 }}
                   onClick={(data) => {
                     if (!data) return;
                     
@@ -446,11 +446,11 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
                 </button>
               )}
             </h3>
-            <div className="h-64 print:h-48 w-full cursor-pointer min-w-0 min-h-0 overflow-hidden">
+            <div className="h-64 print:h-48 w-full cursor-pointer min-w-0 min-h-0">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart 
                   data={stats.monthlyData}
-                  margin={{ top: 10, right: 10, left: -20, bottom: 20 }}
+                  margin={{ top: 10, right: 10, left: -20, bottom: 30 }}
                   onClick={(data) => {
                     if (!data) return;
 
@@ -496,11 +496,11 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
                 {!isReportView && <span className="text-[var(--text-secondary)] font-normal ml-2 text-xs">- Click to Filter Months</span>}
               </span>
             </h3>
-            <div className="h-64 print:h-48 w-full cursor-pointer min-w-0 min-h-0 overflow-hidden">
+            <div className="h-64 print:h-48 w-full cursor-pointer min-w-0 min-h-0">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart 
                   data={stats.quarterlyData}
-                  margin={{ top: 10, right: 10, left: -20, bottom: 20 }}
+                  margin={{ top: 10, right: 10, left: -20, bottom: 30 }}
                   onClick={(data) => {
                     if (!data) return;
 
