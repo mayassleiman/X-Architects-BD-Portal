@@ -1063,15 +1063,15 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
             <PieChart size={16} />
             Achieved by Market Sector
           </h3>
-          <div className="h-80 print:h-56 w-full">
+          <div className="h-80 print:h-56 w-full min-w-0 min-h-0 overflow-hidden">
             <ResponsiveContainer width="100%" height="100%">
-              <RePieChart>
+              <RePieChart margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
                 <Pie
                   data={metrics.sectorData}
                   cx="50%"
                   cy="50%"
-                  innerRadius={80}
-                  outerRadius={100}
+                  innerRadius="50%"
+                  outerRadius="70%"
                   paddingAngle={5}
                   dataKey="value"
                   label={({ percent }) => `${(percent * 100).toFixed(1)}%`}
@@ -1100,9 +1100,9 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
             <Layers size={16} />
             Achieved by Discipline
           </h3>
-          <div className="h-80 print:h-56 w-full">
+          <div className="h-80 print:h-56 w-full min-w-0 min-h-0 overflow-hidden">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={metrics.disciplineData} layout="vertical" margin={{ top: 5, right: 50, left: 20, bottom: 5 }}>
+              <BarChart data={metrics.disciplineData} layout="vertical" margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#333" />
                 <XAxis type="number" hide />
                 <YAxis 

@@ -387,10 +387,11 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
                 {!isReportView && <span className="text-[var(--text-secondary)] font-normal ml-2 text-xs">- Click to View Schedule</span>}
               </span>
             </h3>
-            <div className="h-64 print:h-48 w-full cursor-pointer">
+            <div className="h-64 print:h-48 w-full cursor-pointer min-w-0 min-h-0 overflow-hidden">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart 
                   data={stats.weeklyData}
+                  margin={{ top: 10, right: 10, left: -20, bottom: 20 }}
                   onClick={(data) => {
                     if (!data) return;
                     
@@ -445,10 +446,11 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
                 </button>
               )}
             </h3>
-            <div className="h-64 print:h-48 w-full cursor-pointer">
+            <div className="h-64 print:h-48 w-full cursor-pointer min-w-0 min-h-0 overflow-hidden">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart 
                   data={stats.monthlyData}
+                  margin={{ top: 10, right: 10, left: -20, bottom: 20 }}
                   onClick={(data) => {
                     if (!data) return;
 
@@ -487,17 +489,18 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
           </div>
 
           {/* Quarterly Stats */}
-          <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6 lg:col-span-2 print:break-inside-avoid">
+          <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6 lg:col-span-2 print:col-span-2 print:break-inside-avoid">
             <h3 className="text-sm font-medium text-[var(--text-primary)] mb-6 flex items-center justify-between">
               <span>
                 Quarterly Meetings (Current Year)
                 {!isReportView && <span className="text-[var(--text-secondary)] font-normal ml-2 text-xs">- Click to Filter Months</span>}
               </span>
             </h3>
-            <div className="h-64 print:h-48 w-full cursor-pointer">
+            <div className="h-64 print:h-48 w-full cursor-pointer min-w-0 min-h-0 overflow-hidden">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart 
                   data={stats.quarterlyData}
+                  margin={{ top: 10, right: 10, left: -20, bottom: 20 }}
                   onClick={(data) => {
                     if (!data) return;
 
