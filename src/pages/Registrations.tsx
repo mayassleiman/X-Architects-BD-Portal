@@ -19,7 +19,7 @@ interface Registration {
   password?: string;
 }
 
-export function Registrations({ isReportView = false, currentDateOnly = false }: { isReportView?: boolean, currentDateOnly?: boolean }) {
+export function Registrations({ isReportView = false, currentDateOnly = false, limit }: { isReportView?: boolean, currentDateOnly?: boolean, limit?: number }) {
   const { searchQuery } = useSearch();
   const [registrations, setRegistrations] = React.useState<Registration[]>([]);
   const [viewMode, setViewMode] = React.useState<'grid' | 'list'>('list');
@@ -53,7 +53,7 @@ export function Registrations({ isReportView = false, currentDateOnly = false }:
     fetchRegistrations();
   }, []);
 
-  const filteredRegistrations = registrations.filter(reg => {
+  let filteredRegistrations = registrations.filter(reg => {
     const matchesSearch = (reg.client || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (reg.contact_name && reg.contact_name.toLowerCase().includes(searchQuery.toLowerCase()));
     
@@ -72,7 +72,11 @@ export function Registrations({ isReportView = false, currentDateOnly = false }:
     }
     
     return matchesSearch && matchesStatus && matchesStartDate && matchesEndDate && matchesCurrentDate;
-  });
+  }).sort((a, b) => new Date(b.registration_date).getTime() - new Date(a.registration_date).getTime());
+
+  if (limit) {
+    filteredRegistrations = filteredRegistrations.slice(0, limit);
+  }
 
   const toggleStatus = (status: string) => {
     setSelectedStatuses(prev => 

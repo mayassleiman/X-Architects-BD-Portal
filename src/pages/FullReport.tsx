@@ -96,7 +96,7 @@ export function FullReport() {
           <tr>
             <td className="pb-8">
               {/* Pipeline Section */}
-              <section className="break-inside-avoid">
+              <section className="break-inside-avoid print:break-before-page">
                 <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
                   <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">PIPELINE OVERVIEW</h2>
                   <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Active RFPs & VOs</p>
@@ -144,12 +144,12 @@ export function FullReport() {
           <tr>
             <td className="pb-8">
               {/* Registrations Section */}
-              <section className="break-inside-avoid">
+              <section className="break-inside-avoid print:break-before-page">
                 <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
-                  <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">TODAY'S REGISTRATIONS</h2>
-                  <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Status Overview</p>
+                  <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">LATEST REGISTRATIONS</h2>
+                  <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Last 5 Registered Companies</p>
                 </div>
-                <Registrations isReportView={true} currentDateOnly={true} />
+                <Registrations isReportView={true} limit={5} />
               </section>
             </td>
           </tr>
@@ -166,25 +166,21 @@ export function FullReport() {
             </td>
           </tr>
         </tbody>
-        <tfoot className="print:table-footer-group hidden">
-          <tr>
-            <td>
-              <div className="mt-12 pt-6 border-t border-[var(--border)] flex flex-col gap-2 text-[var(--text-secondary)] text-xs font-mono uppercase tracking-wider">
-                <div className="flex justify-between items-center">
-                  <span>Confidential Internal Report</span>
-                  <span>{currentDate}</span>
-                </div>
-                <div className="text-center mt-2 text-[10px] text-[var(--text-tertiary)] opacity-70">
-                  Created by Mayas Sleiman - KSA Projects Director
-                </div>
-              </div>
-            </td>
-          </tr>
-        </tfoot>
       </table>
       
-      {/* Screen-only Footer (since tfoot is hidden by default and only shown in print via print:table-footer-group if supported, or we can just show it always) */}
-      {/* Actually, let's make tfoot visible on screen too but styled appropriately */}
+      {/* Fixed Print Footer */}
+      <div className="hidden print:flex fixed bottom-0 left-0 w-full bg-white pt-4 pb-4 border-t border-[var(--border)] flex-col gap-2 text-[var(--text-secondary)] text-xs font-mono uppercase tracking-wider z-50">
+        <div className="flex justify-between items-center px-8">
+          <span>Confidential Internal Report</span>
+          <span className="page-number"></span>
+          <span>{currentDate}</span>
+        </div>
+        <div className="text-center mt-1 text-[10px] text-[var(--text-tertiary)] opacity-70">
+          Created by Mayas Sleiman - KSA Projects Director
+        </div>
+      </div>
+      
+      {/* Screen-only Footer */}
       <div className="print:hidden mt-12 pt-6 border-t border-[var(--border)] flex flex-col gap-2 text-[var(--text-secondary)] text-xs font-mono uppercase tracking-wider">
         <div className="flex justify-between items-center">
           <span>Confidential Internal Report</span>

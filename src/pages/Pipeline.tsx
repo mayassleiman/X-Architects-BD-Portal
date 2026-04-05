@@ -775,7 +775,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
             <PieChart size={16} className="group-hover:rotate-12 transition-transform" />
             Sector Distribution ({viewFilter})
           </h3>
-          <div className="h-64 w-full">
+          <div className="h-64 print:h-48 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <RePieChart>
                 <Pie
@@ -810,7 +810,6 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                   itemStyle={{ color: '#fff' }}
                   formatter={(value: number) => `${value.toLocaleString()} ${currency}`}
                 />
-                <Legend />
               </RePieChart>
             </ResponsiveContainer>
           </div>

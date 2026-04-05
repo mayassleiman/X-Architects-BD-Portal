@@ -1058,12 +1058,12 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
       {/* Dashboard Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 print:grid-cols-2">
         {/* Sector Breakdown */}
-        <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6 rounded-lg">
+        <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6 rounded-lg print:break-inside-avoid">
           <h3 className="text-sm font-medium text-[var(--text-primary)] mb-6 flex items-center gap-2">
             <PieChart size={16} />
             Achieved by Market Sector
           </h3>
-          <div className="h-80 w-full">
+          <div className="h-80 print:h-56 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <RePieChart>
                 <Pie
@@ -1095,12 +1095,12 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
         </div>
 
         {/* Discipline Breakdown */}
-        <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6 rounded-lg">
+        <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6 rounded-lg print:break-inside-avoid">
           <h3 className="text-sm font-medium text-[var(--text-primary)] mb-6 flex items-center gap-2">
             <Layers size={16} />
             Achieved by Discipline
           </h3>
-          <div className="h-80 w-full">
+          <div className="h-80 print:h-56 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={metrics.disciplineData} layout="vertical" margin={{ top: 5, right: 50, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#333" />
