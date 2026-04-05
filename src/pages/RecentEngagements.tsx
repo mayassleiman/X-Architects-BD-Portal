@@ -44,7 +44,7 @@ export function RecentEngagements() {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-4">
+      <div className="grid grid-cols-1 print:grid-cols-2 gap-4">
         {engagements.map((eng) => (
           <div key={eng.id} className="bg-[var(--card-bg)] border border-[var(--border)] p-4 rounded-lg">
             <div className="flex justify-between items-start mb-2">

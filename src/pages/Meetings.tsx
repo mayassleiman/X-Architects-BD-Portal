@@ -378,7 +378,7 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
       </div>
 
       {viewMode === 'stats' ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 print:grid-cols-2">
           {/* Weekly Stats */}
           <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6">
             <h3 className="text-sm font-medium text-[var(--text-primary)] mb-6 flex items-center justify-between">

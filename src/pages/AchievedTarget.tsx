@@ -33,7 +33,9 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
   const [sectors, setSectors] = useState<MarketSector[]>([]);
   const [isEditingTarget, setIsEditingTarget] = useState(false);
   const [newTarget, setNewTarget] = useState(0);
-  const [expandedQuarters, setExpandedQuarters] = useState<number[]>([Math.floor(new Date().getMonth() / 3) + 1]);
+  const [expandedQuarters, setExpandedQuarters] = useState<number[]>(
+    isReportView ? [1, 2, 3, 4] : [Math.floor(new Date().getMonth() / 3) + 1]
+  );
   const [editingItem, setEditingItem] = useState<{
     id: string;
     number: string;
@@ -44,6 +46,11 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
   const chartRef = useRef<HTMLDivElement>(null);
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const [zoomDomain, setZoomDomain] = useState<[number, number] | null>(() => {
+    if (isReportView) {
+      const startOfYear = new Date(new Date().getFullYear(), 0, 1).getTime();
+      const endOfYear = new Date(new Date().getFullYear(), 11, 31, 23, 59, 59).getTime();
+      return [startOfYear, endOfYear];
+    }
     const saved = localStorage.getItem(`achievedTargetZoomDomain_${new Date().getFullYear()}`);
     if (saved) {
       try {
@@ -327,6 +334,12 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
 
   // Load saved zoom domain when year changes
   useEffect(() => {
+    if (isReportView) {
+      const startOfYear = new Date(year, 0, 1).getTime();
+      const endOfYear = new Date(year, 11, 31, 23, 59, 59).getTime();
+      setZoomDomain([startOfYear, endOfYear]);
+      return;
+    }
     const saved = localStorage.getItem(`achievedTargetZoomDomain_${year}`);
     if (saved) {
       try {
@@ -337,7 +350,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
       }
     }
     setZoomDomain(null);
-  }, [year]);
+  }, [year, isReportView]);
 
   // Set default domain if null
   useEffect(() => {
@@ -1043,7 +1056,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
       </div>
 
       {/* Dashboard Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 print:grid-cols-2">
         {/* Sector Breakdown */}
         <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6 rounded-lg">
           <h3 className="text-sm font-medium text-[var(--text-primary)] mb-6 flex items-center gap-2">

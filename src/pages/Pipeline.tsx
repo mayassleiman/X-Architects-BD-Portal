@@ -495,7 +495,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                                       {...provided.draggableProps}
                                       {...provided.dragHandleProps}
                                       className={cn(
-                                        "bg-[var(--card-bg-inner)] border border-[var(--border)] p-3 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:border-[var(--text-secondary)] group relative pl-4 overflow-hidden",
+                                        "bg-[var(--card-bg-inner)] border border-[var(--border)] p-3 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:border-[var(--text-secondary)] group relative pl-4 overflow-hidden print:break-inside-avoid",
                                         snapshot.isDragging && "shadow-lg border-[var(--text-primary)] z-50 scale-[1.02]"
                                       )}
                                     >
@@ -738,7 +738,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 print:grid-cols-3">
         <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[var(--text-secondary)] group cursor-default">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xs font-mono uppercase text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors">Total Pipeline Value ({viewFilter})</h3>
@@ -768,9 +768,9 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 print:grid-cols-2 mb-8">
         {/* Sector Breakdown Chart */}
-        <div className="lg:col-span-1 bg-[var(--card-bg)] border border-[var(--border)] p-6 transition-all duration-300 hover:border-[var(--text-secondary)] hover:shadow-lg group">
+        <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6 transition-all duration-300 hover:border-[var(--text-secondary)] hover:shadow-lg group">
           <h3 className="text-sm font-medium text-[var(--text-primary)] mb-6 flex items-center gap-2 group-hover:text-emerald-400 transition-colors">
             <PieChart size={16} className="group-hover:rotate-12 transition-transform" />
             Sector Distribution ({viewFilter})
@@ -833,7 +833,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
         </div>
 
         {/* Discipline Breakdown Chart */}
-        <div className="lg:col-span-1 bg-[var(--card-bg)] border border-[var(--border)] p-6 transition-all duration-300 hover:border-[var(--text-secondary)] hover:shadow-lg group">
+        <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6 transition-all duration-300 hover:border-[var(--text-secondary)] hover:shadow-lg group">
           <h3 className="text-sm font-medium text-[var(--text-primary)] mb-6 flex items-center gap-2 group-hover:text-blue-400 transition-colors">
             <PieChart size={16} className="group-hover:rotate-12 transition-transform" />
             Revenue by Discipline
@@ -869,13 +869,14 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Main List */}
-        <div className="lg:col-span-2 space-y-6">
-          {isReportView ? (
-            <div className="space-y-12">
-              {(["Submitted Proposals", "Proposals to be Submitted", "Potential VOs"] as TabType[]).map(tab => (
-                <section key={tab}>
+      {/* Main List */}
+      <div className="space-y-6 print:break-before-page">
+        {isReportView ? (
+          <div className="space-y-12">
+            {(["Submitted Proposals", "Proposals to be Submitted", "Potential VOs"] as TabType[]).map(tab => (
+              <section key={tab} className="print:break-inside-avoid">
                   <div className="mb-4 border-b border-[var(--border)] pb-2">
                     <h3 className="text-lg font-light text-[var(--text-primary)]">{tab}</h3>
                   </div>
@@ -907,7 +908,6 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
             </>
           )}
         </div>
-      </div>
 
       {/* Achievement Date Modal */}
       {achievingItem && (
