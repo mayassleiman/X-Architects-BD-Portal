@@ -400,22 +400,38 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
     if (source.index === destination.index) return;
 
     const sectorName = source.droppableId;
-    const sectorItems: PipelineItem[] = groupedItems[sectorName] || [];
     
-    const newSectorItems = [...sectorItems];
-    const [removed] = newSectorItems.splice(source.index, 1);
-    newSectorItems.splice(destination.index, 0, removed);
-
-    // Update sortOrder for these items
-    const updatedItems: PipelineItem[] = newSectorItems.map((item, index) => ({
+    // Get ALL items in this sector and tab, sorted by their current order
+    const allSectorTabItems = sortItems(items.filter(i => i.sector === sectorName && getTabForItem(i) === activeTab));
+    
+    // The items currently visible and being dragged
+    const visibleItems = groupedItems[sectorName] || [];
+    
+    // The new order of the visible items
+    const newVisibleItems = [...visibleItems];
+    const [removed] = newVisibleItems.splice(source.index, 1);
+    newVisibleItems.splice(destination.index, 0, removed);
+    
+    // Merge newVisibleItems back into allSectorTabItems
+    let visibleIndex = 0;
+    const updatedAllSectorTabItems = allSectorTabItems.map(item => {
+      if (visibleItems.find(v => v.id === item.id)) {
+        return newVisibleItems[visibleIndex++];
+      }
+      return item;
+    });
+    
+    // Assign sequential sortOrders to ALL items in this sector and tab
+    const finalUpdatedItems: PipelineItem[] = updatedAllSectorTabItems.map((item, index) => ({
       ...item,
       sortOrder: index
     }));
 
     // Update local state immediately
     setItems(prevItems => {
-      const otherItems = prevItems.filter(i => i.sector !== sectorName || getTabForItem(i) !== activeTab);
-      return [...otherItems, ...updatedItems];
+      const updatedItemIds = new Set(finalUpdatedItems.map(i => i.id));
+      const otherItems = prevItems.filter(i => !updatedItemIds.has(i.id));
+      return [...otherItems, ...finalUpdatedItems];
     });
 
     // If not in manual sort mode, switch to manual
@@ -425,7 +441,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
 
     // Update backend
     try {
-      await Promise.all(updatedItems.map(item => 
+      await Promise.all(finalUpdatedItems.map(item => 
         fetch(`/api/pipeline/${item.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
