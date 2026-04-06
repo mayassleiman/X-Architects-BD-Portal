@@ -65,6 +65,9 @@ export function Registrations({ isReportView = false, currentDateOnly = false, l
     const matchesCurrentDate = currentDateOnly ? reg.registration_date === today : true;
 
     if (isReportView) {
+      if (limit) {
+        return matchesSearch && matchesStartDate && matchesEndDate && (reg.status === 'Pending' || reg.status === 'Ongoing');
+      }
       if (currentDateOnly) {
         return matchesSearch && matchesStatus && matchesStartDate && matchesEndDate && matchesCurrentDate;
       }

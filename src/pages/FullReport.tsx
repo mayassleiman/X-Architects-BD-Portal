@@ -1,4 +1,5 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Printer } from "lucide-react";
 import { Meetings, MeetingsWrapperForStats } from "./Meetings";
@@ -45,7 +46,7 @@ export function FullReport() {
       </div>
 
       {/* Cover Page for Print */}
-      <div className="hidden print:flex flex-col items-center justify-center min-h-[85vh] pt-20 w-full break-after-page">
+      <div className="hidden print:flex flex-col items-center justify-center h-screen w-full break-after-page bg-white relative z-[10000]">
         <div className="mb-16">
           <Logo showText={false} className="[&>img]:!h-48 [&>img]:!max-w-[600px]" />
         </div>
@@ -168,13 +169,17 @@ export function FullReport() {
         </tbody>
       </table>
       
-      {/* Fixed Print Footer */}
-      <div className="hidden print:flex fixed bottom-0 left-0 w-full bg-white pt-4 pb-4 border-t border-[var(--border)] flex-col gap-2 text-[var(--text-secondary)] text-xs font-mono uppercase tracking-wider z-50">
-        <div className="flex justify-between items-center px-8">
-          <span>Confidential Internal Report</span>
-          <span>{currentDate}</span>
-        </div>
-      </div>
+      {/* Fixed Print Footer via Portal to ensure it repeats on all pages */}
+      {createPortal(
+        <div className="hidden print:flex fixed bottom-0 left-0 w-full bg-white pt-4 pb-4 border-t border-[var(--border)] flex-col gap-2 text-[var(--text-secondary)] text-xs font-mono uppercase tracking-wider z-[9999]">
+          <div className="flex justify-between items-center px-8">
+            <span>Confidential Internal Report</span>
+            <span className="page-number"></span>
+            <span>{currentDate}</span>
+          </div>
+        </div>,
+        document.body
+      )}
       
       {/* Screen-only Footer */}
       <div className="print:hidden mt-12 pt-6 border-t border-[var(--border)] flex flex-col gap-2 text-[var(--text-secondary)] text-xs font-mono uppercase tracking-wider">

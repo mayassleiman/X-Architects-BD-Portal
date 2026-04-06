@@ -60,6 +60,20 @@ body {
     margin: 10mm 10mm 20mm 10mm;
   }
   
+  body {
+    counter-reset: page;
+  }
+  
+  .page-number::after {
+    content: "Page " counter(page);
+  }
+  
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+  
   :root {
     --bg-primary: #ffffff !important;
     --bg-secondary: #ffffff !important;
