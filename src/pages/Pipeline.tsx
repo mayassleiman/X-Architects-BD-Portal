@@ -385,11 +385,24 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
     if (!result.destination) return;
     
     if (result.type === "sector") {
-      const newOrder = Array.from(sectorOrder);
-      const [removed] = newOrder.splice(result.source.index, 1);
-      newOrder.splice(result.destination.index, 0, removed);
-      setSectorOrder(newOrder);
-      localStorage.setItem('pipelineSectorOrder', JSON.stringify(newOrder));
+      const grouped = groupedItems;
+      const orderedSectors = sectorOrder.filter(s => grouped[s]).length > 0 
+        ? sectorOrder.filter(s => grouped[s])
+        : Object.keys(grouped);
+        
+      const newOrderedSectors = Array.from(orderedSectors);
+      const [removed] = newOrderedSectors.splice(result.source.index, 1);
+      newOrderedSectors.splice(result.destination.index, 0, removed);
+      
+      const newSectorOrder = [...newOrderedSectors];
+      sectorOrder.forEach(s => {
+        if (!newSectorOrder.includes(s)) {
+          newSectorOrder.push(s);
+        }
+      });
+      
+      setSectorOrder(newSectorOrder);
+      localStorage.setItem('pipelineSectorOrder', JSON.stringify(newSectorOrder));
       return;
     }
     
@@ -473,7 +486,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                 const sectorColor = sectors.find(s => s.name === sector)?.color || 'var(--text-secondary)';
                 return (
                   // @ts-ignore
-                  <Draggable key={`sector-${sector}`} draggableId={`sector-${sector}`} index={index} isDragDisabled={sortBy !== "manual" && sortBy !== undefined}>
+                  <Draggable key={`sector-${sector}`} draggableId={`sector-${sector}`} index={index}>
                     {(provided, snapshot) => (
                       <div
                         ref={provided.innerRef}
