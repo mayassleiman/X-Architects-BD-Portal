@@ -815,9 +815,9 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
             <PieChart size={16} className="group-hover:rotate-12 transition-transform" />
             Sector Distribution ({viewFilter})
           </h3>
-          <div className="h-64 w-full flex justify-center items-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <RePieChart>
+          <div className="h-64 w-full min-h-[256px]">
+            <ResponsiveContainer width="100%" height={256}>
+              <RePieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
                 <Pie
                   data={metrics.sectorData}
                   cx="50%"
@@ -911,7 +911,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
       </div>
 
       {/* Main List */}
-      <div className="space-y-6">
+      <div className="space-y-6 print:break-before-page">
         {isReportView ? (
           <div className="space-y-12">
             {(["Submitted Proposals", "Proposals to be Submitted", "Potential VOs"] as TabType[]).map(tab => {
