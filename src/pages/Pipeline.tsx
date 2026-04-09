@@ -815,7 +815,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
             <PieChart size={16} className="group-hover:rotate-12 transition-transform" />
             Sector Distribution ({viewFilter})
           </h3>
-          <div className="h-64 print:h-48 w-full">
+          <div className="h-64 w-full flex justify-center items-center">
             <ResponsiveContainer width="100%" height="100%">
               <RePieChart>
                 <Pie
@@ -911,56 +911,64 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
       </div>
 
       {/* Main List */}
-      <div className="space-y-6 print:break-before-page">
+      <div className="space-y-6">
         {isReportView ? (
           <div className="space-y-12">
-            {(["Submitted Proposals", "Proposals to be Submitted", "Potential VOs"] as TabType[]).map(tab => (
-              <section key={tab} className="print:break-inside-avoid">
+            {(["Submitted Proposals", "Proposals to be Submitted", "Potential VOs"] as TabType[]).map(tab => {
+              const grouped = getGroupedItemsForTab(tab);
+              if (Object.keys(grouped).length === 0) return null;
+              return (
+                <section key={tab}>
                   <div className="mb-4 border-b border-[var(--border)] pb-2">
                     <h3 className="text-lg font-light text-[var(--text-primary)]">{tab}</h3>
                   </div>
-                  {renderGroupedItems(getGroupedItemsForTab(tab))}
+                  {renderGroupedItems(grouped)}
                 </section>
+              );
+            })}
+          </div>
+        ) : (
+          <>
+            {/* Tabs */}
+            <div className="flex border-b border-[var(--border)] overflow-x-auto no-scrollbar print:hidden">
+              {(["Submitted Proposals", "Proposals to be Submitted", "Potential VOs"] as TabType[]).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={cn(
+                    "px-6 py-3 text-sm font-medium transition-all duration-300 relative hover:bg-[var(--bg-tertiary)] whitespace-nowrap",
+                    activeTab === tab ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                  )}
+                >
+                  {tab}
+                  {activeTab === tab && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[var(--text-primary)]" />}
+                </button>
               ))}
             </div>
-          ) : (
-            <>
-              {/* Tabs */}
-              <div className="flex border-b border-[var(--border)] overflow-x-auto no-scrollbar print:hidden">
-                {(["Submitted Proposals", "Proposals to be Submitted", "Potential VOs"] as TabType[]).map(tab => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={cn(
-                      "px-6 py-3 text-sm font-medium transition-all duration-300 relative hover:bg-[var(--bg-tertiary)] whitespace-nowrap",
-                      activeTab === tab ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                    )}
-                  >
-                    {tab}
-                    {activeTab === tab && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[var(--text-primary)]" />}
-                  </button>
-                ))}
-              </div>
 
-              {/* List Content */}
-              <div className="print:hidden">
-                {renderGroupedItems(groupedItems)}
-              </div>
-              
-              {/* Print Content (All Tabs) */}
-              <div className="hidden print:block space-y-12">
-                {(["Submitted Proposals", "Proposals to be Submitted", "Potential VOs"] as TabType[]).map(tab => (
-                  <section key={tab} className="break-inside-avoid">
+            {/* List Content */}
+            <div className="print:hidden">
+              {renderGroupedItems(groupedItems)}
+            </div>
+            
+            {/* Print Content (All Tabs) */}
+            <div className="hidden print:block space-y-12">
+              {(["Submitted Proposals", "Proposals to be Submitted", "Potential VOs"] as TabType[]).map(tab => {
+                const grouped = getGroupedItemsForTab(tab);
+                if (Object.keys(grouped).length === 0) return null;
+                return (
+                  <section key={tab}>
                     <div className="mb-4 border-b border-[var(--border)] pb-2">
                       <h3 className="text-lg font-light text-[var(--text-primary)]">{tab}</h3>
                     </div>
-                    {renderGroupedItems(getGroupedItemsForTab(tab))}
+                    {renderGroupedItems(grouped)}
                   </section>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </div>
 
       {/* Achievement Date Modal */}
       {achievingItem && (

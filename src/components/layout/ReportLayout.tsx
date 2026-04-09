@@ -30,7 +30,7 @@ export function ReportLayout({ children, title, subtitle, isReportView }: Report
   return (
     <div className="w-full">
       {/* Cover Page for Print */}
-      <div className="hidden print:flex flex-col items-center justify-center h-screen w-full break-after-page bg-white relative z-[10000]">
+      <div className="hidden print:flex flex-col items-center justify-center h-[80vh] w-full break-after-page bg-white relative z-[10000]">
         <div className="mb-16">
           <Logo showText={false} className="[&>img]:!h-48 [&>img]:!max-w-[600px]" />
         </div>
@@ -79,7 +79,6 @@ export function ReportLayout({ children, title, subtitle, isReportView }: Report
         <div className="hidden print:flex fixed bottom-0 left-0 w-full bg-white pt-4 pb-4 border-t border-[var(--border)] flex-col gap-2 text-[var(--text-secondary)] text-xs font-mono uppercase tracking-wider z-[9999]">
           <div className="flex justify-between items-center px-8">
             <span>Confidential Internal Report</span>
-            <span className="page-number"></span>
             <span>{currentDate}</span>
           </div>
         </div>,
