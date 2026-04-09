@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Plus, Briefcase, DollarSign, PieChart, Layers, Check, X, Edit2, Trash2, ArrowRightLeft } from "lucide-react";
+import { Plus, Briefcase, DollarSign, PieChart, Layers, Check, X, Edit2, Trash2, ArrowRightLeft, Printer } from "lucide-react";
 import { cn } from "../lib/utils";
 import { PieChart as RePieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { useSearch } from "../context/SearchContext";
@@ -47,6 +47,8 @@ const DISCIPLINE_COLORS: Record<string, string> = {
 const DISCIPLINES: Discipline[] = ["Architecture", "Interior", "Construction Supervision"];
 
 type TabType = "Submitted Proposals" | "Proposals to be Submitted" | "Potential VOs";
+
+import { ReportLayout } from "../components/layout/ReportLayout";
 
 export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
   const { searchQuery } = useSearch();
@@ -671,100 +673,109 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex justify-between items-end">
-        <div>
-          <h1 className="text-4xl font-light tracking-tight text-[var(--text-primary)] mb-2">PIPELINE</h1>
-          <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Project Opportunities & Variations</p>
-        </div>
-        <div className="flex items-center gap-4">
-          {!isReportView && (
-            <div className="flex items-center gap-3">
-              {availableRegions.length > 0 && (
-                <div className="flex items-center gap-2 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 relative group transition-all duration-300 hover:border-[var(--text-secondary)] hover:shadow-sm cursor-pointer">
-                  <span className="text-xs font-mono uppercase text-[var(--text-secondary)]">Region:</span>
-                  <div className="text-xs font-medium text-[var(--text-primary)] flex items-center gap-1">
-                    {selectedRegions.length === 0 ? "All" : `${selectedRegions.length} Selected`}
-                  </div>
-                  <div className="absolute top-full right-0 mt-2 w-48 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 translate-y-2 group-hover:translate-y-0 z-50 p-2">
-                    <div className="space-y-1 max-h-48 overflow-y-auto">
-                      <label className="flex items-center gap-2 p-1.5 hover:bg-[var(--bg-tertiary)] rounded cursor-pointer transition-colors">
-                        <input 
-                          type="checkbox" 
-                          checked={selectedRegions.length === 0}
-                          onChange={() => setSelectedRegions([])}
-                          className="rounded border-[var(--border)] text-[var(--text-primary)] focus:ring-0 transition-all"
-                        />
-                        <span className="text-xs text-[var(--text-primary)]">All Regions</span>
-                      </label>
-                      <div className="h-px bg-[var(--border)] my-1" />
-                      {availableRegions.map(region => (
-                        <label key={region} className="flex items-center gap-2 p-1.5 hover:bg-[var(--bg-tertiary)] rounded cursor-pointer transition-colors">
+    <ReportLayout title="Pipeline Report" subtitle="Project Opportunities & Variations" isReportView={isReportView}>
+      <div className="space-y-8">
+        <div className="flex justify-between items-end print:hidden">
+          <div>
+            <h1 className="text-4xl font-light tracking-tight text-[var(--text-primary)] mb-2">PIPELINE</h1>
+            <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Project Opportunities & Variations</p>
+          </div>
+          <div className="flex items-center gap-4">
+            {!isReportView && (
+              <div className="flex items-center gap-3">
+                {availableRegions.length > 0 && (
+                  <div className="flex items-center gap-2 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 relative group transition-all duration-300 hover:border-[var(--text-secondary)] hover:shadow-sm cursor-pointer">
+                    <span className="text-xs font-mono uppercase text-[var(--text-secondary)]">Region:</span>
+                    <div className="text-xs font-medium text-[var(--text-primary)] flex items-center gap-1">
+                      {selectedRegions.length === 0 ? "All" : `${selectedRegions.length} Selected`}
+                    </div>
+                    <div className="absolute top-full right-0 mt-2 w-48 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 translate-y-2 group-hover:translate-y-0 z-50 p-2">
+                      <div className="space-y-1 max-h-48 overflow-y-auto">
+                        <label className="flex items-center gap-2 p-1.5 hover:bg-[var(--bg-tertiary)] rounded cursor-pointer transition-colors">
                           <input 
                             type="checkbox" 
-                            checked={selectedRegions.includes(region)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedRegions([...selectedRegions, region]);
-                              } else {
-                                setSelectedRegions(selectedRegions.filter(r => r !== region));
-                              }
-                            }}
+                            checked={selectedRegions.length === 0}
+                            onChange={() => setSelectedRegions([])}
                             className="rounded border-[var(--border)] text-[var(--text-primary)] focus:ring-0 transition-all"
                           />
-                          <span className="text-xs text-[var(--text-primary)]">{region}</span>
+                          <span className="text-xs text-[var(--text-primary)]">All Regions</span>
                         </label>
-                      ))}
+                        <div className="h-px bg-[var(--border)] my-1" />
+                        {availableRegions.map(region => (
+                          <label key={region} className="flex items-center gap-2 p-1.5 hover:bg-[var(--bg-tertiary)] rounded cursor-pointer transition-colors">
+                            <input 
+                              type="checkbox" 
+                              checked={selectedRegions.includes(region)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedRegions([...selectedRegions, region]);
+                                } else {
+                                  setSelectedRegions(selectedRegions.filter(r => r !== region));
+                                }
+                              }}
+                              className="rounded border-[var(--border)] text-[var(--text-primary)] focus:ring-0 transition-all"
+                            />
+                            <span className="text-xs text-[var(--text-primary)]">{region}</span>
+                          </label>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
-              <div className="flex items-center gap-2 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 transition-all duration-300 hover:border-[var(--text-secondary)] hover:shadow-sm">
-                <span className="text-xs font-mono uppercase text-[var(--text-secondary)]">Sort:</span>
-                <select 
-                  value={sortBy} 
-                  onChange={(e) => setSortBy(e.target.value as any)}
-                  className="bg-transparent text-xs font-medium text-[var(--text-primary)] focus:outline-none cursor-pointer"
-                >
-                  <option value="manual">Manual (Drag)</option>
-                  <option value="probability">Probability</option>
-                  <option value="value">Value</option>
-                  <option value="date">Date</option>
-                </select>
-              </div>
-              <div className="flex bg-[var(--card-bg)] border border-[var(--border)] rounded-lg p-1">
-                {(["All", "Architecture", "Interior", "CS"] as const).map((filter) => (
-                  <button
-                    key={filter}
-                    onClick={() => setViewFilter(filter)}
-                    className={cn(
-                      "px-3 py-1.5 text-xs font-medium rounded transition-all duration-300 hover:scale-105 active:scale-95",
-                      viewFilter === filter 
-                        ? "bg-[var(--text-primary)] text-[var(--bg-primary)] shadow-sm" 
-                        : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]"
-                    )}
+                )}
+                <div className="flex items-center gap-2 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 transition-all duration-300 hover:border-[var(--text-secondary)] hover:shadow-sm">
+                  <span className="text-xs font-mono uppercase text-[var(--text-secondary)]">Sort:</span>
+                  <select 
+                    value={sortBy} 
+                    onChange={(e) => setSortBy(e.target.value as any)}
+                    className="bg-transparent text-xs font-medium text-[var(--text-primary)] focus:outline-none cursor-pointer"
                   >
-                    {filter === "CS" ? "Supervision" : filter}
-                  </button>
-                ))}
+                    <option value="manual">Manual (Drag)</option>
+                    <option value="probability">Probability</option>
+                    <option value="value">Value</option>
+                    <option value="date">Date</option>
+                  </select>
+                </div>
+                <div className="flex bg-[var(--card-bg)] border border-[var(--border)] rounded-lg p-1">
+                  {(["All", "Architecture", "Interior", "CS"] as const).map((filter) => (
+                    <button
+                      key={filter}
+                      onClick={() => setViewFilter(filter)}
+                      className={cn(
+                        "px-3 py-1.5 text-xs font-medium rounded transition-all duration-300 hover:scale-105 active:scale-95",
+                        viewFilter === filter 
+                          ? "bg-[var(--text-primary)] text-[var(--bg-primary)] shadow-sm" 
+                          : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]"
+                      )}
+                    >
+                      {filter === "CS" ? "Supervision" : filter}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
-          {!isReportView && (
-            <button 
-              onClick={() => {
-                setEditingId(null);
-                setNewItem({ type: "RFP", sector: sectors[0]?.name || "", disciplines: [], values: {}, status: "Pending" });
-                setIsModalOpen(true);
-              }}
-              className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-all duration-300 hover:scale-105 active:scale-95 shadow-sm hover:shadow-md"
-            >
-              <Plus size={16} />
-              Add Entry
-            </button>
-          )}
+            )}
+            {!isReportView && (
+              <>
+                <button 
+                  onClick={() => window.print()}
+                  className="flex items-center gap-2 px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--border)] transition-colors border border-[var(--border)]"
+                >
+                  <Printer size={16} /> Print Report
+                </button>
+                <button 
+                  onClick={() => {
+                    setEditingId(null);
+                    setNewItem({ type: "RFP", sector: sectors[0]?.name || "", disciplines: [], values: {}, status: "Pending" });
+                    setIsModalOpen(true);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-all duration-300 hover:scale-105 active:scale-95 shadow-sm hover:shadow-md"
+                >
+                  <Plus size={16} />
+                  Add Entry
+                </button>
+              </>
+            )}
+          </div>
         </div>
-      </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 print:grid-cols-3">
@@ -915,7 +926,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
           ) : (
             <>
               {/* Tabs */}
-              <div className="flex border-b border-[var(--border)] overflow-x-auto no-scrollbar">
+              <div className="flex border-b border-[var(--border)] overflow-x-auto no-scrollbar print:hidden">
                 {(["Submitted Proposals", "Proposals to be Submitted", "Potential VOs"] as TabType[]).map(tab => (
                   <button
                     key={tab}
@@ -932,7 +943,21 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
               </div>
 
               {/* List Content */}
-              {renderGroupedItems(groupedItems)}
+              <div className="print:hidden">
+                {renderGroupedItems(groupedItems)}
+              </div>
+              
+              {/* Print Content (All Tabs) */}
+              <div className="hidden print:block space-y-12">
+                {(["Submitted Proposals", "Proposals to be Submitted", "Potential VOs"] as TabType[]).map(tab => (
+                  <section key={tab} className="break-inside-avoid">
+                    <div className="mb-4 border-b border-[var(--border)] pb-2">
+                      <h3 className="text-lg font-light text-[var(--text-primary)]">{tab}</h3>
+                    </div>
+                    {renderGroupedItems(getGroupedItemsForTab(tab))}
+                  </section>
+                ))}
+              </div>
             </>
           )}
         </div>
@@ -1169,5 +1194,6 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
         </div>
       )}
     </div>
+    </ReportLayout>
   );
 }

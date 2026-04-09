@@ -19,6 +19,8 @@ interface Registration {
   password?: string;
 }
 
+import { ReportLayout } from "../components/layout/ReportLayout";
+
 export function Registrations({ isReportView = false, currentDateOnly = false, limit }: { isReportView?: boolean, currentDateOnly?: boolean, limit?: number }) {
   const { searchQuery } = useSearch();
   const [registrations, setRegistrations] = React.useState<Registration[]>([]);
@@ -90,49 +92,7 @@ export function Registrations({ isReportView = false, currentDateOnly = false, l
   };
 
   const handleExportPDF = () => {
-    const doc = new jsPDF();
-    
-    // Add title
-    doc.setFontSize(18);
-    doc.text('Registrations Report', 14, 22);
-    doc.setFontSize(11);
-    doc.setTextColor(100);
-    
-    // Add date
-    const dateStr = new Date().toLocaleDateString();
-    doc.text(`Generated on: ${dateStr}`, 14, 30);
-
-    // Filters info
-    if (selectedStatuses.length > 0 || startDateFilter || endDateFilter) {
-      let filterText = "Filters: ";
-      if (selectedStatuses.length > 0) filterText += `Status: ${selectedStatuses.join(', ')} `;
-      if (startDateFilter) filterText += `From: ${startDateFilter} `;
-      if (endDateFilter) filterText += `To: ${endDateFilter}`;
-      doc.text(filterText, 14, 36);
-    }
-
-    // Define columns
-    const tableColumn = ["Client", "Contact", "Reg. Date", "Status", "Follow Up Date", "Notes"];
-    const tableRows = filteredRegistrations.map(reg => [
-      reg.client,
-      reg.contact_name,
-      reg.registration_date,
-      reg.status,
-      reg.due_date,
-      reg.follow_up_log
-    ]);
-
-    autoTable(doc, {
-      head: [tableColumn],
-      body: tableRows,
-      startY: (selectedStatuses.length > 0 || startDateFilter || endDateFilter) ? 42 : 35,
-      theme: 'grid',
-      styles: { fontSize: 8, cellPadding: 2 },
-      headStyles: { fillColor: [41, 128, 185], textColor: 255 },
-      alternateRowStyles: { fillColor: [245, 245, 245] }
-    });
-
-    doc.save('registrations_report.pdf');
+    window.print();
   };
 
   const handleEdit = (reg: Registration) => {
@@ -202,56 +162,57 @@ export function Registrations({ isReportView = false, currentDateOnly = false, l
   };
 
   return (
-    <div className="space-y-6">
-      {!isReportView && (
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-light tracking-tight text-[var(--text-primary)] mb-2">REGISTRATIONS</h1>
-            <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Reg Status & Follow-Ups</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex bg-[var(--card-bg)] border border-[var(--border)] rounded-lg p-1">
+    <ReportLayout title="Registrations Report" subtitle="Reg Status & Follow-Ups" isReportView={isReportView}>
+      <div className="space-y-6">
+        {!isReportView && (
+          <div className="flex items-center justify-between print:hidden">
+            <div>
+              <h1 className="text-4xl font-light tracking-tight text-[var(--text-primary)] mb-2">REGISTRATIONS</h1>
+              <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Reg Status & Follow-Ups</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex bg-[var(--card-bg)] border border-[var(--border)] rounded-lg p-1">
+                <button 
+                  onClick={() => setViewMode('list')}
+                  className={cn("p-2 rounded transition-colors", viewMode === 'list' ? "bg-[var(--text-primary)] text-[var(--bg-primary)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]")}
+                >
+                  <List size={16} />
+                </button>
+                <button 
+                  onClick={() => setViewMode('grid')}
+                  className={cn("p-2 rounded transition-colors", viewMode === 'grid' ? "bg-[var(--text-primary)] text-[var(--bg-primary)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]")}
+                >
+                  <Grid size={16} />
+                </button>
+              </div>
               <button 
-                onClick={() => setViewMode('list')}
-                className={cn("p-2 rounded transition-colors", viewMode === 'list' ? "bg-[var(--text-primary)] text-[var(--bg-primary)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]")}
+                onClick={handleExportPDF}
+                className="flex items-center gap-2 px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--border)] transition-colors border border-[var(--border)]"
               >
-                <List size={16} />
+                <Download size={16} /> Print Report
               </button>
               <button 
-                onClick={() => setViewMode('grid')}
-                className={cn("p-2 rounded transition-colors", viewMode === 'grid' ? "bg-[var(--text-primary)] text-[var(--bg-primary)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]")}
+                onClick={() => {
+                  setEditingId(null);
+                  setFormData({ 
+                    client: "", 
+                    contact_name: "",
+                    registration_date: new Date().toISOString().split('T')[0],
+                    portal_link: "",
+                    status: "Pending", 
+                    due_date: "", 
+                    follow_up_log: "",
+                    last_week_follow_up: ""
+                  });
+                  setIsModalOpen(true);
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors"
               >
-                <Grid size={16} />
+                <Plus size={16} /> New Registration
               </button>
             </div>
-            <button 
-              onClick={handleExportPDF}
-              className="flex items-center gap-2 px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--border)] transition-colors border border-[var(--border)]"
-            >
-              <Download size={16} /> Export PDF
-            </button>
-            <button 
-              onClick={() => {
-                setEditingId(null);
-                setFormData({ 
-                  client: "", 
-                  contact_name: "",
-                  registration_date: new Date().toISOString().split('T')[0],
-                  portal_link: "",
-                  status: "Pending", 
-                  due_date: "", 
-                  follow_up_log: "",
-                  last_week_follow_up: ""
-                });
-                setIsModalOpen(true);
-              }}
-              className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors"
-            >
-              <Plus size={16} /> New Registration
-            </button>
           </div>
-        </div>
-      )}
+        )}
 
       {!isReportView && (
         <div className="flex flex-wrap gap-4 items-center pl-1">
@@ -316,7 +277,7 @@ export function Registrations({ isReportView = false, currentDateOnly = false, l
             </div>
           ) : (
             filteredRegistrations.map((reg) => (
-              <div key={reg.id} className="bg-[var(--card-bg)] border border-[var(--border)] p-6 group hover:border-[var(--border-hover)] transition-colors relative">
+              <div key={reg.id} className="bg-[var(--card-bg)] border border-[var(--border)] p-6 group hover:border-[var(--border-hover)] transition-colors relative print:break-inside-avoid">
                 {!isReportView && (
                   <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button 
@@ -418,7 +379,7 @@ export function Registrations({ isReportView = false, currentDateOnly = false, l
             </div>
           ) : (
             filteredRegistrations.map((reg) => (
-              <div key={reg.id} className="bg-[var(--card-bg)] border border-[var(--border)] p-4 flex items-center justify-between group hover:border-[var(--border-hover)] transition-colors relative">
+              <div key={reg.id} className="bg-[var(--card-bg)] border border-[var(--border)] p-4 flex items-center justify-between group hover:border-[var(--border-hover)] transition-colors relative print:break-inside-avoid">
                 <div className="flex items-center gap-6 flex-1">
                   <div className={cn(
                     "w-1 h-12 rounded-full",
@@ -625,5 +586,6 @@ export function Registrations({ isReportView = false, currentDateOnly = false, l
         </div>
       )}
     </div>
+    </ReportLayout>
   );
 }

@@ -14,6 +14,8 @@ interface Action {
   responsible: string;
 }
 
+import { ReportLayout } from "../components/layout/ReportLayout";
+
 export function Actions({ isReportView = false }: { isReportView?: boolean }) {
   const { searchQuery } = useSearch();
   const [actions, setActions] = React.useState<Action[]>([]);
@@ -64,48 +66,7 @@ export function Actions({ isReportView = false }: { isReportView?: boolean }) {
   };
 
   const handleExportPDF = () => {
-    const doc = new jsPDF();
-    
-    // Add title
-    doc.setFontSize(18);
-    doc.text('Action List Report', 14, 22);
-    doc.setFontSize(11);
-    doc.setTextColor(100);
-    
-    // Add date
-    const dateStr = new Date().toLocaleDateString();
-    doc.text(`Generated on: ${dateStr}`, 14, 30);
-
-    // Filters info
-    if (statusFilter.length > 0 || startDateFilter || endDateFilter) {
-      let filterText = "Filters: ";
-      if (statusFilter.length > 0) filterText += `Status: ${statusFilter.join(', ')} `;
-      if (startDateFilter) filterText += `From: ${startDateFilter} `;
-      if (endDateFilter) filterText += `To: ${endDateFilter}`;
-      doc.text(filterText, 14, 36);
-    }
-
-    // Define columns
-    const tableColumn = ["Task", "Description", "Responsible", "Status", "Due Date"];
-    const tableRows = filteredActions.map(action => [
-      action.title,
-      action.description,
-      action.responsible,
-      action.status,
-      action.due_date
-    ]);
-
-    autoTable(doc, {
-      head: [tableColumn],
-      body: tableRows,
-      startY: (statusFilter.length > 0 || startDateFilter || endDateFilter) ? 42 : 35,
-      theme: 'grid',
-      styles: { fontSize: 8, cellPadding: 2 },
-      headStyles: { fillColor: [41, 128, 185], textColor: 255 },
-      alternateRowStyles: { fillColor: [245, 245, 245] }
-    });
-
-    doc.save('actions_report.pdf');
+    window.print();
   };
 
   const handleEdit = (action: Action) => {
@@ -169,29 +130,30 @@ export function Actions({ isReportView = false }: { isReportView?: boolean }) {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-4xl font-light tracking-tight text-[var(--text-primary)] mb-2">ACTION LIST</h1>
-          <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Manage Tasks & Responsibilities</p>
-        </div>
+    <ReportLayout title="Action List Report" subtitle="Manage Tasks & Responsibilities" isReportView={isReportView}>
+      <div className="space-y-6">
         {!isReportView && (
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={handleExportPDF}
-              className="flex items-center gap-2 px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--border)] transition-colors border border-[var(--border)]"
-            >
-              <Download size={16} /> Export PDF
-            </button>
-            <button 
-              onClick={openNewModal}
-              className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors"
-            >
-              <Plus size={16} /> Add Action
-            </button>
+          <div className="flex items-center justify-between print:hidden">
+            <div>
+              <h1 className="text-4xl font-light tracking-tight text-[var(--text-primary)] mb-2">ACTION LIST</h1>
+              <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Manage Tasks & Responsibilities</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={handleExportPDF}
+                className="flex items-center gap-2 px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--border)] transition-colors border border-[var(--border)]"
+              >
+                <Download size={16} /> Print Report
+              </button>
+              <button 
+                onClick={openNewModal}
+                className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors"
+              >
+                <Plus size={16} /> Add Action
+              </button>
+            </div>
           </div>
         )}
-      </div>
 
       {!isReportView && (
         <div className="flex flex-wrap gap-4 items-center pl-1">
@@ -260,7 +222,7 @@ export function Actions({ isReportView = false }: { isReportView?: boolean }) {
             <div className="p-8 text-center text-[var(--text-secondary)] text-sm">No actions found.</div>
           ) : (
             filteredActions.map((action) => (
-              <div key={action.id} className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-[var(--border)] transition-colors group relative">
+              <div key={action.id} className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-[var(--border)] transition-colors group relative print:break-inside-avoid">
                 <div className="col-span-5 flex flex-col gap-1">
                   <div className="font-medium text-[var(--text-primary)] group-hover:text-[var(--text-primary)] flex items-center gap-3">
                     {!isReportView && (
@@ -380,5 +342,6 @@ export function Actions({ isReportView = false }: { isReportView?: boolean }) {
         </div>
       )}
     </div>
+    </ReportLayout>
   );
 }
