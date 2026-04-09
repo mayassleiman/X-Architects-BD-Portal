@@ -468,6 +468,97 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
     }
   };
 
+  const renderCleanGroupedItems = (grouped: Record<string, PipelineItem[]>) => {
+    const orderedSectors = sectorOrder.filter(s => grouped[s]).length > 0 
+      ? sectorOrder.filter(s => grouped[s])
+      : Object.keys(grouped);
+
+    return (
+      <div className="space-y-4">
+        {orderedSectors.map((sector) => {
+          const sectorItems = grouped[sector];
+          if (!sectorItems) return null;
+          const sectorColor = sectors.find(s => s.name === sector)?.color || 'var(--text-secondary)';
+          return (
+            <div key={`sector-${sector}`} className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] overflow-hidden print:break-inside-avoid">
+              <div className="p-3 bg-[var(--bg-tertiary)] border-b border-[var(--border)] flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: sectorColor }} />
+                <h4 className="text-xs font-mono uppercase tracking-wider font-bold" style={{ color: sectorColor }}>
+                  {sector}
+                </h4>
+              </div>
+              <div className="p-3 space-y-2">
+                {sectorItems.map((item) => (
+                  <div key={item.id} className="bg-[var(--card-bg-inner)] border border-[var(--border)] p-3 relative pl-4 overflow-hidden print:break-inside-avoid">
+                    <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: sectorColor }} />
+                    <div className="flex justify-between items-start pr-16">
+                      <div>
+                        <h5 className="text-sm font-medium" style={{ color: sectorColor }}>
+                          {item.rfpNumber && <span className="font-mono text-xs opacity-70 mr-2">{item.rfpNumber}</span>}
+                          {item.name}
+                        </h5>
+                        {item.client && <p className="text-xs text-[var(--text-secondary)] mt-0.5">{item.client}</p>}
+                        <div className="flex items-center gap-3 mt-1.5 text-[10px] text-[var(--text-secondary)] font-mono uppercase tracking-wider">
+                           {item.submissionDate && <span>{activeTab === "Proposals to be Submitted" ? "Submission Date" : "Submitted"}: {item.submissionDate}</span>}
+                           {item.region && <span>Region: {item.region}</span>}
+                           {item.probability && (
+                             <span className={cn(
+                               "px-1.5 py-0.5 rounded font-bold border",
+                               item.probability === "High" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : 
+                               item.probability === "Medium" ? "bg-amber-500/10 text-amber-500 border-amber-500/20" : "bg-red-500/10 text-red-500 border-red-500/20"
+                             )}>
+                               Prob: {item.probability}
+                             </span>
+                           )}
+                           <span className="px-1.5 py-0.5 rounded font-bold border bg-[var(--bg-tertiary)] text-[var(--text-primary)] border-[var(--border)]">
+                             {item.status}
+                           </span>
+                        </div>
+                      </div>
+                      <div className="text-right flex flex-col items-end gap-1.5">
+                        <div>
+                          <span className="text-sm font-mono text-[var(--text-primary)] block">{getFilteredValue(item).toLocaleString()} {currency}</span>
+                          {viewFilter !== "All" && (
+                            <span className="text-[10px] text-[var(--text-secondary)]">of {getTotalValue(item).toLocaleString()} Total</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    {item.type === "RFP" && Array.isArray(item.disciplines) && (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {item.disciplines.map((d) => {
+                          const isSelected = viewFilter === "All" || 
+                                            (viewFilter === "Architecture" && d === "Architecture") ||
+                                            (viewFilter === "Interior" && d === "Interior") ||
+                                            (viewFilter === "CS" && d === "Construction Supervision");
+                          const color = DISCIPLINE_COLORS[d] || 'var(--text-secondary)';
+                          return (
+                            <span key={d} className={cn(
+                              "text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border",
+                              !isSelected && "opacity-40 grayscale"
+                            )}
+                            style={{ borderColor: color, color: color, backgroundColor: `${color}1A` }}>
+                              {d === "Construction Supervision" ? "CS" : d}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+        {Object.keys(grouped).length === 0 && (
+          <div className="text-center py-12 text-[var(--text-secondary)]">
+            No items found for this category.
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderGroupedItems = (grouped: Record<string, PipelineItem[]>) => {
     const orderedSectors = sectorOrder.filter(s => grouped[s]).length > 0 
       ? sectorOrder.filter(s => grouped[s])
@@ -922,7 +1013,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                   <div className="mb-4 border-b border-[var(--border)] pb-2">
                     <h3 className="text-lg font-light text-[var(--text-primary)]">{tab}</h3>
                   </div>
-                  {renderGroupedItems(grouped)}
+                  {renderCleanGroupedItems(grouped)}
                 </section>
               );
             })}
@@ -961,7 +1052,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                     <div className="mb-4 border-b border-[var(--border)] pb-2">
                       <h3 className="text-lg font-light text-[var(--text-primary)]">{tab}</h3>
                     </div>
-                    {renderGroupedItems(grouped)}
+                    {renderCleanGroupedItems(grouped)}
                   </section>
                 );
               })}
