@@ -22,7 +22,7 @@ const LEVELS = [
   { id: 4, label: "Negotiation", tagClass: "bg-emerald-500 text-white border-emerald-600", cardClass: "bg-emerald-50 border-l-4 border-l-emerald-500 text-emerald-900" },
 ];
 
-export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { isReportView?: boolean, defaultViewMode?: 'list' | 'calendar' | 'stats' }) {
+export function Meetings({ isReportView = false, defaultViewMode = 'list', startDate, endDate }: { isReportView?: boolean, defaultViewMode?: 'list' | 'calendar' | 'stats', startDate?: string, endDate?: string }) {
   const { searchQuery } = useSearch();
   const [meetings, setMeetings] = React.useState<Meeting[]>([]);
   const [viewMode, setViewMode] = React.useState<'list' | 'calendar' | 'stats'>(defaultViewMode);
@@ -91,13 +91,17 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
     
     const matchesLevel = levelFilter.length === 0 || levelFilter.includes(meeting.level);
     
+    // Use props if provided, otherwise use local state
+    const effectiveStartDate = startDate || startDateFilter;
+    const effectiveEndDate = endDate || endDateFilter;
+    
     let matchesDate = true;
-    if (startDateFilter && endDateFilter) {
-      matchesDate = meeting.date >= startDateFilter && meeting.date <= endDateFilter;
-    } else if (startDateFilter) {
-      matchesDate = meeting.date >= startDateFilter;
-    } else if (endDateFilter) {
-      matchesDate = meeting.date <= endDateFilter;
+    if (effectiveStartDate && effectiveEndDate) {
+      matchesDate = meeting.date >= effectiveStartDate && meeting.date <= effectiveEndDate;
+    } else if (effectiveStartDate) {
+      matchesDate = meeting.date >= effectiveStartDate;
+    } else if (effectiveEndDate) {
+      matchesDate = meeting.date <= effectiveEndDate;
     }
 
     return matchesSearch && matchesLevel && matchesDate;
@@ -861,6 +865,6 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
   );
 }
 
-export function MeetingsWrapperForStats() {
-  return <Meetings isReportView={true} defaultViewMode="stats" />;
+export function MeetingsWrapperForStats({ startDate, endDate }: { startDate?: string, endDate?: string }) {
+  return <Meetings isReportView={true} defaultViewMode="stats" startDate={startDate} endDate={endDate} />;
 }

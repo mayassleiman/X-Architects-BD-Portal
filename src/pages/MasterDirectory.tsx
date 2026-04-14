@@ -426,12 +426,12 @@ export function MasterDirectory() {
         const pdfWidth = doc.internal.pageSize.getWidth();
         
         // Constrain logo dimensions
-        let logoWidth = 40; 
+        let logoWidth = 25; 
         let logoHeight = (imgProps.height * logoWidth) / imgProps.width;
         
         // If logo is too tall, constrain by height instead
-        if (logoHeight > 30) {
-          logoHeight = 30;
+        if (logoHeight > 15) {
+          logoHeight = 15;
           logoWidth = (imgProps.width * logoHeight) / imgProps.height;
         }
 

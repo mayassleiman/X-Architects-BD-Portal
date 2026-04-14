@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Printer } from "lucide-react";
+import { ArrowLeft, Printer, Settings } from "lucide-react";
 import { Meetings, MeetingsWrapperForStats } from "./Meetings";
 import { AchievedTarget } from "./AchievedTarget";
 import { RecentEngagements } from "./RecentEngagements";
@@ -12,6 +12,24 @@ import { Logo } from "../components/ui/Logo";
 
 export function FullReport() {
   const [currentDate, setCurrentDate] = React.useState("");
+  const [showSettings, setShowSettings] = useState(false);
+  
+  // Section visibility state
+  const [sections, setSections] = useState({
+    target: true,
+    pipeline: true,
+    meetingsSchedule: true,
+    meetingsAnalytics: true,
+    tasks: true,
+    registrations: true,
+    engagements: true
+  });
+
+  // Date range state
+  const [dateRange, setDateRange] = useState({
+    startDate: "",
+    endDate: ""
+  });
 
   React.useEffect(() => {
     const now = new Date();
@@ -29,6 +47,10 @@ export function FullReport() {
     window.print();
   };
 
+  const toggleSection = (key: keyof typeof sections) => {
+    setSections(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
   return (
     <div className="max-w-7xl mx-auto pb-20 print:pb-0">
       {/* Screen-only Controls */}
@@ -37,13 +59,80 @@ export function FullReport() {
           <ArrowLeft size={20} />
           <span className="text-sm font-mono uppercase tracking-wider">Back to Dashboard</span>
         </Link>
-        <button 
-          onClick={handlePrint}
-          className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors"
-        >
-          <Printer size={16} /> Print Report
-        </button>
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setShowSettings(!showSettings)}
+            className="flex items-center gap-2 px-4 py-2 border border-[var(--border)] text-[var(--text-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--bg-tertiary)] transition-colors"
+          >
+            <Settings size={16} /> Report Settings
+          </button>
+          <button 
+            onClick={handlePrint}
+            className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors"
+          >
+            <Printer size={16} /> Print Report
+          </button>
+        </div>
       </div>
+
+      {/* Settings Panel */}
+      {showSettings && (
+        <div className="mb-8 p-6 bg-[var(--card-bg)] border border-[var(--border)] print:hidden">
+          <h3 className="text-lg font-medium text-[var(--text-primary)] mb-4 uppercase">Report Configuration</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div>
+              <h4 className="text-sm font-mono text-[var(--text-secondary)] mb-3 uppercase">Include Sections</h4>
+              <div className="space-y-2">
+                {Object.entries(sections).map(([key, value]) => (
+                  <label key={key} className="flex items-center gap-2 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={value} 
+                      onChange={() => toggleSection(key as keyof typeof sections)}
+                      className="rounded border-[var(--border)] text-[var(--text-primary)] focus:ring-[var(--text-primary)]"
+                    />
+                    <span className="text-sm text-[var(--text-primary)] capitalize">
+                      {key.replace(/([A-Z])/g, ' $1').trim()}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            
+            <div>
+              <h4 className="text-sm font-mono text-[var(--text-secondary)] mb-3 uppercase">Global Date Range</h4>
+              <p className="text-xs text-[var(--text-tertiary)] mb-4">Applies to Pipeline and Meetings sections.</p>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs text-[var(--text-secondary)] mb-1">Start Date</label>
+                  <input 
+                    type="date" 
+                    value={dateRange.startDate}
+                    onChange={e => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                    className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-[var(--text-primary)] text-sm focus:border-[var(--text-primary)] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-[var(--text-secondary)] mb-1">End Date</label>
+                  <input 
+                    type="date" 
+                    value={dateRange.endDate}
+                    onChange={e => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                    className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-[var(--text-primary)] text-sm focus:border-[var(--text-primary)] focus:outline-none"
+                  />
+                </div>
+                <button 
+                  onClick={() => setDateRange({ startDate: "", endDate: "" })}
+                  className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] underline"
+                >
+                  Clear Dates
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Cover Page for Print */}
       <div className="hidden print:flex flex-col items-center justify-center h-screen w-full break-after-page bg-white relative z-[10000]">
@@ -82,90 +171,104 @@ export function FullReport() {
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td className="pb-8">
-              {/* Yearly Target Section */}
-              <section className="break-inside-avoid">
-                <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
-                  <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">YEARLY TARGET</h2>
-                  <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Performance & Goals</p>
-                </div>
-                <AchievedTarget isReportView={true} />
-              </section>
-            </td>
-          </tr>
-          <tr>
-            <td className="pb-8">
-              {/* Pipeline Section */}
-              <section className="break-inside-avoid print:break-before-page">
-                <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
-                  <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">PIPELINE OVERVIEW</h2>
-                  <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Active RFPs & VOs</p>
-                </div>
-                <Pipeline isReportView={true} />
-              </section>
-            </td>
-          </tr>
-          <tr>
-            <td className="pb-8">
-              {/* Meetings Section - Weekly View */}
-              <section className="break-inside-avoid print:break-before-page">
-                <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
-                  <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">MEETINGS SCHEDULE</h2>
-                  <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Weekly Overview</p>
-                </div>
-                <Meetings isReportView={true} />
-              </section>
-            </td>
-          </tr>
-          <tr>
-            <td className="pb-8">
-              {/* Meetings Section - Charts */}
-              <section className="break-inside-avoid">
-                <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
-                  <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">MEETINGS ANALYTICS</h2>
-                  <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Distribution & Counts</p>
-                </div>
-                <MeetingsChartOnly />
-              </section>
-            </td>
-          </tr>
-          <tr>
-            <td className="pb-8">
-              {/* Tasks Section */}
-              <section className="break-inside-avoid">
-                <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
-                  <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">TASKS</h2>
-                  <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Business Development Pipeline</p>
-                </div>
-                <Tasks isReportView={true} />
-              </section>
-            </td>
-          </tr>
-          <tr>
-            <td className="pb-8">
-              {/* Registrations Section */}
-              <section className="break-inside-avoid print:break-before-page">
-                <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
-                  <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">LATEST REGISTRATIONS</h2>
-                  <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Last 5 Registered Companies</p>
-                </div>
-                <Registrations isReportView={true} limit={5} />
-              </section>
-            </td>
-          </tr>
-          <tr>
-            <td className="pb-8">
-              {/* Recent Engagements Section */}
-              <section className="break-inside-avoid">
-                <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
-                  <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">RECENT ENGAGEMENTS</h2>
-                  <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Past 10 Days</p>
-                </div>
-                <RecentEngagements />
-              </section>
-            </td>
-          </tr>
+          {sections.target && (
+            <tr>
+              <td className="pb-8">
+                {/* Yearly Target Section */}
+                <section className="break-inside-avoid">
+                  <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
+                    <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">YEARLY TARGET</h2>
+                    <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Performance & Goals</p>
+                  </div>
+                  <AchievedTarget isReportView={true} />
+                </section>
+              </td>
+            </tr>
+          )}
+          {sections.pipeline && (
+            <tr>
+              <td className="pb-8">
+                {/* Pipeline Section */}
+                <section className="break-inside-avoid print:break-before-page">
+                  <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
+                    <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">PIPELINE OVERVIEW</h2>
+                    <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Active RFPs & VOs</p>
+                  </div>
+                  <Pipeline isReportView={true} startDate={dateRange.startDate} endDate={dateRange.endDate} />
+                </section>
+              </td>
+            </tr>
+          )}
+          {sections.meetingsSchedule && (
+            <tr>
+              <td className="pb-8">
+                {/* Meetings Section - Weekly View */}
+                <section className="break-inside-avoid print:break-before-page">
+                  <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
+                    <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">MEETINGS SCHEDULE</h2>
+                    <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Weekly Overview</p>
+                  </div>
+                  <Meetings isReportView={true} startDate={dateRange.startDate} endDate={dateRange.endDate} />
+                </section>
+              </td>
+            </tr>
+          )}
+          {sections.meetingsAnalytics && (
+            <tr>
+              <td className="pb-8">
+                {/* Meetings Section - Charts */}
+                <section className="break-inside-avoid">
+                  <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
+                    <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">MEETINGS ANALYTICS</h2>
+                    <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Distribution & Counts</p>
+                  </div>
+                  <MeetingsChartOnly startDate={dateRange.startDate} endDate={dateRange.endDate} />
+                </section>
+              </td>
+            </tr>
+          )}
+          {sections.tasks && (
+            <tr>
+              <td className="pb-8">
+                {/* Tasks Section */}
+                <section className="break-inside-avoid">
+                  <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
+                    <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">TASKS</h2>
+                    <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Business Development Pipeline</p>
+                  </div>
+                  <Tasks isReportView={true} />
+                </section>
+              </td>
+            </tr>
+          )}
+          {sections.registrations && (
+            <tr>
+              <td className="pb-8">
+                {/* Registrations Section */}
+                <section className="break-inside-avoid print:break-before-page">
+                  <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
+                    <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">LATEST REGISTRATIONS</h2>
+                    <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Last 5 Registered Companies</p>
+                  </div>
+                  <Registrations isReportView={true} limit={5} />
+                </section>
+              </td>
+            </tr>
+          )}
+          {sections.engagements && (
+            <tr>
+              <td className="pb-8">
+                {/* Recent Engagements Section */}
+                <section className="break-inside-avoid">
+                  <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
+                    <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">RECENT ENGAGEMENTS</h2>
+                    <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Past 10 Days</p>
+                  </div>
+                  <RecentEngagements />
+                </section>
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
       
