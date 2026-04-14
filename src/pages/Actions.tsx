@@ -30,9 +30,28 @@ export function Actions({ isReportView = false }: { isReportView?: boolean }) {
   });
 
   // Filter state
-  const [statusFilter, setStatusFilter] = React.useState<string[]>([]);
-  const [startDateFilter, setStartDateFilter] = React.useState<string>("");
-  const [endDateFilter, setEndDateFilter] = React.useState<string>("");
+  const [statusFilter, setStatusFilter] = React.useState<string[]>(() => {
+    const saved = localStorage.getItem('actions_statusFilter');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [startDateFilter, setStartDateFilter] = React.useState<string>(() => {
+    return localStorage.getItem('actions_startDateFilter') || "";
+  });
+  const [endDateFilter, setEndDateFilter] = React.useState<string>(() => {
+    return localStorage.getItem('actions_endDateFilter') || "";
+  });
+
+  React.useEffect(() => {
+    localStorage.setItem('actions_statusFilter', JSON.stringify(statusFilter));
+  }, [statusFilter]);
+
+  React.useEffect(() => {
+    localStorage.setItem('actions_startDateFilter', startDateFilter);
+  }, [startDateFilter]);
+
+  React.useEffect(() => {
+    localStorage.setItem('actions_endDateFilter', endDateFilter);
+  }, [endDateFilter]);
 
   const fetchActions = () => {
     fetch('/api/actions')

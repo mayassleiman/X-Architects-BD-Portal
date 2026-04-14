@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Plus, Briefcase, DollarSign, PieChart, Layers, Check, X, Edit2, Trash2, ArrowRightLeft, Printer } from "lucide-react";
+import { Plus, Briefcase, DollarSign, BarChart2, Layers, Check, X, Edit2, Trash2, ArrowRightLeft, Printer } from "lucide-react";
 import { cn } from "../lib/utils";
-import { PieChart as RePieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { useSearch } from "../context/SearchContext";
 import { useCurrency } from "../context/CurrencyContext";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
@@ -903,21 +903,40 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
         {/* Sector Breakdown Chart */}
         <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6 transition-all duration-300 hover:border-[var(--text-secondary)] hover:shadow-lg group">
           <h3 className="text-sm font-medium text-[var(--text-primary)] mb-6 flex items-center gap-2 group-hover:text-emerald-400 transition-colors">
-            <PieChart size={16} className="group-hover:rotate-12 transition-transform" />
+            <BarChart2 size={16} className="group-hover:rotate-12 transition-transform" />
             Sector Distribution ({viewFilter})
           </h3>
           <div className="h-64 w-full min-h-[256px]">
             <ResponsiveContainer width="100%" height={256}>
-              <RePieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-                <Pie
-                  data={metrics.sectorData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                  className="transition-all duration-300 outline-none"
+              <BarChart data={metrics.sectorData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                <XAxis 
+                  dataKey="name" 
+                  stroke="#888" 
+                  fontSize={10} 
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis 
+                  stroke="#888" 
+                  fontSize={10} 
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(value) => {
+                    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+                    if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
+                    return value;
+                  }}
+                />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff' }}
+                  itemStyle={{ color: '#fff' }}
+                  formatter={(value: number) => `${value.toLocaleString()} ${currency}`}
+                  cursor={{ fill: '#333', opacity: 0.4 }}
+                />
+                <Bar 
+                  dataKey="value" 
+                  radius={[4, 4, 0, 0]}
                   onClick={(data) => {
                     if (selectedSectorFilter === data.name) {
                       setSelectedSectorFilter(null);
@@ -930,18 +949,12 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                     <Cell 
                       key={`cell-${index}`} 
                       fill={entry.color} 
-                      stroke="none" 
                       opacity={selectedSectorFilter && selectedSectorFilter !== entry.name ? 0.3 : 1}
                       className="hover:opacity-80 transition-opacity cursor-pointer outline-none" 
                     />
                   ))}
-                </Pie>
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff' }}
-                  itemStyle={{ color: '#fff' }}
-                  formatter={(value: number) => `${value.toLocaleString()} ${currency}`}
-                />
-              </RePieChart>
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
           </div>
           <div className="mt-6 space-y-3">
@@ -965,7 +978,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
         {/* Discipline Breakdown Chart */}
         <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6 transition-all duration-300 hover:border-[var(--text-secondary)] hover:shadow-lg group">
           <h3 className="text-sm font-medium text-[var(--text-primary)] mb-6 flex items-center gap-2 group-hover:text-blue-400 transition-colors">
-            <PieChart size={16} className="group-hover:rotate-12 transition-transform" />
+            <BarChart2 size={16} className="group-hover:rotate-12 transition-transform" />
             Revenue by Discipline
           </h3>
           <div className="space-y-6">

@@ -12,13 +12,14 @@ interface Meeting {
   attendees: string[];
   level: number;
   minutes?: string;
+  location?: string;
 }
 
 const LEVELS = [
-  { id: 1, label: "Lead", tagClass: "bg-neutral-600 text-white border-neutral-500", cardClass: "bg-neutral-800/80 border-l-4 border-l-neutral-500 text-neutral-100" },
-  { id: 2, label: "Prospect", tagClass: "bg-blue-600 text-white border-blue-500", cardClass: "bg-blue-900/40 border-l-4 border-l-blue-500 text-blue-100" },
-  { id: 3, label: "Proposal", tagClass: "bg-amber-600 text-white border-amber-500", cardClass: "bg-amber-900/40 border-l-4 border-l-amber-500 text-amber-100" },
-  { id: 4, label: "Negotiation", tagClass: "bg-emerald-600 text-white border-emerald-500", cardClass: "bg-emerald-900/40 border-l-4 border-l-emerald-500 text-emerald-100" },
+  { id: 1, label: "Lead", tagClass: "bg-neutral-500 text-white border-neutral-600", cardClass: "bg-neutral-50 border-l-4 border-l-neutral-500 text-neutral-900" },
+  { id: 2, label: "Prospect", tagClass: "bg-blue-500 text-white border-blue-600", cardClass: "bg-blue-50 border-l-4 border-l-blue-500 text-blue-900" },
+  { id: 3, label: "Proposal", tagClass: "bg-amber-500 text-white border-amber-600", cardClass: "bg-amber-50 border-l-4 border-l-amber-500 text-amber-900" },
+  { id: 4, label: "Negotiation", tagClass: "bg-emerald-500 text-white border-emerald-600", cardClass: "bg-emerald-50 border-l-4 border-l-emerald-500 text-emerald-900" },
 ];
 
 export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { isReportView?: boolean, defaultViewMode?: 'list' | 'calendar' | 'stats' }) {
@@ -36,8 +37,33 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
     time: "10:00",
     attendees: "",
     level: 1,
-    minutes: ""
+    minutes: "",
+    location: ""
   });
+
+  // Filter state
+  const [levelFilter, setLevelFilter] = React.useState<number[]>(() => {
+    const saved = localStorage.getItem('meetings_levelFilter');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [startDateFilter, setStartDateFilter] = React.useState<string>(() => {
+    return localStorage.getItem('meetings_startDateFilter') || "";
+  });
+  const [endDateFilter, setEndDateFilter] = React.useState<string>(() => {
+    return localStorage.getItem('meetings_endDateFilter') || "";
+  });
+
+  React.useEffect(() => {
+    localStorage.setItem('meetings_levelFilter', JSON.stringify(levelFilter));
+  }, [levelFilter]);
+
+  React.useEffect(() => {
+    localStorage.setItem('meetings_startDateFilter', startDateFilter);
+  }, [startDateFilter]);
+
+  React.useEffect(() => {
+    localStorage.setItem('meetings_endDateFilter', endDateFilter);
+  }, [endDateFilter]);
 
   const fetchMeetings = () => {
     fetch('/api/meetings')
@@ -58,11 +84,24 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
     }
   }, [isReportView, defaultViewMode]);
 
-  const filteredMeetings = meetings.filter(meeting => 
-    (meeting.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (meeting.attendees || []).some(a => (a || "").toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (meeting.date || "").includes(searchQuery) // Allow searching by date
-  );
+  const filteredMeetings = meetings.filter(meeting => {
+    const matchesSearch = (meeting.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (meeting.attendees || []).some(a => (a || "").toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (meeting.date || "").includes(searchQuery);
+    
+    const matchesLevel = levelFilter.length === 0 || levelFilter.includes(meeting.level);
+    
+    let matchesDate = true;
+    if (startDateFilter && endDateFilter) {
+      matchesDate = meeting.date >= startDateFilter && meeting.date <= endDateFilter;
+    } else if (startDateFilter) {
+      matchesDate = meeting.date >= startDateFilter;
+    } else if (endDateFilter) {
+      matchesDate = meeting.date <= endDateFilter;
+    }
+
+    return matchesSearch && matchesLevel && matchesDate;
+  });
 
   // Statistics Calculations
   const stats = useMemo(() => {
@@ -171,7 +210,8 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
       time: meeting.time,
       attendees: meeting.attendees.join(", "),
       level: meeting.level,
-      minutes: meeting.minutes || ""
+      minutes: meeting.minutes || "",
+      location: meeting.location || ""
     });
     setIsModalOpen(true);
   };
@@ -195,7 +235,7 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
       if (res.ok) {
         setIsModalOpen(false);
         setEditingId(null);
-        setFormData({ title: "", date: new Date().toISOString().split('T')[0], time: "10:00", attendees: "", level: 1, minutes: "" });
+        setFormData({ title: "", date: new Date().toISOString().split('T')[0], time: "10:00", attendees: "", level: 1, minutes: "", location: "" });
         fetchMeetings();
       } else {
         console.error("Failed to save meeting");
@@ -366,7 +406,7 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
             <button 
               onClick={() => {
                 setEditingId(null);
-                setFormData({ title: "", date: new Date().toISOString().split('T')[0], time: "10:00", attendees: "", level: 1, minutes: "" });
+                setFormData({ title: "", date: new Date().toISOString().split('T')[0], time: "10:00", attendees: "", level: 1, minutes: "", location: "" });
                 setIsModalOpen(true);
               }}
               className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors"
@@ -376,6 +416,63 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
           </div>
         )}
       </div>
+
+      {!isReportView && viewMode !== 'stats' && (
+        <div className="flex flex-wrap gap-4 items-center bg-[var(--card-bg)] p-4 rounded-xl border border-[var(--border)]">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono text-[var(--text-secondary)] uppercase">Type:</span>
+            <div className="flex gap-2">
+              {LEVELS.map(level => (
+                <button
+                  key={level.id}
+                  onClick={() => {
+                    setLevelFilter(prev => 
+                      prev.includes(level.id) ? prev.filter(id => id !== level.id) : [...prev, level.id]
+                    );
+                  }}
+                  className={cn(
+                    "px-3 py-1.5 rounded-full text-xs font-medium border transition-all",
+                    levelFilter.includes(level.id) 
+                      ? "bg-[var(--text-primary)] text-[var(--bg-primary)] border-[var(--text-primary)]" 
+                      : "bg-transparent text-[var(--text-secondary)] border-[var(--border)] hover:border-[var(--text-primary)]"
+                  )}
+                >
+                  {level.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center gap-2 ml-auto">
+            <span className="text-xs font-mono text-[var(--text-secondary)] uppercase">Date Range:</span>
+            <input 
+              type="date" 
+              value={startDateFilter}
+              onChange={(e) => setStartDateFilter(e.target.value)}
+              className="px-3 py-1.5 bg-[var(--bg-primary)] border border-[var(--border)] rounded-lg text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--text-primary)] transition-colors"
+            />
+            <span className="text-[var(--text-secondary)]">-</span>
+            <input 
+              type="date" 
+              value={endDateFilter}
+              onChange={(e) => setEndDateFilter(e.target.value)}
+              className="px-3 py-1.5 bg-[var(--bg-primary)] border border-[var(--border)] rounded-lg text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--text-primary)] transition-colors"
+            />
+            {(levelFilter.length > 0 || startDateFilter || endDateFilter) && (
+              <button 
+                onClick={() => {
+                  setLevelFilter([]);
+                  setStartDateFilter("");
+                  setEndDateFilter("");
+                }}
+                className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                title="Clear Filters"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {viewMode === 'stats' ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 print:grid-cols-2">
@@ -587,6 +684,12 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
                       <span>{meeting.date}</span>
                       <Clock size={12} className="ml-2" />
                       <span>{meeting.time}</span>
+                      {meeting.location && (
+                        <>
+                          <span className="mx-1">•</span>
+                          <span className="font-medium text-[var(--text-primary)]">{meeting.location}</span>
+                        </>
+                      )}
                     </div>
                     {meeting.attendees && meeting.attendees.length > 0 && (
                       <div className="flex items-start gap-2 text-xs text-[var(--text-secondary)] pt-2 border-t border-[var(--border)]">
@@ -646,6 +749,9 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
                         <span className="text-[8px] opacity-75 uppercase tracking-wider">{levelInfo.label}</span>
                       </div>
                       <div className="font-medium leading-tight line-clamp-2">{meeting.title}</div>
+                      {meeting.location && (
+                        <div className="text-[8px] mt-0.5 opacity-80 truncate">{meeting.location}</div>
+                      )}
                     </div>
                   );
                 })}
@@ -729,6 +835,16 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list' }: { i
                   onChange={e => setFormData({...formData, minutes: e.target.value})}
                   className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-[var(--text-primary)] text-sm focus:border-[var(--text-primary)] focus:outline-none min-h-[80px] resize-y"
                   placeholder="Notes discussed during the meeting..."
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-mono uppercase text-[var(--text-secondary)] mb-1">Location</label>
+                <input 
+                  type="text" 
+                  value={formData.location}
+                  onChange={e => setFormData({...formData, location: e.target.value})}
+                  className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-[var(--text-primary)] text-sm focus:border-[var(--text-primary)] focus:outline-none"
+                  placeholder="Online, Physical, or specific location..."
                 />
               </div>
               <button 

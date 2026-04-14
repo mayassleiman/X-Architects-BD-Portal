@@ -40,9 +40,28 @@ export function Registrations({ isReportView = false, currentDateOnly = false, l
     password: ""
   });
 
-  const [selectedStatuses, setSelectedStatuses] = React.useState<string[]>([]);
-  const [startDateFilter, setStartDateFilter] = React.useState<string>("");
-  const [endDateFilter, setEndDateFilter] = React.useState<string>("");
+  const [selectedStatuses, setSelectedStatuses] = React.useState<string[]>(() => {
+    const saved = localStorage.getItem('registrations_selectedStatuses');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [startDateFilter, setStartDateFilter] = React.useState<string>(() => {
+    return localStorage.getItem('registrations_startDateFilter') || "";
+  });
+  const [endDateFilter, setEndDateFilter] = React.useState<string>(() => {
+    return localStorage.getItem('registrations_endDateFilter') || "";
+  });
+
+  React.useEffect(() => {
+    localStorage.setItem('registrations_selectedStatuses', JSON.stringify(selectedStatuses));
+  }, [selectedStatuses]);
+
+  React.useEffect(() => {
+    localStorage.setItem('registrations_startDateFilter', startDateFilter);
+  }, [startDateFilter]);
+
+  React.useEffect(() => {
+    localStorage.setItem('registrations_endDateFilter', endDateFilter);
+  }, [endDateFilter]);
 
   const fetchRegistrations = () => {
     fetch('/api/registrations')

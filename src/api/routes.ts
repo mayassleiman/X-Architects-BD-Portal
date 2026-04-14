@@ -154,25 +154,25 @@ router.delete('/registrations/:id', (req, res) => {
 
 // Get Tasks
 router.get('/tasks', (req, res) => {
-  const stmt = db.prepare('SELECT * FROM tasks ORDER BY level ASC');
+  const stmt = db.prepare('SELECT * FROM tasks ORDER BY level ASC, sortOrder ASC');
   const tasks = stmt.all();
   res.json(tasks);
 });
 
 // Create Task
 router.post('/tasks', (req, res) => {
-  const { title, level, status, description } = req.body;
-  const stmt = db.prepare('INSERT INTO tasks (title, level, status, description) VALUES (?, ?, ?, ?)');
-  const info = stmt.run(title, level, status || 'pending', description);
+  const { title, level, status, description, sortOrder } = req.body;
+  const stmt = db.prepare('INSERT INTO tasks (title, level, status, description, sortOrder) VALUES (?, ?, ?, ?, ?)');
+  const info = stmt.run(title, level, status || 'Pending', description, sortOrder || 0);
   res.json({ id: info.lastInsertRowid });
 });
 
 // Update Task
 router.put('/tasks/:id', (req, res) => {
   const { id } = req.params;
-  const { title, level, status, description } = req.body;
-  const stmt = db.prepare('UPDATE tasks SET title = ?, level = ?, status = ?, description = ? WHERE id = ?');
-  stmt.run(title, level, status, description, id);
+  const { title, level, status, description, sortOrder } = req.body;
+  const stmt = db.prepare('UPDATE tasks SET title = ?, level = ?, status = ?, description = ?, sortOrder = ? WHERE id = ?');
+  stmt.run(title, level, status, description, sortOrder || 0, id);
   res.json({ success: true });
 });
 
@@ -198,18 +198,18 @@ router.get('/meetings', (req, res) => {
 
 // Create Meeting
 router.post('/meetings', (req, res) => {
-  const { title, date, time, attendees, level, minutes } = req.body;
-  const stmt = db.prepare('INSERT INTO meetings (title, date, time, attendees, level, minutes) VALUES (?, ?, ?, ?, ?, ?)');
-  const info = stmt.run(title, date, time, JSON.stringify(attendees || []), level || 1, minutes || '');
+  const { title, date, time, attendees, level, minutes, location } = req.body;
+  const stmt = db.prepare('INSERT INTO meetings (title, date, time, attendees, level, minutes, location) VALUES (?, ?, ?, ?, ?, ?, ?)');
+  const info = stmt.run(title, date, time, JSON.stringify(attendees || []), level || 1, minutes || '', location || '');
   res.json({ id: info.lastInsertRowid });
 });
 
 // Update Meeting
 router.put('/meetings/:id', (req, res) => {
   const { id } = req.params;
-  const { title, date, time, attendees, level, minutes } = req.body;
-  const stmt = db.prepare('UPDATE meetings SET title = ?, date = ?, time = ?, attendees = ?, level = ?, minutes = ? WHERE id = ?');
-  stmt.run(title, date, time, JSON.stringify(attendees || []), level, minutes || '', id);
+  const { title, date, time, attendees, level, minutes, location } = req.body;
+  const stmt = db.prepare('UPDATE meetings SET title = ?, date = ?, time = ?, attendees = ?, level = ?, minutes = ?, location = ? WHERE id = ?');
+  stmt.run(title, date, time, JSON.stringify(attendees || []), level, minutes || '', location || '', id);
   res.json({ success: true });
 });
 

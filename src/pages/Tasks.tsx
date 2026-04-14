@@ -1,7 +1,8 @@
 import React from "react";
-import { Plus, X, Trash2, Layers, Edit2 } from "lucide-react";
+import { Plus, X, Trash2, Layers, Edit2, ChevronDown } from "lucide-react";
 import { cn } from "../lib/utils";
 import { useSearch } from "../context/SearchContext";
+import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 
 interface Task {
   id: number;
@@ -9,14 +10,28 @@ interface Task {
   level: number;
   status: string;
   description: string;
+  sortOrder?: number;
 }
 
 const LEVELS = [
-  { id: 1, label: "Level 1: Lead Identification", color: "border-neutral-700" },
-  { id: 2, label: "Level 2: Prospect Qualification", color: "border-blue-500/50" },
-  { id: 3, label: "Level 3: Proposal Development", color: "border-amber-500/50" },
-  { id: 4, label: "Level 4: Negotiation & Closing", color: "border-emerald-500/50" },
+  { id: 1, label: "Level 1: Lead Identification", color: "border-neutral-500" },
+  { id: 2, label: "Level 2: Prospect Qualification", color: "border-blue-500" },
+  { id: 3, label: "Level 3: Proposal Development", color: "border-amber-500" },
+  { id: 4, label: "Level 4: Negotiation & Closing", color: "border-emerald-500" },
 ];
+
+const getTaskBg = (levelId: number, status: string) => {
+  const levelColors: Record<number, { pending: string, ongoing: string, completed: string }> = {
+    1: { pending: "bg-neutral-500/10", ongoing: "bg-neutral-500/40", completed: "bg-neutral-500/80 text-white" },
+    2: { pending: "bg-blue-500/10", ongoing: "bg-blue-500/40", completed: "bg-blue-500/80 text-white" },
+    3: { pending: "bg-amber-500/10", ongoing: "bg-amber-500/40", completed: "bg-amber-500/80 text-white" },
+    4: { pending: "bg-emerald-500/10", ongoing: "bg-emerald-500/40", completed: "bg-emerald-500/80 text-white" },
+  };
+  const colors = levelColors[levelId] || levelColors[1];
+  if (status === 'Completed') return colors.completed;
+  if (status === 'On Going') return colors.ongoing;
+  return colors.pending;
+};
 
 export function Tasks({ isReportView = false }: { isReportView?: boolean }) {
   const { searchQuery } = useSearch();
@@ -87,13 +102,73 @@ export function Tasks({ isReportView = false }: { isReportView?: boolean }) {
     setIsModalOpen(true);
   };
 
+  const onDragEnd = async (result: DropResult) => {
+    if (!result.destination) return;
+
+    const sourceLevel = parseInt(result.source.droppableId);
+    const destLevel = parseInt(result.destination.droppableId);
+    
+    const sourceTasks = filteredTasks.filter(t => t.level === sourceLevel).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+    const destTasks = sourceLevel === destLevel ? sourceTasks : filteredTasks.filter(t => t.level === destLevel).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+
+    const [movedTask] = sourceTasks.splice(result.source.index, 1);
+    movedTask.level = destLevel;
+    
+    destTasks.splice(result.destination.index, 0, movedTask);
+
+    // Update sort orders
+    const updatedTasks = destTasks.map((t, index) => ({ ...t, sortOrder: index }));
+    
+    // Optimistic update
+    setTasks(prev => {
+      const newTasks = [...prev];
+      updatedTasks.forEach(ut => {
+        const idx = newTasks.findIndex(t => t.id === ut.id);
+        if (idx !== -1) newTasks[idx] = ut;
+      });
+      return newTasks;
+    });
+
+    // Save to backend
+    try {
+      await Promise.all(updatedTasks.map(t => 
+        fetch(`/api/tasks/${t.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(t)
+        })
+      ));
+    } catch (error) {
+      console.error("Error saving task order", error);
+      fetchTasks(); // Revert on error
+    }
+  };
+
+  const handleStatusChange = async (task: Task, newStatus: string) => {
+    const updatedTask = { ...task, status: newStatus };
+    
+    // Optimistic update
+    setTasks(prev => prev.map(t => t.id === task.id ? updatedTask : t));
+
+    try {
+      await fetch(`/api/tasks/${task.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedTask)
+      });
+    } catch (error) {
+      console.error("Error updating status", error);
+      fetchTasks(); // Revert on error
+    }
+  };
+
   return (
     <div className="space-y-6">
       {!isReportView && (
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-4xl font-light tracking-tight text-[var(--text-primary)] mb-2">TASK MANAGEMENT</h1>
-            <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Business Development Pipeline</p>
+            <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Business Development Tasks</p>
           </div>
           <button 
             onClick={() => {
@@ -107,50 +182,89 @@ export function Tasks({ isReportView = false }: { isReportView?: boolean }) {
         </div>
       )}
 
-      <div className={cn(
-        "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6",
-        isReportView ? "h-auto" : "h-[calc(100vh-12rem)] overflow-hidden"
-      )}>
-        {LEVELS.map((level) => (
-          <div key={level.id} className="flex flex-col h-full bg-[var(--card-bg)] border border-[var(--border)] break-inside-avoid">
-            <div className={cn("p-4 border-b border-[var(--border)] border-t-2", level.color)}>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">{level.label}</h3>
-            </div>
-            <div className={cn(
-              "flex-1 p-4 space-y-3",
-              isReportView ? "overflow-visible" : "overflow-y-auto custom-scrollbar"
-            )}>
-              {filteredTasks.filter(t => t.level === level.id).map(task => (
-                <div key={task.id} className="bg-[var(--bg-tertiary)] p-3 border border-[var(--border)] group hover:border-[var(--border-hover)] transition-colors relative break-inside-avoid">
-                  {!isReportView && (
-                    <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button 
-                        onClick={() => handleEdit(task)}
-                        className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                      >
-                        <Edit2 size={14} />
-                      </button>
-                      <button 
-                        onClick={() => handleDelete(task.id)}
-                        className="text-[var(--text-secondary)] hover:text-red-400"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  )}
-                  <h4 className="text-sm font-medium text-[var(--text-primary)] pr-12">{task.title}</h4>
-                  {task.description && (
-                    <p className="text-xs text-[var(--text-secondary)] mt-2 line-clamp-2">{task.description}</p>
-                  )}
-                  <div className="mt-3 flex items-center justify-between">
-                    <span className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)]">{task.status}</span>
+      <DragDropContext onDragEnd={onDragEnd}>
+        <div className={cn(
+          "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6",
+          isReportView ? "h-auto" : "h-[calc(100vh-12rem)] overflow-hidden"
+        )}>
+          {LEVELS.map((level) => (
+            <div key={level.id} className="flex flex-col h-full bg-[var(--card-bg)] border border-[var(--border)] break-inside-avoid">
+              <div className={cn("p-4 border-b border-[var(--border)] border-t-2", level.color)}>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">{level.label}</h3>
+              </div>
+              <Droppable droppableId={level.id.toString()} isDropDisabled={isReportView}>
+                {(provided, snapshot) => (
+                  <div 
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                    className={cn(
+                      "flex-1 p-4 space-y-3 transition-colors",
+                      isReportView ? "overflow-visible" : "overflow-y-auto custom-scrollbar",
+                      snapshot.isDraggingOver ? "bg-[var(--bg-tertiary)]" : ""
+                    )}
+                  >
+                    {filteredTasks.filter(t => t.level === level.id).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)).map((task, index) => (
+                      <Draggable key={task.id} draggableId={task.id.toString()} index={index} isDragDisabled={isReportView}>
+                        {(provided, snapshot) => (
+                          <div 
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            {...provided.dragHandleProps}
+                            className={cn(
+                              "p-3 border border-[var(--border)] group hover:border-[var(--border-hover)] transition-all relative break-inside-avoid",
+                              getTaskBg(level.id, task.status),
+                              snapshot.isDragging ? "shadow-lg scale-105 z-50" : ""
+                            )}
+                            title={task.description}
+                          >
+                            {!isReportView && (
+                              <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                <button 
+                                  onClick={() => handleEdit(task)}
+                                  className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--card-bg)] p-1 rounded"
+                                >
+                                  <Edit2 size={14} />
+                                </button>
+                                <button 
+                                  onClick={() => handleDelete(task.id)}
+                                  className="text-[var(--text-secondary)] hover:text-red-400 bg-[var(--card-bg)] p-1 rounded"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            )}
+                            <h4 className="text-sm font-medium pr-12 mb-2">{task.title}</h4>
+                            
+                            {!isReportView ? (
+                              <div className="mt-3 flex items-center justify-between relative z-10">
+                                <select
+                                  value={task.status}
+                                  onChange={(e) => handleStatusChange(task, e.target.value)}
+                                  className="text-[10px] uppercase tracking-wider bg-transparent border border-[var(--border)] rounded px-1 py-0.5 focus:outline-none cursor-pointer"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <option value="Pending">Pending</option>
+                                  <option value="On Going">On Going</option>
+                                  <option value="Completed">Completed</option>
+                                </select>
+                              </div>
+                            ) : (
+                              <div className="mt-3 flex items-center justify-between">
+                                <span className="text-[10px] uppercase tracking-wider">{task.status}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
                   </div>
-                </div>
-              ))}
+                )}
+              </Droppable>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      </DragDropContext>
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">

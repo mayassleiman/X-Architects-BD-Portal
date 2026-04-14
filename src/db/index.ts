@@ -40,7 +40,8 @@ db.exec(`
     title TEXT NOT NULL,
     level INTEGER DEFAULT 1, -- 1: Lead, 2: Prospect, 3: Proposal, 4: Negotiation
     status TEXT DEFAULT 'pending',
-    description TEXT
+    description TEXT,
+    sortOrder INTEGER DEFAULT 0
   );
 
   CREATE TABLE IF NOT EXISTS meetings (
@@ -49,7 +50,9 @@ db.exec(`
     date TEXT,
     time TEXT,
     attendees TEXT, -- JSON string
-    level INTEGER DEFAULT 1 -- 1: Lead, 2: Prospect, 3: Proposal, 4: Negotiation
+    level INTEGER DEFAULT 1, -- 1: Lead, 2: Prospect, 3: Proposal, 4: Negotiation
+    minutes TEXT,
+    location TEXT
   );
 
   CREATE TABLE IF NOT EXISTS contacts (
@@ -197,6 +200,20 @@ try {
 // Migration: Add minutes column to meetings if it doesn't exist
 try {
   db.exec("ALTER TABLE meetings ADD COLUMN minutes TEXT");
+} catch (error) {
+  // Column likely already exists, ignore
+}
+
+// Migration: Add location column to meetings if it doesn't exist
+try {
+  db.exec("ALTER TABLE meetings ADD COLUMN location TEXT");
+} catch (error) {
+  // Column likely already exists, ignore
+}
+
+// Migration: Add sortOrder column to tasks if it doesn't exist
+try {
+  db.exec("ALTER TABLE tasks ADD COLUMN sortOrder INTEGER DEFAULT 0");
 } catch (error) {
   // Column likely already exists, ignore
 }

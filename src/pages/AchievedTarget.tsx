@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { TrendingUp, Edit2, Save, PieChart, ChevronDown, ChevronRight, Check, X, Trash2, Layers, Download, LineChart as LineChartIcon } from 'lucide-react';
+import { TrendingUp, Edit2, Save, BarChart2, ChevronDown, ChevronRight, Check, X, Trash2, Layers, Download, LineChart as LineChartIcon } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { PieChart as RePieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, LabelList, ComposedChart, Area, Line, ReferenceLine } from 'recharts';
+import { Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, LabelList, ComposedChart, Area, Line, ReferenceLine } from 'recharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
@@ -1060,26 +1060,31 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
         {/* Sector Breakdown */}
         <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6 rounded-lg print:break-inside-avoid">
           <h3 className="text-sm font-medium text-[var(--text-primary)] mb-6 flex items-center gap-2">
-            <PieChart size={16} />
+            <BarChart2 size={16} />
             Achieved by Market Sector
           </h3>
           <div className="h-80 print:h-56 w-full min-w-0 min-h-0 overflow-hidden">
             <ResponsiveContainer width="100%" height="100%">
-              <RePieChart margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                <Pie
-                  data={metrics.sectorData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius="50%"
-                  outerRadius="70%"
-                  paddingAngle={5}
-                  dataKey="value"
-                  label={({ percent }) => `${(percent * 100).toFixed(1)}%`}
-                >
-                  {metrics.sectorData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
-                  ))}
-                </Pie>
+              <BarChart data={metrics.sectorData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                <XAxis 
+                  dataKey="name" 
+                  stroke="#888" 
+                  fontSize={10} 
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis 
+                  stroke="#888" 
+                  fontSize={10} 
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(value) => {
+                    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+                    if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
+                    return value;
+                  }}
+                />
                 <Tooltip 
                   contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff' }}
                   itemStyle={{ color: '#fff' }}
@@ -1087,8 +1092,21 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
                     const share = props.payload.share;
                     return [`${value.toLocaleString()} ${currency} (${share.toFixed(1)}%)`, name];
                   }}
+                  cursor={{ fill: '#333', opacity: 0.4 }}
                 />
-              </RePieChart>
+                <Bar 
+                  dataKey="value" 
+                  radius={[4, 4, 0, 0]}
+                >
+                  {metrics.sectorData.map((entry, index) => (
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={entry.color} 
+                      className="hover:opacity-80 transition-opacity cursor-pointer outline-none" 
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
           </div>
           <div className="mt-6 space-y-3">
