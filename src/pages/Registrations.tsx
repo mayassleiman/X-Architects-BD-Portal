@@ -21,7 +21,7 @@ interface Registration {
 
 import { ReportLayout } from "../components/layout/ReportLayout";
 
-export function Registrations({ isReportView = false, currentDateOnly = false, limit }: { isReportView?: boolean, currentDateOnly?: boolean, limit?: number }) {
+export function Registrations({ isReportView = false, currentDateOnly = false, limit, startDate, endDate }: { isReportView?: boolean, currentDateOnly?: boolean, limit?: number, startDate?: string, endDate?: string }) {
   const { searchQuery } = useSearch();
   const [registrations, setRegistrations] = React.useState<Registration[]>([]);
   const [viewMode, setViewMode] = React.useState<'grid' | 'list'>('list');
@@ -79,8 +79,11 @@ export function Registrations({ isReportView = false, currentDateOnly = false, l
       (reg.contact_name && reg.contact_name.toLowerCase().includes(searchQuery.toLowerCase()));
     
     const matchesStatus = selectedStatuses.length === 0 || selectedStatuses.includes(reg.status);
-    const matchesStartDate = startDateFilter ? reg.registration_date >= startDateFilter : true;
-    const matchesEndDate = endDateFilter ? reg.registration_date <= endDateFilter : true;
+    const effectiveStartDate = startDate || startDateFilter;
+    const effectiveEndDate = endDate || endDateFilter;
+
+    const matchesStartDate = effectiveStartDate ? reg.registration_date >= effectiveStartDate : true;
+    const matchesEndDate = effectiveEndDate ? reg.registration_date <= effectiveEndDate : true;
     
     const today = new Date().toISOString().split('T')[0];
     const matchesCurrentDate = currentDateOnly ? reg.registration_date === today : true;

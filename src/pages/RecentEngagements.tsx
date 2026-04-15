@@ -9,19 +9,25 @@ interface Engagement {
   client_organization: string;
 }
 
-export function RecentEngagements() {
+export function RecentEngagements({ startDate, endDate }: { startDate?: string, endDate?: string }) {
   const [engagements, setEngagements] = useState<Engagement[]>([]);
 
   useEffect(() => {
     const fetchEngagements = async () => {
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(endDate.getDate() - 10);
+      let startStr = startDate;
+      let endStr = endDate;
 
-      const startStr = startDate.toISOString().split('T')[0];
+      if (!startStr) {
+        const d = new Date();
+        d.setDate(d.getDate() - 10);
+        startStr = d.toISOString().split('T')[0];
+      }
       
       try {
-        const res = await fetch(`/api/engagements/search?startDate=${startStr}`);
+        let url = `/api/engagements/search?startDate=${startStr}`;
+        if (endStr) url += `&endDate=${endStr}`;
+        
+        const res = await fetch(url);
         if (res.ok) {
           const data = await res.json();
           setEngagements(data);
@@ -32,12 +38,12 @@ export function RecentEngagements() {
     };
 
     fetchEngagements();
-  }, []);
+  }, [startDate, endDate]);
 
   if (engagements.length === 0) {
     return (
       <div className="p-6 border border-dashed border-[var(--border)] rounded-lg text-center text-[var(--text-secondary)]">
-        No engagements in the past 10 days.
+        {startDate || endDate ? 'No engagements found for the selected period.' : 'No engagements in the past 10 days.'}
       </div>
     );
   }

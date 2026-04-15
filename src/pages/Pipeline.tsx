@@ -50,7 +50,7 @@ type TabType = "Submitted Proposals" | "Proposals to be Submitted" | "Potential 
 
 import { ReportLayout } from "../components/layout/ReportLayout";
 
-export function Pipeline({ isReportView = false, startDate, endDate }: { isReportView?: boolean, startDate?: string, endDate?: string }) {
+export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
   const { searchQuery } = useSearch();
   const { currency } = useCurrency();
   const [items, setItems] = useState<PipelineItem[]>([]);
@@ -319,17 +319,8 @@ export function Pipeline({ isReportView = false, startDate, endDate }: { isRepor
   };
 
   const getGroupedItemsForTab = (tab: TabType) => {
-    const tabItems = items.filter(i => {
-      let matchesDate = true;
-      if (startDate && endDate) {
-        matchesDate = (i.submissionDate || "") >= startDate && (i.submissionDate || "") <= endDate;
-      } else if (startDate) {
-        matchesDate = (i.submissionDate || "") >= startDate;
-      } else if (endDate) {
-        matchesDate = (i.submissionDate || "") <= endDate;
-      }
-
-      return getTabForItem(i) === tab &&
+    const tabItems = items.filter(i => 
+      getTabForItem(i) === tab &&
       ((i.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
        (i.client && i.client.toLowerCase().includes(searchQuery.toLowerCase()))) &&
       (viewFilter === "All" || (Array.isArray(i.disciplines) && i.disciplines.some(d => {
@@ -339,23 +330,13 @@ export function Pipeline({ isReportView = false, startDate, endDate }: { isRepor
         return false;
       }))) &&
       (selectedRegions.length === 0 || (i.region && selectedRegions.includes(i.region))) &&
-      (selectedSectorFilter === null || i.sector === selectedSectorFilter) &&
-      matchesDate;
-    });
+      (selectedSectorFilter === null || i.sector === selectedSectorFilter)
+    );
     return groupItems(tabItems);
   };
 
-  const currentTabItems = useMemo(() => items.filter(i => {
-    let matchesDate = true;
-    if (startDate && endDate) {
-      matchesDate = (i.submissionDate || "") >= startDate && (i.submissionDate || "") <= endDate;
-    } else if (startDate) {
-      matchesDate = (i.submissionDate || "") >= startDate;
-    } else if (endDate) {
-      matchesDate = (i.submissionDate || "") <= endDate;
-    }
-
-    return getTabForItem(i) === activeTab &&
+  const currentTabItems = useMemo(() => items.filter(i => 
+    getTabForItem(i) === activeTab &&
     ((i.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
      (i.client && i.client.toLowerCase().includes(searchQuery.toLowerCase()))) &&
     (viewFilter === "All" || (Array.isArray(i.disciplines) && i.disciplines.some(d => {
@@ -365,9 +346,8 @@ export function Pipeline({ isReportView = false, startDate, endDate }: { isRepor
       return false;
     }))) &&
     (selectedRegions.length === 0 || (i.region && selectedRegions.includes(i.region))) &&
-    (selectedSectorFilter === null || i.sector === selectedSectorFilter) &&
-    matchesDate;
-  }), [items, activeTab, searchQuery, viewFilter, selectedRegions, selectedSectorFilter, startDate, endDate]);
+    (selectedSectorFilter === null || i.sector === selectedSectorFilter)
+  ), [items, activeTab, searchQuery, viewFilter, selectedRegions, selectedSectorFilter]);
 
   const groupItems = (list: PipelineItem[]) => {
     const sortedList = sortItems(list);

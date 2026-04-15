@@ -102,7 +102,7 @@ export function FullReport() {
             
             <div>
               <h4 className="text-sm font-mono text-[var(--text-secondary)] mb-3 uppercase">Global Date Range</h4>
-              <p className="text-xs text-[var(--text-tertiary)] mb-4">Applies to Pipeline and Meetings sections.</p>
+              <p className="text-xs text-[var(--text-tertiary)] mb-4">Applies to Meetings, Registrations, and Engagements sections.</p>
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs text-[var(--text-secondary)] mb-1">Start Date</label>
@@ -194,7 +194,7 @@ export function FullReport() {
                     <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">PIPELINE OVERVIEW</h2>
                     <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Active RFPs & VOs</p>
                   </div>
-                  <Pipeline isReportView={true} startDate={dateRange.startDate} endDate={dateRange.endDate} />
+                  <Pipeline isReportView={true} />
                 </section>
               </td>
             </tr>
@@ -250,7 +250,7 @@ export function FullReport() {
                     <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">LATEST REGISTRATIONS</h2>
                     <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Last 5 Registered Companies</p>
                   </div>
-                  <Registrations isReportView={true} limit={5} />
+                  <Registrations isReportView={true} limit={5} startDate={dateRange.startDate} endDate={dateRange.endDate} />
                 </section>
               </td>
             </tr>
@@ -264,7 +264,7 @@ export function FullReport() {
                     <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">RECENT ENGAGEMENTS</h2>
                     <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Past 10 Days</p>
                   </div>
-                  <RecentEngagements />
+                  <RecentEngagements startDate={dateRange.startDate} endDate={dateRange.endDate} />
                 </section>
               </td>
             </tr>
@@ -298,6 +298,6 @@ export function FullReport() {
   );
 }
 
-function MeetingsChartOnly() {
-    return <MeetingsWrapperForStats />;
+function MeetingsChartOnly({ startDate, endDate }: { startDate?: string, endDate?: string }) {
+    return <MeetingsWrapperForStats startDate={startDate} endDate={endDate} />;
 }

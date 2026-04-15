@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Search, Plus, Edit2, Trash2, Phone, Mail, MapPin, 
   Briefcase, Calendar, MessageSquare, Bell, ChevronDown, ChevronRight, User,
-  History, X, Download, Building2, Upload
+  History, X, Download, Building2, Upload, MessageCircle
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useSearch } from '../context/SearchContext';
@@ -226,6 +226,21 @@ export function MasterDirectory() {
     return type ? type.color : 'transparent';
   };
 
+  const getWhatsAppLink = (contactName: string, phone: string) => {
+    const cleanPhone = phone.replace(/\D/g, '');
+    const message = `Hello ${contactName},
+
+I’m *Mayas Sleiman*, KSA Projects Director at *X Architects*.
+
+It was nice to talk & connect with you!
+
+Below are my contact details for your convenient:
+*M*: +966 55 076 0075
+*E*: mayas@x-architects.com`;
+    
+    return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+  };
+
   // Group contacts by organization
   const groupedContacts = useMemo(() => {
     const filtered = contacts.filter(c => {
@@ -248,6 +263,10 @@ export function MasterDirectory() {
     });
     return groups;
   }, [contacts, searchQuery]);
+
+  const uniqueCompanies = useMemo(() => {
+    return Array.from(new Set(contacts.map(c => c.client_organization).filter(Boolean))).sort();
+  }, [contacts]);
 
   useEffect(() => {
     if (searchQuery.trim().length > 0) {
@@ -316,13 +335,33 @@ export function MasterDirectory() {
 
   const handleSaveContact = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Normalize company name
+    let normalizedOrg = (contactForm.client_organization || "").trim();
+    if (normalizedOrg) {
+      // Find if this company already exists (case-insensitive)
+      const existingOrg = Array.from(new Set(contacts.map(c => c.client_organization))).find(
+        (org): org is string => typeof org === 'string' && org.trim().toLowerCase() === normalizedOrg.toLowerCase()
+      );
+      
+      // If it exists, use the existing casing to avoid creating a new group
+      if (existingOrg) {
+        normalizedOrg = existingOrg;
+      }
+    }
+
+    const finalContactForm = {
+      ...contactForm,
+      client_organization: normalizedOrg
+    };
+
     const url = contactForm.id ? `/api/contacts/${contactForm.id}` : '/api/contacts';
     const method = contactForm.id ? 'PUT' : 'POST';
     
     await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(contactForm)
+      body: JSON.stringify(finalContactForm)
     });
     
     setIsContactModalOpen(false);
@@ -722,14 +761,26 @@ export function MasterDirectory() {
                                   </div>
                                 )}
                                 {contact.phone && (
-                                  <a 
-                                    href={`tel:${contact.phone}`}
-                                    className="flex items-center gap-2 text-xs text-[var(--text-secondary)] truncate hover:text-[var(--text-primary)] transition-colors"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    <Phone size={12} className="text-emerald-400" />
-                                    <span className="truncate">{contact.phone}</span>
-                                  </a>
+                                  <div className="flex items-center gap-2">
+                                    <a 
+                                      href={`tel:${contact.phone}`}
+                                      className="flex items-center gap-2 text-xs text-[var(--text-secondary)] truncate hover:text-[var(--text-primary)] transition-colors"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <Phone size={12} className="text-emerald-400" />
+                                      <span className="truncate">{contact.phone}</span>
+                                    </a>
+                                    <a 
+                                      href={getWhatsAppLink(contact.client_contact || '', contact.phone)}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="p-1 hover:bg-[var(--bg-tertiary)] rounded text-emerald-500 transition-colors"
+                                      onClick={(e) => e.stopPropagation()}
+                                      title="WhatsApp"
+                                    >
+                                      <MessageCircle size={12} />
+                                    </a>
+                                  </div>
                                 )}
                               </div>
                             </div>
@@ -761,13 +812,24 @@ export function MasterDirectory() {
                   </p>
                   <div className="flex gap-6 text-sm text-[var(--text-secondary)]">
                     {selectedContact.phone && (
-                      <a 
-                        href={`tel:${selectedContact.phone}`}
-                        className="flex items-center gap-2 hover:text-[var(--text-primary)] transition-colors"
-                      >
-                        <Phone size={14} className="text-emerald-400" />
-                        <span>{selectedContact.phone}</span>
-                      </a>
+                      <div className="flex items-center gap-3">
+                        <a 
+                          href={`tel:${selectedContact.phone}`}
+                          className="flex items-center gap-2 hover:text-[var(--text-primary)] transition-colors"
+                        >
+                          <Phone size={14} className="text-emerald-400" />
+                          <span>{selectedContact.phone}</span>
+                        </a>
+                        <a 
+                          href={getWhatsAppLink(selectedContact.client_contact || '', selectedContact.phone)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1.5 bg-emerald-500/10 text-emerald-500 rounded-full hover:bg-emerald-500 hover:text-white transition-all"
+                          title="Start WhatsApp Conversation"
+                        >
+                          <MessageCircle size={14} />
+                        </a>
+                      </div>
                     )}
                     {selectedContact.email && (
                       <a 
@@ -958,8 +1020,14 @@ export function MasterDirectory() {
                 className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-sm"
                 value={contactForm.client_organization || ''}
                 onChange={e => setContactForm({...contactForm, client_organization: e.target.value})}
+                list="company-list"
                 required
               />
+              <datalist id="company-list">
+                {uniqueCompanies.map(company => (
+                  <option key={company} value={company} />
+                ))}
+              </datalist>
               <select 
                 className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-sm text-[var(--text-primary)]"
                 value={contactForm.category || ''}

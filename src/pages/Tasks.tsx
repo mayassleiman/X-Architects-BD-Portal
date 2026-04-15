@@ -204,7 +204,8 @@ export function Tasks({ isReportView = false }: { isReportView?: boolean }) {
                     )}
                   >
                     {filteredTasks.filter(t => t.level === level.id).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)).map((task, index) => (
-                      <Draggable key={task.id} draggableId={task.id.toString()} index={index} isDragDisabled={isReportView}>
+                      // @ts-ignore - key is required by React but not in DraggableProps
+                      <Draggable key={task.id.toString()} draggableId={task.id.toString()} index={index} isDragDisabled={isReportView}>
                         {(provided, snapshot) => (
                           <div 
                             ref={provided.innerRef}

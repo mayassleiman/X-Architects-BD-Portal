@@ -26,6 +26,38 @@ const DISCIPLINE_COLORS: Record<string, string> = {
   "VO": "#f43f5e", // Rose
 };
 
+const CustomTrendTooltip = ({ active, payload, currency }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    const target = data.linearTarget || 0;
+    const achieved = data.cumulative !== null ? data.cumulative : 0;
+    const deficiency = Math.max(0, target - achieved);
+    
+    return (
+      <div className="bg-[#111] border border-[#333] p-3 shadow-xl">
+        <p className="text-[var(--text-secondary)] text-[10px] font-mono mb-2 uppercase tracking-wider">
+          {data.fullDate}{data.name && data.name !== 'Start of Year' && data.name !== 'End of Year' && data.name !== 'Today' ? ` - ${data.name}` : ''}
+        </p>
+        <div className="space-y-1.5">
+          <div className="flex justify-between gap-8">
+            <span className="text-amber-400 text-[11px] uppercase font-bold">Target:</span>
+            <span className="text-white text-[11px] font-mono">{target.toLocaleString()} {currency}</span>
+          </div>
+          <div className="flex justify-between gap-8">
+            <span className="text-emerald-400 text-[11px] uppercase font-bold">Achieved:</span>
+            <span className="text-white text-[11px] font-mono">{achieved.toLocaleString()} {currency}</span>
+          </div>
+          <div className="flex justify-between gap-8 pt-1.5 border-t border-[#333]">
+            <span className="text-rose-400 text-[11px] uppercase font-bold">Deficiency:</span>
+            <span className="text-rose-400 text-[11px] font-mono font-bold">{deficiency.toLocaleString()} {currency}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
 export function AchievedTarget({ isReportView = false }: { isReportView?: boolean }) {
   const { currency } = useCurrency();
   const [year, setYear] = useState(new Date().getFullYear());
@@ -805,20 +837,8 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
                   tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`}
                 />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff' }}
-                  itemStyle={{ color: '#fff' }}
-                  formatter={(value: number, name: string) => {
-                    if (name === 'linearTarget') return [`${value.toLocaleString()} ${currency}`, 'Target'];
-                    if (name === 'cumulative') return [`${value.toLocaleString()} ${currency}`, 'Cumulative Achieved'];
-                    return [value, name];
-                  }}
-                  labelFormatter={(label, payload) => {
-                    if (payload && payload.length > 0) {
-                      const data = payload[0].payload;
-                      return `Date: ${data.fullDate}${data.name && data.name !== 'Start of Year' && data.name !== 'End of Year' && data.name !== 'Today' ? ` - ${data.name}` : ''}`;
-                    }
-                    return `Date: ${new Date(label).toLocaleDateString('en-GB')}`;
-                  }}
+                  content={<CustomTrendTooltip currency={currency} />}
+                  cursor={{ stroke: '#333', strokeWidth: 1 }}
                 />
                 {new Date().getFullYear() === data.year && (
                   <ReferenceLine x={new Date().getTime()} stroke="#3b82f6" strokeDasharray="3 3" label={{ position: 'insideTopRight', value: 'Today', fill: '#3b82f6', fontSize: 12 }} />
