@@ -47,7 +47,10 @@ export function MasterDirectory() {
   const [viewMode, setViewMode] = useState<'details' | 'map'>('details');
   const [selectedOrg, setSelectedOrg] = useState<string | null>(null);
   const [activeContactIds, setActiveContactIds] = useState<Set<number>>(new Set());
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(() => {
+    const saved = localStorage.getItem('directory_selectedCategories');
+    return saved ? JSON.parse(saved) : [];
+  });
 
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [isEngagementModalOpen, setIsEngagementModalOpen] = useState(false);
@@ -194,6 +197,10 @@ export function MasterDirectory() {
     }
   }, [contacts]);
 
+  useEffect(() => {
+    localStorage.setItem('directory_selectedCategories', JSON.stringify(selectedCategories));
+  }, [selectedCategories]);
+
   const fetchCompanyTypes = async () => {
     try {
       const res = await fetch('/api/company-types');
@@ -291,7 +298,11 @@ Below are my contact details for your convenient:
       groups[org].push(c);
     });
     return groups;
-  }, [contacts, searchQuery]);
+  }, [contacts, searchQuery, selectedCategories]);
+
+  const filteredContactsCount = useMemo(() => {
+    return Object.values(groupedContacts).reduce((acc: number, curr) => acc + (curr as Contact[]).length, 0);
+  }, [groupedContacts]);
 
   const uniqueCompanies = useMemo(() => {
     return Array.from(new Set(contacts.map(c => c.client_organization).filter(Boolean))).sort();
@@ -629,7 +640,7 @@ Below are my contact details for your convenient:
           <h2 className="font-light text-[var(--text-primary)] flex items-center gap-2">
             DIRECTORY
             <span className="text-xs font-mono text-[var(--text-secondary)] bg-[var(--bg-tertiary)] px-2 py-0.5 rounded-full">
-              {contacts.length}
+              {filteredContactsCount}
             </span>
           </h2>
           <div className="flex gap-2 items-center">
