@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Plus, Briefcase, DollarSign, BarChart2, Layers, Check, X, Edit2, Trash2, ArrowRightLeft, Printer } from "lucide-react";
 import { cn } from "../lib/utils";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, ResponsiveContainer, Tooltip, Legend, LabelList } from "recharts";
 import { useSearch } from "../context/SearchContext";
 import { useCurrency } from "../context/CurrencyContext";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
@@ -253,15 +253,20 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
     const totalSupervision = activeItems.reduce((acc, curr) => acc + (curr.values.cs || 0), 0);
 
     const disciplineData = [
-      { name: "Architecture", value: totalArch, color: DISCIPLINE_COLORS["Architecture"] },
-      { name: "Interior", value: totalInt, color: DISCIPLINE_COLORS["Interior"] },
-      { name: "Supervision", value: totalSupervision, color: DISCIPLINE_COLORS["Construction Supervision"] },
+      { name: "Architecture", value: totalArch, color: DISCIPLINE_COLORS["Architecture"], percentage: absoluteTotalPipeline > 0 ? (totalArch / absoluteTotalPipeline) * 100 : 0 },
+      { name: "Interior", value: totalInt, color: DISCIPLINE_COLORS["Interior"], percentage: absoluteTotalPipeline > 0 ? (totalInt / absoluteTotalPipeline) * 100 : 0 },
+      { name: "Supervision", value: totalSupervision, color: DISCIPLINE_COLORS["Construction Supervision"], percentage: absoluteTotalPipeline > 0 ? (totalSupervision / absoluteTotalPipeline) * 100 : 0 },
     ];
 
     const sectorData = sectors.map(sector => {
       const sectorItems = activeItems.filter(i => i.sector === sector.name);
       const value = sectorItems.reduce((acc, curr) => acc + getFilteredValue(curr), 0);
-      return { name: sector.name, value, color: sector.color };
+      return { 
+        name: sector.name, 
+        value, 
+        color: sector.color,
+        percentage: totalPipeline > 0 ? (value / totalPipeline) * 100 : 0
+      };
     }).filter(d => d.value > 0);
 
     return { totalRFP, totalVO, totalPipeline, sectorData, disciplineData, absoluteTotalPipeline };
@@ -949,14 +954,6 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                   formatter={(value: number) => `${value.toLocaleString()} ${currency}`}
                   cursor={{ fill: '#333', opacity: 0.4 }}
                 />
-                {isReportView && (
-                  <Legend 
-                    layout="vertical" 
-                    align="right" 
-                    verticalAlign="middle" 
-                    wrapperStyle={{ paddingLeft: '20px' }}
-                  />
-                )}
                 <Bar 
                   dataKey="value" 
                   radius={[4, 4, 0, 0]}
@@ -968,6 +965,18 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                     }
                   }}
                 >
+                  <LabelList 
+                    dataKey="value" 
+                    position="top" 
+                    fill="var(--text-primary)" 
+                    fontSize={10} 
+                    formatter={(value: number) => {
+                      const item = metrics.sectorData.find(d => d.value === value);
+                      const pct = item ? item.percentage : 0;
+                      const valStr = value >= 1000000 ? `${(value / 1000000).toFixed(1)}M` : value >= 1000 ? `${(value / 1000).toFixed(0)}k` : value;
+                      return `${valStr} (${pct.toFixed(1)}%)`;
+                    }}
+                  />
                   {metrics.sectorData.map((entry, index) => (
                     <Cell 
                       key={`cell-${index}`} 
@@ -1047,6 +1056,18 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                     cursor={{ fill: '#333', opacity: 0.4 }}
                   />
                   <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                    <LabelList 
+                      dataKey="value" 
+                      position="right" 
+                      fill="var(--text-primary)" 
+                      fontSize={10} 
+                      formatter={(value: number) => {
+                        const item = metrics.disciplineData.find(d => d.value === value);
+                        const pct = item ? item.percentage : 0;
+                        const valStr = value >= 1000000 ? `${(value / 1000000).toFixed(1)}M` : value >= 1000 ? `${(value / 1000).toFixed(0)}k` : value;
+                        return `${valStr} (${pct.toFixed(1)}%)`;
+                      }}
+                    />
                     {metrics.disciplineData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
