@@ -493,6 +493,7 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list', start
                 <BarChart 
                   data={stats.weeklyData}
                   margin={{ top: 10, right: 10, left: -20, bottom: 30 }}
+                  barSize={30}
                   onClick={(data) => {
                     if (!data) return;
                     
@@ -552,6 +553,7 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list', start
                 <BarChart 
                   data={stats.monthlyData}
                   margin={{ top: 10, right: 10, left: -20, bottom: 30 }}
+                  barSize={30}
                   onClick={(data) => {
                     if (!data) return;
 
@@ -602,6 +604,7 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list', start
                 <BarChart 
                   data={stats.quarterlyData}
                   margin={{ top: 10, right: 10, left: -20, bottom: 30 }}
+                  barSize={40}
                   onClick={(data) => {
                     if (!data) return;
 

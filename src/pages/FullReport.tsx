@@ -247,10 +247,10 @@ export function FullReport() {
                 {/* Registrations Section */}
                 <section className="break-inside-avoid print:break-before-page">
                   <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
-                    <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">LATEST REGISTRATIONS</h2>
-                    <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Last 5 Registered Companies</p>
+                    <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">REGISTRATIONS</h2>
+                    <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Companies Registered in Selected Period</p>
                   </div>
-                  <Registrations isReportView={true} limit={5} startDate={dateRange.startDate} endDate={dateRange.endDate} />
+                  <Registrations isReportView={true} startDate={dateRange.startDate} endDate={dateRange.endDate} />
                 </section>
               </td>
             </tr>
@@ -262,7 +262,7 @@ export function FullReport() {
                 <section className="break-inside-avoid">
                   <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
                     <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">RECENT ENGAGEMENTS</h2>
-                    <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Past 10 Days</p>
+                    <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Engagements for Selected Period</p>
                   </div>
                   <RecentEngagements startDate={dateRange.startDate} endDate={dateRange.endDate} />
                 </section>

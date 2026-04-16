@@ -95,7 +95,7 @@ export function Registrations({ isReportView = false, currentDateOnly = false, l
       if (currentDateOnly) {
         return matchesSearch && matchesStatus && matchesStartDate && matchesEndDate && matchesCurrentDate;
       }
-      return matchesSearch && matchesStatus && matchesStartDate && matchesEndDate && (reg.last_week_follow_up && reg.last_week_follow_up.trim() !== "");
+      return matchesSearch && matchesStatus && matchesStartDate && matchesEndDate;
     }
     
     return matchesSearch && matchesStatus && matchesStartDate && matchesEndDate && matchesCurrentDate;

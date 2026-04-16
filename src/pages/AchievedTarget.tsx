@@ -1085,7 +1085,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
           </h3>
           <div className="h-80 print:h-56 w-full min-w-0 min-h-0 overflow-hidden">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={metrics.sectorData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+              <BarChart data={metrics.sectorData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }} barSize={30}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                 <XAxis 
                   dataKey="name" 

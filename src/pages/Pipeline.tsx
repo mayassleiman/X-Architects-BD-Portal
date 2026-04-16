@@ -350,7 +350,15 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
   ), [items, activeTab, searchQuery, viewFilter, selectedRegions, selectedSectorFilter]);
 
   const groupItems = (list: PipelineItem[]) => {
-    const sortedList = sortItems(list);
+    // For report view, always sort by date (descending)
+    const sortedList = isReportView 
+      ? [...list].sort((a, b) => {
+          const dateA = a.submissionDate ? new Date(a.submissionDate).getTime() : 0;
+          const dateB = b.submissionDate ? new Date(b.submissionDate).getTime() : 0;
+          return dateB - dateA;
+        })
+      : sortItems(list);
+      
     const grouped: Record<string, PipelineItem[]> = {};
     sectors.forEach(sector => {
       const sectorItems = sortedList.filter(i => i.sector === sector.name);
