@@ -47,6 +47,7 @@ export function MasterDirectory() {
   const [viewMode, setViewMode] = useState<'details' | 'map'>('details');
   const [selectedOrg, setSelectedOrg] = useState<string | null>(null);
   const [activeContactIds, setActiveContactIds] = useState<Set<number>>(new Set());
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [isEngagementModalOpen, setIsEngagementModalOpen] = useState(false);
@@ -273,10 +274,14 @@ Below are my contact details for your convenient:
       const phoneMatch = (c.phone || "").toLowerCase().includes(searchQuery.toLowerCase()) || 
                          (cleanSearch.length > 0 && cleanPhone.includes(cleanSearch));
 
-      return (c.client_contact || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      const matchesSearch = (c.client_contact || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
              (c.client_organization || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
              (c.email || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
              phoneMatch;
+
+      const matchesCategory = selectedCategories.length === 0 || (c.category && selectedCategories.includes(c.category));
+
+      return matchesSearch && matchesCategory;
     });
 
     const groups: Record<string, Contact[]> = {};
@@ -564,11 +569,63 @@ Below are my contact details for your convenient:
   };
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] gap-6">
-      {/* List Panel */}
-      <div className="w-1/3 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg flex flex-col">
-        {/* ... header ... */}
-        <div className="p-4 border-b border-[var(--border)] flex justify-between items-center">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl font-light tracking-tight text-[var(--text-primary)] mb-2 uppercase">Directory</h1>
+          <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Manage Contacts & Engagements</p>
+        </div>
+      </div>
+
+      {/* Category Filters */}
+      {companyTypes.length > 0 && (
+        <div className="flex flex-wrap gap-4 items-center pl-1">
+          <span className="text-xs font-mono uppercase text-[var(--text-secondary)]">Filter by Type:</span>
+          <div className="flex flex-wrap gap-2">
+            {companyTypes.map(type => {
+              const isSelected = selectedCategories.includes(type.name);
+              return (
+                <button
+                  key={type.id}
+                  onClick={() => {
+                    setSelectedCategories(prev => 
+                      prev.includes(type.name) 
+                        ? prev.filter(c => c !== type.name)
+                        : [...prev, type.name]
+                    );
+                  }}
+                  className={cn(
+                    "px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider border transition-colors rounded-full flex items-center gap-2",
+                    isSelected 
+                      ? "bg-[var(--text-primary)] text-[var(--bg-primary)] border-[var(--text-primary)]" 
+                      : "bg-transparent text-[var(--text-secondary)] border-[var(--border)] hover:border-[var(--text-primary)] hover:text-[var(--text-primary)]"
+                  )}
+                >
+                  <div 
+                    className="w-1.5 h-1.5 rounded-full" 
+                    style={{ backgroundColor: isSelected ? 'var(--bg-primary)' : type.color }} 
+                  />
+                  {type.name}
+                </button>
+              );
+            })}
+            {selectedCategories.length > 0 && (
+              <button
+                onClick={() => setSelectedCategories([])}
+                className="text-[10px] px-3 py-1.5 rounded-full bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 transition-all font-bold uppercase tracking-wider"
+              >
+                Clear All
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="flex h-[calc(100vh-18rem)] gap-6">
+        {/* List Panel */}
+        <div className="w-1/3 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg flex flex-col">
+          {/* ... header ... */}
+          <div className="p-4 border-b border-[var(--border)] flex justify-between items-center">
           <h2 className="font-light text-[var(--text-primary)] flex items-center gap-2">
             DIRECTORY
             <span className="text-xs font-mono text-[var(--text-secondary)] bg-[var(--bg-tertiary)] px-2 py-0.5 rounded-full">
@@ -630,6 +687,7 @@ Below are my contact details for your convenient:
             </button>
           </div>
         </div>
+
         <div className="flex-1 overflow-y-auto p-2 space-y-2">
           {Object.entries(groupedContacts).map(([org, orgContacts]: [string, Contact[]]) => {
             const category = orgContacts[0]?.category; 
@@ -1244,5 +1302,6 @@ Below are my contact details for your convenient:
         </div>
       )}
     </div>
+  </div>
   );
 }

@@ -24,7 +24,7 @@ const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/" },
   { icon: TrendingUp, label: "Yearly Target", href: "/achieved-target" },
   { icon: CheckSquare, label: "Action List", href: "/actions" },
-  { icon: Users, label: "Master Directory", href: "/directory" },
+  { icon: Users, label: "Directory", href: "/directory" },
   { icon: FileText, label: "Registrations", href: "/registrations" },
   { icon: Calendar, label: "Meetings", href: "/meetings" },
   { icon: BarChart3, label: "Pipeline", href: "/pipeline" },
