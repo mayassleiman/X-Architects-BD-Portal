@@ -899,16 +899,23 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 print:grid-cols-2 mb-8">
+      {/* Dashboard Section */}
+      <div className={cn(
+        "grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8",
+        isReportView ? "grid-cols-1 print:break-inside-avoid" : "print:grid-cols-2"
+      )}>
         {/* Sector Breakdown Chart */}
-        <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6 transition-all duration-300 hover:border-[var(--text-secondary)] hover:shadow-lg group">
+        <div className={cn(
+          "bg-[var(--card-bg)] border border-[var(--border)] p-6 transition-all duration-300 hover:border-[var(--text-secondary)] hover:shadow-lg group",
+          isReportView && "col-span-1"
+        )}>
           <h3 className="text-sm font-medium text-[var(--text-primary)] mb-6 flex items-center gap-2 group-hover:text-emerald-400 transition-colors">
             <BarChart2 size={16} className="group-hover:rotate-12 transition-transform" />
             Sector Distribution ({viewFilter})
           </h3>
           <div className="h-64 w-full min-h-[256px]">
             <ResponsiveContainer width="100%" height={256}>
-              <BarChart data={metrics.sectorData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+              <BarChart data={metrics.sectorData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }} barSize={isReportView ? 30 : undefined}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                 <XAxis 
                   dataKey="name" 
@@ -934,6 +941,14 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                   formatter={(value: number) => `${value.toLocaleString()} ${currency}`}
                   cursor={{ fill: '#333', opacity: 0.4 }}
                 />
+                {isReportView && (
+                  <Legend 
+                    layout="vertical" 
+                    align="right" 
+                    verticalAlign="middle" 
+                    wrapperStyle={{ paddingLeft: '20px' }}
+                  />
+                )}
                 <Bar 
                   dataKey="value" 
                   radius={[4, 4, 0, 0]}
@@ -957,60 +972,112 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <div className="mt-6 space-y-3">
-            {metrics.sectorData.map((sector, index) => (
-              <div key={sector.name} className="flex items-center justify-between text-xs hover:bg-[var(--bg-tertiary)] p-1.5 -mx-1.5 rounded transition-colors cursor-default">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sector.color }} />
-                  <span className="text-[var(--text-secondary)]">{sector.name}</span>
+          {!isReportView && (
+            <div className="mt-6 space-y-3">
+              {metrics.sectorData.map((sector, index) => (
+                <div key={sector.name} className="flex items-center justify-between text-xs hover:bg-[var(--bg-tertiary)] p-1.5 -mx-1.5 rounded transition-colors cursor-default">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sector.color }} />
+                    <span className="text-[var(--text-secondary)]">{sector.name}</span>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="text-[var(--text-primary)] font-mono">{sector.value.toLocaleString()} {currency}</span>
+                    <span className="text-[var(--text-tertiary)] w-8 text-right">
+                      {((sector.value / metrics.totalPipeline) * 100).toFixed(1)}%
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-[var(--text-primary)] font-mono">{sector.value.toLocaleString()} {currency}</span>
-                  <span className="text-[var(--text-tertiary)] w-8 text-right">
-                    {((sector.value / metrics.totalPipeline) * 100).toFixed(1)}%
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Discipline Breakdown Chart */}
-        <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6 transition-all duration-300 hover:border-[var(--text-secondary)] hover:shadow-lg group">
+        <div className={cn(
+          "bg-[var(--card-bg)] border border-[var(--border)] p-6 transition-all duration-300 hover:border-[var(--text-secondary)] hover:shadow-lg group",
+          isReportView && "col-span-1"
+        )}>
           <h3 className="text-sm font-medium text-[var(--text-primary)] mb-6 flex items-center gap-2 group-hover:text-blue-400 transition-colors">
             <BarChart2 size={16} className="group-hover:rotate-12 transition-transform" />
             Revenue by Discipline
           </h3>
-          <div className="space-y-6">
-            {metrics.disciplineData.map((d) => {
-              const percentage = metrics.absoluteTotalPipeline > 0 
-                ? (d.value / metrics.absoluteTotalPipeline) * 100 
-                : 0;
-              
-              return (
-                <div key={d.name} className="hover:bg-[var(--bg-tertiary)] p-2 -mx-2 rounded transition-colors cursor-default">
-                  <div className="flex justify-between text-xs mb-2">
-                    <span className="text-[var(--text-secondary)] font-medium">{d.name}</span>
-                    <span className="text-[var(--text-primary)] font-mono">{percentage.toFixed(1)}%</span>
-                  </div>
-                  <div className="w-full bg-[var(--bg-tertiary)] h-2 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full rounded-full transition-all duration-500" 
-                      style={{ width: `${percentage}%`, backgroundColor: d.color }} 
-                    />
-                  </div>
-                  <div className="text-right text-[10px] text-[var(--text-tertiary)] mt-1 font-mono">
-                    {d.value.toLocaleString()} {currency}
-                  </div>
-                </div>
-              );
-            })}
-            
-            <div className="pt-4 border-t border-[var(--border)] flex justify-between items-center hover:bg-[var(--bg-tertiary)] p-2 -mx-2 rounded transition-colors cursor-default">
-              <span className="text-xs text-[var(--text-secondary)]">Total Revenue</span>
-              <span className="text-xs font-mono text-[var(--text-primary)]">{metrics.absoluteTotalPipeline.toLocaleString()} {currency}</span>
+          {isReportView ? (
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart 
+                  layout="vertical" 
+                  data={metrics.disciplineData} 
+                  margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
+                  barSize={20}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#333" horizontal={false} />
+                  <XAxis 
+                    type="number" 
+                    stroke="#888" 
+                    fontSize={10} 
+                    tickLine={false} 
+                    axisLine={false}
+                    tickFormatter={(value) => {
+                      if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+                      if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
+                      return value;
+                    }}
+                  />
+                  <YAxis 
+                    dataKey="name" 
+                    type="category" 
+                    stroke="#888" 
+                    fontSize={10} 
+                    tickLine={false} 
+                    axisLine={false}
+                    width={80}
+                  />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff' }}
+                    itemStyle={{ color: '#fff' }}
+                    formatter={(value: number) => `${value.toLocaleString()} ${currency}`}
+                    cursor={{ fill: '#333', opacity: 0.4 }}
+                  />
+                  <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                    {metrics.disciplineData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             </div>
-          </div>
+          ) : (
+            <div className="space-y-6">
+              {metrics.disciplineData.map((d) => {
+                const percentage = metrics.absoluteTotalPipeline > 0 
+                  ? (d.value / metrics.absoluteTotalPipeline) * 100 
+                  : 0;
+                
+                return (
+                  <div key={d.name} className="hover:bg-[var(--bg-tertiary)] p-2 -mx-2 rounded transition-colors cursor-default">
+                    <div className="flex justify-between text-xs mb-2">
+                      <span className="text-[var(--text-secondary)] font-medium">{d.name}</span>
+                      <span className="text-[var(--text-primary)] font-mono">{percentage.toFixed(1)}%</span>
+                    </div>
+                    <div className="w-full bg-[var(--bg-tertiary)] h-2 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full rounded-full transition-all duration-500" 
+                        style={{ width: `${percentage}%`, backgroundColor: d.color }} 
+                      />
+                    </div>
+                    <div className="text-right text-[10px] text-[var(--text-tertiary)] mt-1 font-mono">
+                      {d.value.toLocaleString()} {currency}
+                    </div>
+                  </div>
+                );
+              })}
+              
+              <div className="pt-4 border-t border-[var(--border)] flex justify-between items-center hover:bg-[var(--bg-tertiary)] p-2 -mx-2 rounded transition-colors cursor-default">
+                <span className="text-xs text-[var(--text-secondary)]">Total Revenue</span>
+                <span className="text-xs font-mono text-[var(--text-primary)]">{metrics.absoluteTotalPipeline.toLocaleString()} {currency}</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

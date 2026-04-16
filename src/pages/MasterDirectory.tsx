@@ -169,6 +169,30 @@ export function MasterDirectory() {
     fetchCompanyTypes();
   }, []);
 
+  useEffect(() => {
+    if (selectedContact) {
+      localStorage.setItem('master_directory_last_contact_id', selectedContact.id.toString());
+    } else {
+      localStorage.removeItem('master_directory_last_contact_id');
+    }
+  }, [selectedContact]);
+
+  useEffect(() => {
+    const savedId = localStorage.getItem('master_directory_last_contact_id');
+    if (savedId && contacts.length > 0 && !selectedContact) {
+      const contact = contacts.find(c => c.id === parseInt(savedId));
+      if (contact) {
+        setSelectedContact(contact);
+        setViewMode('details');
+        // Ensure the organization is expanded so the user can see the contact in the list
+        setExpandedOrgs(prev => {
+          if (prev.includes(contact.client_organization)) return prev;
+          return [...prev, contact.client_organization];
+        });
+      }
+    }
+  }, [contacts]);
+
   const fetchCompanyTypes = async () => {
     try {
       const res = await fetch('/api/company-types');
