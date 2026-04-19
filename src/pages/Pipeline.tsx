@@ -928,7 +928,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
           </h3>
           <div className="h-64 w-full min-h-[256px]">
             <ResponsiveContainer width="100%" height={256}>
-              <BarChart data={metrics.sectorData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }} barSize={isReportView ? 30 : undefined}>
+              <BarChart data={metrics.sectorData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }} barSize={30}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                 <XAxis 
                   dataKey="name" 
@@ -965,18 +965,6 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                     }
                   }}
                 >
-                  <LabelList 
-                    dataKey="value" 
-                    position="top" 
-                    fill="var(--text-primary)" 
-                    fontSize={10} 
-                    formatter={(value: number) => {
-                      const item = metrics.sectorData.find(d => d.value === value);
-                      const pct = item ? item.percentage : 0;
-                      const valStr = value >= 1000000 ? `${(value / 1000000).toFixed(1)}M` : value >= 1000 ? `${(value / 1000).toFixed(0)}k` : value;
-                      return `${valStr} (${pct.toFixed(1)}%)`;
-                    }}
-                  />
                   {metrics.sectorData.map((entry, index) => (
                     <Cell 
                       key={`cell-${index}`} 
