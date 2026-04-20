@@ -512,7 +512,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                         </h5>
                         {item.client && <p className="text-xs text-[var(--text-secondary)] mt-0.5">{item.client}</p>}
                         <div className="flex items-center gap-3 mt-1.5 text-[10px] text-[var(--text-secondary)] font-mono uppercase tracking-wider">
-                           {item.submissionDate && <span>{activeTab === "Proposals to be Submitted" ? "Submission Date" : "Submitted"}: {item.submissionDate}</span>}
+                           {item.submissionDate && <span>{item.status === "Pending" ? "Submission Date" : "Date"}: {item.submissionDate}</span>}
                            {item.region && <span>Region: {item.region}</span>}
                            {item.probability && (
                              <span className={cn(
@@ -523,9 +523,11 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                                Prob: {item.probability}
                              </span>
                            )}
-                           <span className="px-1.5 py-0.5 rounded font-bold border bg-[var(--bg-tertiary)] text-[var(--text-primary)] border-[var(--border)]">
-                             {item.status}
-                           </span>
+                           {item.status !== "Submitted" && item.status !== "Pending" && (
+                             <span className="px-1.5 py-0.5 rounded font-bold border bg-[var(--bg-tertiary)] text-[var(--text-primary)] border-[var(--border)]">
+                               {item.status}
+                             </span>
+                           )}
                         </div>
                       </div>
                       <div className="text-right flex flex-col items-end gap-1.5">
@@ -647,7 +649,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                                           </h5>
                                           {item.client && <p className="text-xs text-[var(--text-secondary)] mt-0.5">{item.client}</p>}
                                           <div className="flex items-center gap-3 mt-1.5 text-[10px] text-[var(--text-secondary)] font-mono uppercase tracking-wider">
-                                             {item.submissionDate && <span>{activeTab === "Proposals to be Submitted" ? "Submission Date" : "Submitted"}: {item.submissionDate}</span>}
+                                             {item.submissionDate && <span>{item.status === "Pending" ? "Submission Date" : "Date"}: {item.submissionDate}</span>}
                                              {item.region && <span>Region: {item.region}</span>}
                                              {item.probability && (
                                                <span className={cn(
@@ -658,11 +660,13 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                                                  Prob: {item.probability}
                                                </span>
                                              )}
-                                             <span
-                                               className="px-1.5 py-0.5 rounded font-bold border bg-[var(--bg-tertiary)] text-[var(--text-primary)] border-[var(--border)]"
-                                             >
-                                               {item.status}
-                                             </span>
+                                             {item.status !== "Submitted" && item.status !== "Pending" && (
+                                               <span
+                                                 className="px-1.5 py-0.5 rounded font-bold border bg-[var(--bg-tertiary)] text-[var(--text-primary)] border-[var(--border)]"
+                                               >
+                                                 {item.status}
+                                               </span>
+                                             )}
                                           </div>
                                         </div>
                                         <div className="text-right flex flex-col items-end gap-1.5">
@@ -942,6 +946,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                   fontSize={10} 
                   tickLine={false}
                   axisLine={false}
+                  domain={[0, 'auto']}
                   tickFormatter={(value) => {
                     if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
                     if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
@@ -957,6 +962,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                 <Bar 
                   dataKey="value" 
                   radius={[4, 4, 0, 0]}
+                  minPointSize={10}
                   onClick={(data) => {
                     if (selectedSectorFilter === data.name) {
                       setSelectedSectorFilter(null);
@@ -977,24 +983,22 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
               </BarChart>
             </ResponsiveContainer>
           </div>
-          {!isReportView && (
-            <div className="mt-6 space-y-3">
-              {metrics.sectorData.map((sector, index) => (
-                <div key={sector.name} className="flex items-center justify-between text-xs hover:bg-[var(--bg-tertiary)] p-1.5 -mx-1.5 rounded transition-colors cursor-default">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sector.color }} />
-                    <span className="text-[var(--text-secondary)]">{sector.name}</span>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <span className="text-[var(--text-primary)] font-mono">{sector.value.toLocaleString()} {currency}</span>
-                    <span className="text-[var(--text-tertiary)] w-8 text-right">
-                      {((sector.value / metrics.totalPipeline) * 100).toFixed(1)}%
-                    </span>
-                  </div>
+          <div className="mt-6 space-y-3">
+            {metrics.sectorData.map((sector, index) => (
+              <div key={sector.name} className="flex items-center justify-between text-xs hover:bg-[var(--bg-tertiary)] p-1.5 -mx-1.5 rounded transition-colors cursor-default">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sector.color }} />
+                  <span className="text-[var(--text-secondary)]">{sector.name}</span>
                 </div>
-              ))}
-            </div>
-          )}
+                <div className="flex items-center gap-4">
+                  <span className="text-[var(--text-primary)] font-mono">{sector.value.toLocaleString()} {currency}</span>
+                  <span className="text-[var(--text-tertiary)] w-8 text-right">
+                    {metrics.totalPipeline > 0 ? ((sector.value / metrics.totalPipeline) * 100).toFixed(1) : "0.0"}%
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Discipline Breakdown Chart */}
@@ -1007,61 +1011,76 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
             Revenue by Discipline
           </h3>
           {isReportView ? (
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart 
-                  layout="vertical" 
-                  data={metrics.disciplineData} 
-                  margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
-                  barSize={20}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#333" horizontal={false} />
-                  <XAxis 
-                    type="number" 
-                    stroke="#888" 
-                    fontSize={10} 
-                    tickLine={false} 
-                    axisLine={false}
-                    tickFormatter={(value) => {
-                      if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-                      if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
-                      return value;
-                    }}
-                  />
-                  <YAxis 
-                    dataKey="name" 
-                    type="category" 
-                    stroke="#888" 
-                    fontSize={10} 
-                    tickLine={false} 
-                    axisLine={false}
-                    width={80}
-                  />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff' }}
-                    itemStyle={{ color: '#fff' }}
-                    formatter={(value: number) => `${value.toLocaleString()} ${currency}`}
-                    cursor={{ fill: '#333', opacity: 0.4 }}
-                  />
-                  <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                    <LabelList 
-                      dataKey="value" 
-                      position="right" 
-                      fill="var(--text-primary)" 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart 
+                    layout="vertical" 
+                    data={metrics.disciplineData} 
+                    margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
+                    barSize={20}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#333" horizontal={false} />
+                    <XAxis 
+                      type="number" 
+                      stroke="#888" 
                       fontSize={10} 
-                      formatter={(value: number) => {
-                        const item = metrics.disciplineData.find(d => d.value === value);
-                        const pct = item ? item.percentage : 0;
-                        const valStr = value >= 1000000 ? `${(value / 1000000).toFixed(1)}M` : value >= 1000 ? `${(value / 1000).toFixed(0)}k` : value;
-                        return `${valStr} (${pct.toFixed(1)}%)`;
+                      tickLine={false} 
+                      axisLine={false}
+                      domain={[0, 'auto']}
+                      tickFormatter={(value) => {
+                        if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+                        if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
+                        return value;
                       }}
                     />
-                    {metrics.disciplineData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+                    <YAxis 
+                      dataKey="name" 
+                      type="category" 
+                      stroke="#888" 
+                      fontSize={10} 
+                      tickLine={false} 
+                      axisLine={false}
+                      width={80}
+                    />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff' }}
+                      itemStyle={{ color: '#fff' }}
+                      formatter={(value: number) => `${value.toLocaleString()} ${currency}`}
+                      cursor={{ fill: '#333', opacity: 0.4 }}
+                    />
+                    <Bar dataKey="value" radius={[0, 4, 4, 0]} minPointSize={5}>
+                      {metrics.disciplineData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="space-y-4">
+                {metrics.disciplineData.map((d) => {
+                  const percentage = metrics.absoluteTotalPipeline > 0 
+                    ? (d.value / metrics.absoluteTotalPipeline) * 100 
+                    : 0;
+                  
+                  return (
+                    <div key={d.name} className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: d.color }} />
+                        <span className="text-[var(--text-secondary)] font-medium">{d.name}</span>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <span className="text-[var(--text-primary)] font-mono">{d.value.toLocaleString()} {currency}</span>
+                        <span className="text-[var(--text-tertiary)] w-8 text-right font-mono">{percentage.toFixed(1)}%</span>
+                      </div>
+                    </div>
+                  );
+                })}
+                <div className="pt-3 border-t border-[var(--border)] flex justify-between items-center text-xs">
+                  <span className="text-[var(--text-secondary)]">Total Revenue</span>
+                  <span className="font-mono text-[var(--text-primary)]">{metrics.absoluteTotalPipeline.toLocaleString()} {currency}</span>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="space-y-6">

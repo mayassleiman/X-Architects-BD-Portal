@@ -635,7 +635,7 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list', start
                     itemStyle={{ color: '#fff' }}
                     cursor={{ fill: 'var(--bg-tertiary)', opacity: 0.5 }}
                   />
-                  <Bar dataKey="count" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={60}>
+                  <Bar dataKey="count" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={30}>
                     <LabelList 
                       dataKey="count" 
                       position="top" 

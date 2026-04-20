@@ -1099,6 +1099,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
                   fontSize={10} 
                   tickLine={false}
                   axisLine={false}
+                  domain={[0, 'auto']}
                   tickFormatter={(value) => {
                     if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
                     if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
@@ -1117,6 +1118,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
                 <Bar 
                   dataKey="value" 
                   radius={[4, 4, 0, 0]}
+                  minPointSize={10}
                 >
                   {metrics.sectorData.map((entry, index) => (
                     <Cell 

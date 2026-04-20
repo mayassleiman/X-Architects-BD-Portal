@@ -189,7 +189,7 @@ export function FullReport() {
             <tr>
               <td className="pb-8">
                 {/* Pipeline Section */}
-                <section className="break-inside-avoid print:break-before-page">
+                <section className="break-inside-avoid">
                   <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
                     <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">PIPELINE OVERVIEW</h2>
                     <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Active RFPs & VOs</p>
@@ -203,7 +203,7 @@ export function FullReport() {
             <tr>
               <td className="pb-8">
                 {/* Meetings Section - Weekly View */}
-                <section className="break-inside-avoid print:break-before-page">
+                <section className="break-inside-avoid">
                   <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
                     <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">MEETINGS SCHEDULE</h2>
                     <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Weekly Overview</p>
@@ -245,7 +245,7 @@ export function FullReport() {
             <tr>
               <td className="pb-8">
                 {/* Registrations Section */}
-                <section className="break-inside-avoid print:break-before-page">
+                <section className="break-inside-avoid">
                   <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
                     <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">REGISTRATIONS</h2>
                     <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Companies Registered in Selected Period</p>

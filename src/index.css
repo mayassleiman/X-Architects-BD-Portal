@@ -104,11 +104,6 @@ body {
     width: 100% !important;
   }
 
-  /* Ensure text is dark and readable */
-  h1, h2, h3, h4, p, span, div {
-    color: black !important;
-  }
-
   /* Add borders for clarity in print */
   .border, .border-white\/5, .border-white\/10, .border-white\/20 {
     border-color: #ddd !important;
