@@ -930,7 +930,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
             <BarChart2 size={16} className="group-hover:rotate-12 transition-transform" />
             Sector Distribution ({viewFilter})
           </h3>
-          <div className="h-64 w-full min-h-[256px]">
+          <div className="h-64 w-full min-h-[256px] print:h-72 print:overflow-visible">
             <ResponsiveContainer width="100%" height={256}>
               <BarChart data={metrics.sectorData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }} barSize={30}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
@@ -991,8 +991,8 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                   <span className="text-[var(--text-secondary)]">{sector.name}</span>
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className="text-[var(--text-primary)] font-mono">{sector.value.toLocaleString()} {currency}</span>
-                  <span className="text-[var(--text-tertiary)] w-8 text-right">
+                  <span className="text-[var(--text-primary)] font-mono font-bold">{sector.value.toLocaleString()} {currency}</span>
+                  <span className="text-[var(--text-tertiary)] w-10 text-right font-mono">
                     {metrics.totalPipeline > 0 ? ((sector.value / metrics.totalPipeline) * 100).toFixed(1) : "0.0"}%
                   </span>
                 </div>

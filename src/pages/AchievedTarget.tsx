@@ -1076,14 +1076,14 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
       </div>
 
       {/* Dashboard Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 print:grid-cols-2">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 print:grid-cols-2 print:break-before-page">
         {/* Sector Breakdown */}
         <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6 rounded-lg print:break-inside-avoid">
           <h3 className="text-sm font-medium text-[var(--text-primary)] mb-6 flex items-center gap-2">
             <BarChart2 size={16} />
             Achieved by Market Sector
           </h3>
-          <div className="h-80 print:h-56 w-full min-w-0 min-h-0 overflow-hidden">
+          <div className="h-80 print:h-72 w-full min-w-0 min-h-0 print:overflow-visible">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={metrics.sectorData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }} barSize={30}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
@@ -1139,8 +1139,8 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
                   <span className="text-[var(--text-secondary)]">{sector.name}</span>
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className="text-[var(--text-primary)] font-mono">{sector.value.toLocaleString()} {currency}</span>
-                  <span className="text-[var(--text-tertiary)] w-8 text-right">
+                  <span className="text-[var(--text-primary)] font-mono font-bold">{sector.value.toLocaleString()} {currency}</span>
+                  <span className="text-[var(--text-tertiary)] w-10 text-right font-mono">
                     {sector.share.toFixed(1)}%
                   </span>
                 </div>
