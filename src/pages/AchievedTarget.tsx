@@ -1088,14 +1088,14 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
           </h3>
           <div className={cn(
             "flex gap-8",
-            isReportView ? "flex-col md:flex-row items-center cursor-default" : "flex-col"
+            isReportView ? "flex-col md:flex-row cursor-default" : "flex-col"
           )}>
             <div className={cn(
               "h-80 min-w-0 min-h-0 print:overflow-visible",
-              isReportView ? "flex-1 w-full md:w-2/3 print:h-72" : "w-full print:h-72"
+              isReportView ? "flex-1 w-full md:w-2/3 print:h-80" : "w-full print:h-80"
             )}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={metrics.sectorData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }} barSize={30}>
+                <BarChart data={metrics.sectorData} margin={{ top: 20, right: 30, left: 10, bottom: 5 }} barSize={30}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                   <XAxis 
                     dataKey="name" 
@@ -1143,7 +1143,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
             </div>
             <div className={cn(
               "space-y-3",
-              isReportView ? "flex-none w-full md:w-1/3 border-l border-[var(--border)] pl-8 print:pl-4" : "mt-6"
+              isReportView ? "flex-none w-full md:w-1/3 border-l border-[var(--border)] pl-8 print:pl-6" : "mt-6"
             )}>
               {metrics.sectorData.map((sector, index) => (
                 <div key={sector.name} className="flex items-center justify-between text-xs hover:bg-[var(--bg-tertiary)] p-1.5 -mx-1.5 rounded transition-colors cursor-default">
@@ -1153,7 +1153,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
                   </div>
                   <div className="flex items-center gap-4">
                     <span className="text-[var(--text-primary)] font-mono font-bold">{sector.value.toLocaleString()} {currency}</span>
-                    <span className="text-[var(--text-tertiary)] w-10 text-right font-mono">
+                    <span className="text-[var(--text-tertiary)] w-12 text-right font-mono">
                       {sector.share.toFixed(1)}%
                     </span>
                   </div>
@@ -1165,7 +1165,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
 
         {/* Discipline Breakdown */}
         <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6 rounded-lg print:break-inside-avoid">
-          <div className="flex justify-between items-center mb-6">
+          <div className="flex justify-between items-center mb-10">
             <h3 className="text-sm font-medium text-[var(--text-primary)] flex items-center gap-2">
               <Layers size={16} />
               Achieved by Discipline
@@ -1173,8 +1173,8 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
             {isReportView && (
               <div className="text-right">
                 <span className="text-[10px] font-mono text-[var(--text-secondary)] uppercase block">Cumulative Achieved</span>
-                <span className="text-xl font-bold text-emerald-500 font-mono">
-                  {metrics.totalAchieved.toLocaleString()} <span className="text-xs font-normal opacity-70">{currency}</span>
+                <span className="text-2xl font-bold text-emerald-500 font-mono">
+                  {metrics.totalAchieved.toLocaleString()} <span className="text-sm font-normal opacity-70">{currency}</span>
                 </span>
               </div>
             )}
@@ -1182,39 +1182,98 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
           
           <div className={cn(
             "flex gap-8",
-            isReportView ? "flex-col md:flex-row items-center" : "flex-col"
+            isReportView ? "flex-col md:flex-row" : "flex-col"
           )}>
             <div className={cn(
-              "space-y-6",
-              isReportView ? "flex-1 w-full md:w-2/3" : "w-full"
+              "min-w-0 min-h-0",
+              isReportView ? "flex-1 w-full md:w-2/3 h-64 print:h-80" : "w-full"
             )}>
-              {metrics.disciplineData.map((d) => (
-                <div key={d.name} className="hover:bg-[var(--bg-tertiary)] p-2 -mx-2 rounded transition-colors cursor-default">
-                  <div className="flex justify-between text-xs mb-2">
-                    <span className="text-[var(--text-secondary)] font-medium">{d.name}</span>
-                    <div className="flex items-center gap-4">
-                      <span className="text-[var(--text-primary)] font-mono font-bold">{d.value.toLocaleString()} {currency}</span>
-                      <span className="text-[var(--text-tertiary)] w-10 text-right font-mono">{d.share.toFixed(1)}%</span>
-                    </div>
-                  </div>
-                  <div className="h-1.5 bg-[var(--bg-tertiary)] rounded-full overflow-hidden">
-                    <div 
-                      className="h-full rounded-full transition-all duration-1000 ease-out"
-                      style={{ 
-                        width: `${d.share}%`,
-                        backgroundColor: d.color
+              {isReportView ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart 
+                    layout="vertical" 
+                    data={metrics.disciplineData} 
+                    margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
+                    barSize={25}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#333" horizontal={false} />
+                    <XAxis 
+                      type="number" 
+                      stroke="#888" 
+                      fontSize={10} 
+                      tickLine={false} 
+                      axisLine={false}
+                      domain={[0, 'auto']}
+                      tickFormatter={(value) => {
+                        if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+                        if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
+                        return value;
                       }}
                     />
-                  </div>
+                    <YAxis 
+                      dataKey="name" 
+                      type="category" 
+                      hide={true} 
+                    />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff' }}
+                      itemStyle={{ color: '#fff' }}
+                      formatter={(value: number) => `${value.toLocaleString()} ${currency}`}
+                      cursor={{ fill: '#333', opacity: 0.4 }}
+                    />
+                    <Bar dataKey="value" radius={[0, 4, 4, 0]} minPointSize={10}>
+                      {metrics.disciplineData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="space-y-6">
+                  {metrics.disciplineData.map((d) => (
+                    <div key={d.name} className="hover:bg-[var(--bg-tertiary)] p-2 -mx-2 rounded transition-colors cursor-default">
+                      <div className="flex justify-between text-xs mb-2">
+                        <span className="text-[var(--text-secondary)] font-medium">{d.name}</span>
+                        <div className="flex items-center gap-4">
+                          <span className="text-[var(--text-primary)] font-mono font-bold">{d.value.toLocaleString()} {currency}</span>
+                          <span className="text-[var(--text-tertiary)] w-10 text-right font-mono">{d.share.toFixed(1)}%</span>
+                        </div>
+                      </div>
+                      <div className="h-1.5 bg-[var(--bg-tertiary)] rounded-full overflow-hidden">
+                        <div 
+                          className="h-full rounded-full transition-all duration-1000 ease-out"
+                          style={{ 
+                            width: `${d.share}%`,
+                            backgroundColor: d.color
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
 
             {isReportView && (
-              <div className="flex-none w-full md:w-1/3 border-l border-[var(--border)] pl-8 print:pl-4 space-y-4">
-                <div className="bg-[var(--bg-tertiary)]/30 p-4 rounded-lg border border-[var(--border)]">
-                  <h4 className="text-[10px] font-mono text-[var(--text-secondary)] uppercase mb-2">Performance Summary</h4>
-                  <div className="space-y-2">
+              <div className="flex-none w-full md:w-1/3 border-l border-[var(--border)] pl-8 print:pl-6 space-y-6">
+                <div className="space-y-4">
+                  {metrics.disciplineData.map((d) => (
+                    <div key={d.name} className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: d.color }} />
+                        <span className="text-[var(--text-secondary)] font-medium">{d.name}</span>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <span className="text-[var(--text-primary)] font-mono font-bold">{d.value.toLocaleString()} {currency}</span>
+                        <span className="text-[var(--text-tertiary)] w-10 text-right font-mono">{d.share.toFixed(1)}%</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="bg-[var(--bg-tertiary)]/30 p-4 rounded-lg border border-[var(--border)] mt-6">
+                  <h4 className="text-[10px] font-mono text-[var(--text-secondary)] uppercase mb-3">Performance Summary</h4>
+                  <div className="space-y-3">
                     <div className="flex justify-between text-xs">
                       <span className="text-[var(--text-secondary)]">Target</span>
                       <span className="text-[var(--text-primary)] font-mono">{data.target.toLocaleString()}</span>
@@ -1225,8 +1284,8 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
                     </div>
                     <div className="h-px bg-[var(--border)] my-1" />
                     <div className="flex justify-between text-xs">
-                      <span className="text-[var(--text-secondary)]">Achievement %</span>
-                      <span className="text-[var(--text-primary)] font-mono font-bold">{metrics.totalAchievedPercent.toFixed(1)}%</span>
+                      <span className="text-[var(--text-secondary)] font-medium">Achievement %</span>
+                      <span className="text-emerald-400 font-mono font-bold text-sm">{metrics.totalAchievedPercent.toFixed(1)}%</span>
                     </div>
                   </div>
                 </div>

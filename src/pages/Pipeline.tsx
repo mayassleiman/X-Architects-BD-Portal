@@ -933,14 +933,14 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
           
           <div className={cn(
             "flex gap-8",
-            isReportView ? "flex-col md:flex-row items-center" : "flex-col"
+            isReportView ? "flex-col md:flex-row" : "flex-col"
           )}>
             <div className={cn(
               "h-64 min-w-0 min-h-0 print:overflow-visible",
-              isReportView ? "flex-1 w-full md:w-2/3 print:h-72" : "w-full print:h-72"
+              isReportView ? "flex-1 w-full md:w-2/3 print:h-80" : "w-full print:h-80"
             )}>
               <ResponsiveContainer width="100%" height={256}>
-                <BarChart data={metrics.sectorData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }} barSize={30}>
+                <BarChart data={metrics.sectorData} margin={{ top: 20, right: 30, left: 10, bottom: 5 }} barSize={30}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                   <XAxis 
                     dataKey="name" 
@@ -993,7 +993,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
             </div>
             <div className={cn(
               "space-y-3",
-              isReportView ? "flex-none w-full md:w-1/3 border-l border-[var(--border)] pl-8 print:pl-4" : "mt-6"
+              isReportView ? "flex-none w-full md:w-1/3 border-l border-[var(--border)] pl-8 print:pl-6" : "mt-6"
             )}>
               {metrics.sectorData.map((sector, index) => (
                 <div key={sector.name} className="flex items-center justify-between text-xs hover:bg-[var(--bg-tertiary)] p-1.5 -mx-1.5 rounded transition-colors cursor-default">
@@ -1003,7 +1003,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                   </div>
                   <div className="flex items-center gap-4">
                     <span className="text-[var(--text-primary)] font-mono font-bold">{sector.value.toLocaleString()} {currency}</span>
-                    <span className="text-[var(--text-tertiary)] w-10 text-right font-mono">
+                    <span className="text-[var(--text-tertiary)] w-12 text-right font-mono">
                       {metrics.totalPipeline > 0 ? ((sector.value / metrics.totalPipeline) * 100).toFixed(1) : "0.0"}%
                     </span>
                   </div>
@@ -1024,17 +1024,17 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
           </h3>
           <div className={cn(
             "flex gap-8",
-            isReportView ? "flex-col md:flex-row items-center" : "flex-col"
+            isReportView ? "flex-col md:flex-row" : "flex-col"
           )}>
             <div className={cn(
               "h-64 min-w-0 min-h-0 print:overflow-visible",
-              isReportView ? "flex-1 w-full md:w-2/3" : "w-full"
+              isReportView ? "flex-1 w-full md:w-2/3 print:h-80" : "w-full print:h-80"
             )}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart 
                   layout="vertical" 
                   data={metrics.disciplineData} 
-                  margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
+                  margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
                   barSize={20}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#333" horizontal={false} />
@@ -1054,11 +1054,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                   <YAxis 
                     dataKey="name" 
                     type="category" 
-                    stroke="#888" 
-                    fontSize={10} 
-                    tickLine={false} 
-                    axisLine={false}
-                    width={80}
+                    hide={true}
                   />
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff' }}
@@ -1066,7 +1062,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                     formatter={(value: number) => `${value.toLocaleString()} ${currency}`}
                     cursor={{ fill: '#333', opacity: 0.4 }}
                   />
-                  <Bar dataKey="value" radius={[0, 4, 4, 0]} minPointSize={5}>
+                  <Bar dataKey="value" radius={[0, 4, 4, 0]} minPointSize={10}>
                     {metrics.disciplineData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
@@ -1077,7 +1073,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
             
             <div className={cn(
               "space-y-4",
-              isReportView ? "flex-none w-full md:w-1/3 border-l border-[var(--border)] pl-8 print:pl-4" : "mt-6"
+              isReportView ? "flex-none w-full md:w-1/3 border-l border-[var(--border)] pl-8 print:pl-6" : "mt-6"
             )}>
               {metrics.disciplineData.map((d) => {
                 const percentage = metrics.absoluteTotalPipeline > 0 
@@ -1092,14 +1088,14 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                     </div>
                     <div className="flex items-center gap-4">
                       <span className="text-[var(--text-primary)] font-mono font-bold">{d.value.toLocaleString()} {currency}</span>
-                      <span className="text-[var(--text-tertiary)] w-10 text-right font-mono">{percentage.toFixed(1)}%</span>
+                      <span className="text-[var(--text-tertiary)] w-12 text-right font-mono">{percentage.toFixed(1)}%</span>
                     </div>
                   </div>
                 );
               })}
               <div className="pt-3 border-t border-[var(--border)] flex justify-between items-center text-xs">
-                <span className="text-[var(--text-secondary)]">Total Revenue</span>
-                <span className="font-mono text-[var(--text-primary)] font-bold">{metrics.absoluteTotalPipeline.toLocaleString()} {currency}</span>
+                <span className="text-[var(--text-secondary)] font-medium">Total Revenue</span>
+                <span className="font-mono text-[var(--text-primary)] font-bold text-sm">{metrics.absoluteTotalPipeline.toLocaleString()} {currency}</span>
               </div>
             </div>
           </div>
