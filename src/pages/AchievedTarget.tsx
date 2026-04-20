@@ -1076,106 +1076,162 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
       </div>
 
       {/* Dashboard Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 print:grid-cols-2 print:break-before-page">
+      <div className={cn(
+        "grid gap-8 print:break-before-page",
+        isReportView ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-2"
+      )}>
         {/* Sector Breakdown */}
         <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6 rounded-lg print:break-inside-avoid">
           <h3 className="text-sm font-medium text-[var(--text-primary)] mb-6 flex items-center gap-2">
             <BarChart2 size={16} />
             Achieved by Market Sector
           </h3>
-          <div className="h-80 print:h-72 w-full min-w-0 min-h-0 print:overflow-visible">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={metrics.sectorData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }} barSize={30}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-                <XAxis 
-                  dataKey="name" 
-                  stroke="#888" 
-                  fontSize={10} 
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis 
-                  stroke="#888" 
-                  fontSize={10} 
-                  tickLine={false}
-                  axisLine={false}
-                  domain={[0, 'auto']}
-                  tickFormatter={(value) => {
-                    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-                    if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
-                    return value;
-                  }}
-                />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff' }}
-                  itemStyle={{ color: '#fff' }}
-                  formatter={(value: number, name: string, props: any) => {
-                    const share = props.payload.share;
-                    return [`${value.toLocaleString()} ${currency} (${share.toFixed(1)}%)`, name];
-                  }}
-                  cursor={{ fill: '#333', opacity: 0.4 }}
-                />
-                <Bar 
-                  dataKey="value" 
-                  radius={[4, 4, 0, 0]}
-                  minPointSize={10}
-                >
-                  {metrics.sectorData.map((entry, index) => (
-                    <Cell 
-                      key={`cell-${index}`} 
-                      fill={entry.color} 
-                      className="hover:opacity-80 transition-opacity cursor-pointer outline-none" 
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="mt-6 space-y-3">
-            {metrics.sectorData.map((sector, index) => (
-              <div key={sector.name} className="flex items-center justify-between text-xs hover:bg-[var(--bg-tertiary)] p-1.5 -mx-1.5 rounded transition-colors cursor-default">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sector.color }} />
-                  <span className="text-[var(--text-secondary)]">{sector.name}</span>
+          <div className={cn(
+            "flex gap-8",
+            isReportView ? "flex-col md:flex-row items-center cursor-default" : "flex-col"
+          )}>
+            <div className={cn(
+              "h-80 min-w-0 min-h-0 print:overflow-visible",
+              isReportView ? "flex-1 w-full md:w-2/3 print:h-72" : "w-full print:h-72"
+            )}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={metrics.sectorData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }} barSize={30}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                  <XAxis 
+                    dataKey="name" 
+                    stroke="#888" 
+                    fontSize={10} 
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis 
+                    stroke="#888" 
+                    fontSize={10} 
+                    tickLine={false}
+                    axisLine={false}
+                    domain={[0, 'auto']}
+                    tickFormatter={(value) => {
+                      if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+                      if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
+                      return value;
+                    }}
+                  />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff' }}
+                    itemStyle={{ color: '#fff' }}
+                    formatter={(value: number, name: string, props: any) => {
+                      const share = props.payload.share;
+                      return [`${value.toLocaleString()} ${currency} (${share.toFixed(1)}%)`, name];
+                    }}
+                    cursor={{ fill: '#333', opacity: 0.4 }}
+                  />
+                  <Bar 
+                    dataKey="value" 
+                    radius={[4, 4, 0, 0]}
+                    minPointSize={10}
+                  >
+                    {metrics.sectorData.map((entry, index) => (
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={entry.color} 
+                        className="hover:opacity-80 transition-opacity cursor-pointer outline-none" 
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className={cn(
+              "space-y-3",
+              isReportView ? "flex-none w-full md:w-1/3 border-l border-[var(--border)] pl-8 print:pl-4" : "mt-6"
+            )}>
+              {metrics.sectorData.map((sector, index) => (
+                <div key={sector.name} className="flex items-center justify-between text-xs hover:bg-[var(--bg-tertiary)] p-1.5 -mx-1.5 rounded transition-colors cursor-default">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sector.color }} />
+                    <span className="text-[var(--text-secondary)]">{sector.name}</span>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="text-[var(--text-primary)] font-mono font-bold">{sector.value.toLocaleString()} {currency}</span>
+                    <span className="text-[var(--text-tertiary)] w-10 text-right font-mono">
+                      {sector.share.toFixed(1)}%
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-[var(--text-primary)] font-mono font-bold">{sector.value.toLocaleString()} {currency}</span>
-                  <span className="text-[var(--text-tertiary)] w-10 text-right font-mono">
-                    {sector.share.toFixed(1)}%
-                  </span>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
 
         {/* Discipline Breakdown */}
         <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6 rounded-lg print:break-inside-avoid">
-          <h3 className="text-sm font-medium text-[var(--text-primary)] mb-6 flex items-center gap-2">
-            <Layers size={16} />
-            Achieved by Discipline
-          </h3>
-          <div className="space-y-6">
-            {metrics.disciplineData.map((d) => (
-              <div key={d.name} className="hover:bg-[var(--bg-tertiary)] p-2 -mx-2 rounded transition-colors cursor-default">
-                <div className="flex justify-between text-xs mb-2">
-                  <span className="text-[var(--text-secondary)] font-medium">{d.name}</span>
-                  <div className="flex items-center gap-4">
-                    <span className="text-[var(--text-primary)] font-mono">{d.value.toLocaleString()} {currency}</span>
-                    <span className="text-[var(--text-tertiary)] w-8 text-right">{d.share.toFixed(1)}%</span>
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-sm font-medium text-[var(--text-primary)] flex items-center gap-2">
+              <Layers size={16} />
+              Achieved by Discipline
+            </h3>
+            {isReportView && (
+              <div className="text-right">
+                <span className="text-[10px] font-mono text-[var(--text-secondary)] uppercase block">Cumulative Achieved</span>
+                <span className="text-xl font-bold text-emerald-500 font-mono">
+                  {metrics.totalAchieved.toLocaleString()} <span className="text-xs font-normal opacity-70">{currency}</span>
+                </span>
+              </div>
+            )}
+          </div>
+          
+          <div className={cn(
+            "flex gap-8",
+            isReportView ? "flex-col md:flex-row items-center" : "flex-col"
+          )}>
+            <div className={cn(
+              "space-y-6",
+              isReportView ? "flex-1 w-full md:w-2/3" : "w-full"
+            )}>
+              {metrics.disciplineData.map((d) => (
+                <div key={d.name} className="hover:bg-[var(--bg-tertiary)] p-2 -mx-2 rounded transition-colors cursor-default">
+                  <div className="flex justify-between text-xs mb-2">
+                    <span className="text-[var(--text-secondary)] font-medium">{d.name}</span>
+                    <div className="flex items-center gap-4">
+                      <span className="text-[var(--text-primary)] font-mono font-bold">{d.value.toLocaleString()} {currency}</span>
+                      <span className="text-[var(--text-tertiary)] w-10 text-right font-mono">{d.share.toFixed(1)}%</span>
+                    </div>
+                  </div>
+                  <div className="h-1.5 bg-[var(--bg-tertiary)] rounded-full overflow-hidden">
+                    <div 
+                      className="h-full rounded-full transition-all duration-1000 ease-out"
+                      style={{ 
+                        width: `${d.share}%`,
+                        backgroundColor: d.color
+                      }}
+                    />
                   </div>
                 </div>
-                <div className="h-1.5 bg-[var(--bg-tertiary)] rounded-full overflow-hidden">
-                  <div 
-                    className="h-full rounded-full transition-all duration-1000 ease-out"
-                    style={{ 
-                      width: `${d.share}%`,
-                      backgroundColor: d.color
-                    }}
-                  />
+              ))}
+            </div>
+
+            {isReportView && (
+              <div className="flex-none w-full md:w-1/3 border-l border-[var(--border)] pl-8 print:pl-4 space-y-4">
+                <div className="bg-[var(--bg-tertiary)]/30 p-4 rounded-lg border border-[var(--border)]">
+                  <h4 className="text-[10px] font-mono text-[var(--text-secondary)] uppercase mb-2">Performance Summary</h4>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-[var(--text-secondary)]">Target</span>
+                      <span className="text-[var(--text-primary)] font-mono">{data.target.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-[var(--text-secondary)]">Achieved</span>
+                      <span className="text-emerald-500 font-mono font-bold">{metrics.totalAchieved.toLocaleString()}</span>
+                    </div>
+                    <div className="h-px bg-[var(--border)] my-1" />
+                    <div className="flex justify-between text-xs">
+                      <span className="text-[var(--text-secondary)]">Achievement %</span>
+                      <span className="text-[var(--text-primary)] font-mono font-bold">{metrics.totalAchievedPercent.toFixed(1)}%</span>
+                    </div>
+                  </div>
                 </div>
               </div>
-            ))}
+            )}
           </div>
         </div>
       </div>
