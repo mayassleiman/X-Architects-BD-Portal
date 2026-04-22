@@ -532,7 +532,7 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list', start
                       `Meetings (${props.payload.fullLabel})`
                     ]}
                   />
-                  <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} className="outline-none">
+                  <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} className="outline-none" tabIndex={-1}>
                     <LabelList 
                       dataKey="count" 
                       position="top" 
@@ -593,7 +593,7 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list', start
                     cursor={false}
                     formatter={(value: number) => [value, "Meetings"]}
                   />
-                  <Bar dataKey="count" fill="#10b981" radius={[4, 4, 0, 0]} className="outline-none">
+                  <Bar dataKey="count" fill="#10b981" radius={[4, 4, 0, 0]} className="outline-none" tabIndex={-1}>
                     <LabelList 
                       dataKey="count" 
                       position="top" 
@@ -653,7 +653,7 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list', start
                     cursor={false}
                     formatter={(value: number) => [value, "Meetings"]}
                   />
-                  <Bar dataKey="count" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={30} className="outline-none">
+                  <Bar dataKey="count" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={30} className="outline-none" tabIndex={-1}>
                     <LabelList 
                       dataKey="count" 
                       position="top" 

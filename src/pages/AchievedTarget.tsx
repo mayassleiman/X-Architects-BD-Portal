@@ -1129,12 +1129,14 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
                     dataKey="value" 
                     radius={[4, 4, 0, 0]}
                     minPointSize={10}
+                    className="outline-none"
                   >
                     {metrics.sectorData.map((entry, index) => (
                       <Cell 
                         key={`cell-${index}`} 
                         fill={entry.color} 
                         className="hover:opacity-80 transition-opacity cursor-pointer outline-none" 
+                        tabIndex={-1}
                       />
                     ))}
                   </Bar>
@@ -1221,9 +1223,9 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
                       formatter={(value: number) => `${value.toLocaleString()} ${currency}`}
                       cursor={false}
                     />
-                    <Bar dataKey="value" radius={[0, 4, 4, 0]} minPointSize={10}>
+                    <Bar dataKey="value" radius={[0, 4, 4, 0]} minPointSize={10} className="outline-none">
                       {metrics.disciplineData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
+                        <Cell key={`cell-${index}`} fill={entry.color} tabIndex={-1} className="outline-none" />
                       ))}
                     </Bar>
                   </BarChart>

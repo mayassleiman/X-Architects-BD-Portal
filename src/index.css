@@ -159,10 +159,27 @@ body {
 }
 
 /* Remove Recharts focus outlines (blue rectangles) */
-.recharts-wrapper:focus,
+.recharts-wrapper,
+.recharts-wrapper *,
+.recharts-wrapper *:focus,
+.recharts-wrapper *:active,
+.recharts-wrapper *:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
+svg:focus, rect:focus, path:focus, g:focus, circle:focus, line:focus {
+  outline: none !important;
+}
+
 .recharts-surface:focus,
 .recharts-bar:focus,
 .recharts-bar-rectangle:focus,
-.recharts-cell:focus {
+.recharts-cell:focus,
+.recharts-legend-item:focus,
+.recharts-sector:focus,
+.recharts-curve:focus,
+.recharts-dot:focus {
   outline: none !important;
 }

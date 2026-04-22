@@ -980,6 +980,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                     dataKey="value" 
                     radius={[4, 4, 0, 0]}
                     minPointSize={10}
+                    className="outline-none"
                     onClick={(data) => {
                       if (selectedSectorFilter === data.name) {
                         setSelectedSectorFilter(null);
@@ -994,6 +995,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                         fill={entry.color} 
                         opacity={selectedSectorFilter && selectedSectorFilter !== entry.name ? 0.3 : 1}
                         className="hover:opacity-80 transition-opacity cursor-pointer outline-none" 
+                        tabIndex={-1}
                       />
                     ))}
                   </Bar>
@@ -1093,6 +1095,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                     dataKey="value" 
                     radius={[0, 4, 4, 0]} 
                     minPointSize={10}
+                    className="outline-none"
                     onClick={(data) => {
                       if (!data) return;
                       const name = data.name as any;
@@ -1109,6 +1112,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                         fill={entry.color}
                         opacity={viewFilter !== "All" && viewFilter !== entry.name ? 0.3 : 1}
                         className="hover:opacity-80 transition-opacity cursor-pointer outline-none"
+                        tabIndex={-1}
                       />
                     ))}
                   </Bar>
