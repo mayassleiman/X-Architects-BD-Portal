@@ -109,46 +109,56 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list', start
 
   // Statistics Calculations
   const stats = useMemo(() => {
-    const now = new Date();
-    const currentYear = now.getFullYear();
+    const currentYear = new Date().getFullYear();
 
-    // Helper to get week number
-    const getWeek = (date: Date) => {
-      const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-      const dayNum = d.getUTCDay() || 7;
-      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-      return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    // Helper to get Monday of the week for a given date (local time)
+    const getMonday = (date: Date) => {
+      const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const day = d.getDay(); // 0 is Sunday, 1 is Monday
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust to Monday
+      d.setDate(diff);
+      d.setHours(0, 0, 0, 0);
+      return d;
     };
 
-    // Weekly Stats (Weeks of the selected month)
+    // Weekly Stats (Weeks that overlap with the selected month)
     const weeklyData = [];
     const startOfMonth = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), 1);
     const endOfMonth = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0);
     
-    // Find the Monday of the first week
-    const startWeekDate = new Date(startOfMonth);
-    const startDay = startWeekDate.getDay() || 7; // 1 (Mon) to 7 (Sun)
-    startWeekDate.setDate(startWeekDate.getDate() - startDay + 1);
+    // Start from the Monday of the first week of the month
+    let currentWeekMonday = getMonday(startOfMonth);
+    
+    // Iterate through weeks that have at least one day in the month
+    while (currentWeekMonday <= endOfMonth) {
+        const weekStartStr = currentWeekMonday.toISOString().split('T')[0];
+        const nextWeekMonday = new Date(currentWeekMonday);
+        nextWeekMonday.setDate(nextWeekMonday.getDate() + 7);
+        const nextWeekMondayStr = nextWeekMonday.toISOString().split('T')[0];
 
-    // Iterate through weeks until we pass the end of the month
-    const currentWeekDate = new Date(startWeekDate);
-    while (currentWeekDate <= endOfMonth || (currentWeekDate.getMonth() === endOfMonth.getMonth() && currentWeekDate.getDate() <= endOfMonth.getDate())) {
-        const weekNum = getWeek(currentWeekDate);
-        const year = currentWeekDate.getFullYear();
-        
-        // Count meetings in this week
+        // Group meetings if they fall within [currentWeekMonday, nextWeekMonday)
         const count = meetings.filter(m => {
-            const mDate = new Date(m.date);
-            return getWeek(mDate) === weekNum && mDate.getFullYear() === year;
+            return m.date >= weekStartStr && m.date < nextWeekMondayStr;
         }).length;
 
-        weeklyData.push({ name: `Week ${weekNum}`, count, startDate: new Date(currentWeekDate) });
+        // Label with the range or just "Week X"
+        // Let's use start date of week as label for clarity or Week number of year
+        const weekNum = (() => {
+          const d = new Date(currentWeekMonday);
+          d.setHours(0, 0, 0, 0);
+          d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+          const yearStart = new Date(d.getFullYear(), 0, 1);
+          return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+        })();
+
+        weeklyData.push({ 
+          name: `W${weekNum}`, 
+          fullLabel: `${currentWeekMonday.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`,
+          count, 
+          startDate: new Date(currentWeekMonday) 
+        });
         
-        // Move to next week
-        currentWeekDate.setDate(currentWeekDate.getDate() + 7);
-        // Break if we've gone far past the month (safety)
-        if (currentWeekDate.getMonth() > endOfMonth.getMonth() && currentWeekDate.getFullYear() >= endOfMonth.getFullYear() && currentWeekDate.getDate() > 7) break; 
+        currentWeekMonday = nextWeekMonday;
     }
 
     // Monthly Stats
@@ -182,7 +192,7 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list', start
           return mDate.getMonth() === monthIndex && mDate.getFullYear() === year;
         }).length;
 
-        monthlyData.push({ name: `${months[monthIndex]}`, count, date: new Date(d) });
+        monthlyData.push({ name: `${months[monthIndex]}`, count, date: new Date(year, monthIndex, 1) });
       }
     }
 
@@ -516,9 +526,13 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list', start
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff' }}
                     itemStyle={{ color: '#fff' }}
-                    cursor={{ fill: 'var(--bg-tertiary)', opacity: 0.5 }}
+                    cursor={false}
+                    formatter={(value: number, name: string, props: any) => [
+                      value, 
+                      `Meetings (${props.payload.fullLabel})`
+                    ]}
                   />
-                  <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]}>
+                  <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} className="outline-none">
                     <LabelList 
                       dataKey="count" 
                       position="top" 
@@ -566,6 +580,7 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list', start
 
                     if (item && item.date) {
                       setSelectedMonth(item.date);
+                      setCurrentDate(item.date);
                     }
                   }}
                 >
@@ -575,9 +590,10 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list', start
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff' }}
                     itemStyle={{ color: '#fff' }}
-                    cursor={{ fill: 'var(--bg-tertiary)', opacity: 0.5 }}
+                    cursor={false}
+                    formatter={(value: number) => [value, "Meetings"]}
                   />
-                  <Bar dataKey="count" fill="#10b981" radius={[4, 4, 0, 0]}>
+                  <Bar dataKey="count" fill="#10b981" radius={[4, 4, 0, 0]} className="outline-none">
                     <LabelList 
                       dataKey="count" 
                       position="top" 
@@ -621,8 +637,9 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list', start
                       } else {
                           setSelectedQuarter(item.index);
                           // Also set selectedMonth to the first month of that quarter to keep views synced
-                          const firstMonthOfQuarter = new Date(new Date().getFullYear(), item.index * 3, 1);
-                          setSelectedMonth(firstMonthOfQuarter);
+                          const firstMonthDate = new Date(new Date().getFullYear(), item.index * 3, 1);
+                          setSelectedMonth(firstMonthDate);
+                          setCurrentDate(firstMonthDate);
                       }
                     }
                   }}
@@ -633,9 +650,10 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list', start
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff' }}
                     itemStyle={{ color: '#fff' }}
-                    cursor={{ fill: 'var(--bg-tertiary)', opacity: 0.5 }}
+                    cursor={false}
+                    formatter={(value: number) => [value, "Meetings"]}
                   />
-                  <Bar dataKey="count" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={30}>
+                  <Bar dataKey="count" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={30} className="outline-none">
                     <LabelList 
                       dataKey="count" 
                       position="top" 

@@ -255,7 +255,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
     const disciplineData = [
       { name: "Architecture", value: totalArch, color: DISCIPLINE_COLORS["Architecture"], percentage: absoluteTotalPipeline > 0 ? (totalArch / absoluteTotalPipeline) * 100 : 0 },
       { name: "Interior", value: totalInt, color: DISCIPLINE_COLORS["Interior"], percentage: absoluteTotalPipeline > 0 ? (totalInt / absoluteTotalPipeline) * 100 : 0 },
-      { name: "Supervision", value: totalSupervision, color: DISCIPLINE_COLORS["Construction Supervision"], percentage: absoluteTotalPipeline > 0 ? (totalSupervision / absoluteTotalPipeline) * 100 : 0 },
+      { name: "CS", value: totalSupervision, color: DISCIPLINE_COLORS["Construction Supervision"], percentage: absoluteTotalPipeline > 0 ? (totalSupervision / absoluteTotalPipeline) * 100 : 0 },
     ];
 
     const sectorData = sectors.map(sector => {
@@ -940,7 +940,16 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
               isReportView ? "flex-1 w-full md:w-2/3 print:h-80" : "w-full print:h-80"
             )}>
               <ResponsiveContainer width="100%" height={256}>
-                <BarChart data={metrics.sectorData} margin={{ top: 20, right: 30, left: 10, bottom: 5 }} barSize={30}>
+                <BarChart 
+                  data={metrics.sectorData} 
+                  margin={{ top: 20, right: 30, left: 10, bottom: 5 }} 
+                  barSize={30}
+                  onClick={(state) => {
+                    if (!state || !state.activeLabel) {
+                      setSelectedSectorFilter(null);
+                    }
+                  }}
+                >
                   <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                   <XAxis 
                     dataKey="name" 
@@ -965,7 +974,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                     contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff' }}
                     itemStyle={{ color: '#fff' }}
                     formatter={(value: number) => `${value.toLocaleString()} ${currency}`}
-                    cursor={{ fill: '#333', opacity: 0.4 }}
+                    cursor={false}
                   />
                   <Bar 
                     dataKey="value" 
@@ -995,20 +1004,33 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
               "space-y-3",
               isReportView ? "flex-none w-full md:w-1/3 border-l border-[var(--border)] pl-8 print:pl-6" : "mt-6"
             )}>
-              {metrics.sectorData.map((sector, index) => (
-                <div key={sector.name} className="flex items-center justify-between text-xs hover:bg-[var(--bg-tertiary)] p-1.5 -mx-1.5 rounded transition-colors cursor-default">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sector.color }} />
-                    <span className="text-[var(--text-secondary)]">{sector.name}</span>
+              {metrics.sectorData.map((sector, index) => {
+                const isSelected = selectedSectorFilter === sector.name;
+                return (
+                  <div 
+                    key={sector.name} 
+                    onClick={() => setSelectedSectorFilter(isSelected ? null : sector.name)}
+                    className={cn(
+                      "flex items-center justify-between text-xs hover:bg-[var(--bg-tertiary)] p-1.5 -mx-1.5 rounded transition-all cursor-pointer",
+                      isSelected && "bg-[var(--bg-tertiary)] ring-1 ring-[var(--border-hover)]"
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sector.color }} />
+                      <span className={cn(
+                        "text-[var(--text-secondary)]",
+                        isSelected && "text-[var(--text-primary)] font-medium"
+                      )}>{sector.name}</span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span className="text-[var(--text-primary)] font-mono font-bold">{sector.value.toLocaleString()} {currency}</span>
+                      <span className="text-[var(--text-tertiary)] w-12 text-right font-mono">
+                        {metrics.totalPipeline > 0 ? ((sector.value / metrics.totalPipeline) * 100).toFixed(1) : "0.0"}%
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <span className="text-[var(--text-primary)] font-mono font-bold">{sector.value.toLocaleString()} {currency}</span>
-                    <span className="text-[var(--text-tertiary)] w-12 text-right font-mono">
-                      {metrics.totalPipeline > 0 ? ((sector.value / metrics.totalPipeline) * 100).toFixed(1) : "0.0"}%
-                    </span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -1036,6 +1058,11 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                   data={metrics.disciplineData} 
                   margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
                   barSize={20}
+                  onClick={(state) => {
+                    if (!state || !state.activeLabel) {
+                      setViewFilter("All");
+                    }
+                  }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#333" horizontal={false} />
                   <XAxis 
@@ -1060,11 +1087,29 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                     contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff' }}
                     itemStyle={{ color: '#fff' }}
                     formatter={(value: number) => `${value.toLocaleString()} ${currency}`}
-                    cursor={{ fill: '#333', opacity: 0.4 }}
+                    cursor={false}
                   />
-                  <Bar dataKey="value" radius={[0, 4, 4, 0]} minPointSize={10}>
+                  <Bar 
+                    dataKey="value" 
+                    radius={[0, 4, 4, 0]} 
+                    minPointSize={10}
+                    onClick={(data) => {
+                      if (!data) return;
+                      const name = data.name as any;
+                      if (viewFilter === name) {
+                        setViewFilter("All");
+                      } else {
+                        setViewFilter(name);
+                      }
+                    }}
+                  >
                     {metrics.disciplineData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={entry.color}
+                        opacity={viewFilter !== "All" && viewFilter !== entry.name ? 0.3 : 1}
+                        className="hover:opacity-80 transition-opacity cursor-pointer outline-none"
+                      />
                     ))}
                   </Bar>
                 </BarChart>
@@ -1080,11 +1125,23 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                   ? (d.value / metrics.absoluteTotalPipeline) * 100 
                   : 0;
                 
+                const isSelected = viewFilter === d.name;
+
                 return (
-                  <div key={d.name} className="flex items-center justify-between text-xs hover:bg-[var(--bg-tertiary)] p-1.5 -mx-1.5 rounded transition-colors cursor-default">
+                  <div 
+                    key={d.name} 
+                    onClick={() => setViewFilter(isSelected ? "All" : d.name as any)}
+                    className={cn(
+                      "flex items-center justify-between text-xs hover:bg-[var(--bg-tertiary)] p-1.5 -mx-1.5 rounded transition-all cursor-pointer",
+                      isSelected && "bg-[var(--bg-tertiary)] ring-1 ring-[var(--border-hover)]"
+                    )}
+                  >
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full" style={{ backgroundColor: d.color }} />
-                      <span className="text-[var(--text-secondary)] font-medium">{d.name}</span>
+                      <span className={cn(
+                        "text-[var(--text-secondary)] font-medium",
+                        isSelected && "text-[var(--text-primary)]"
+                      )}>{d.name === "CS" ? "Supervision" : d.name}</span>
                     </div>
                     <div className="flex items-center gap-4">
                       <span className="text-[var(--text-primary)] font-mono font-bold">{d.value.toLocaleString()} {currency}</span>

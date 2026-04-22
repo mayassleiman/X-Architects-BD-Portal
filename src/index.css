@@ -157,3 +157,12 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-secondary);
 }
+
+/* Remove Recharts focus outlines (blue rectangles) */
+.recharts-wrapper:focus,
+.recharts-surface:focus,
+.recharts-bar:focus,
+.recharts-bar-rectangle:focus,
+.recharts-cell:focus {
+  outline: none !important;
+}

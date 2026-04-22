@@ -1123,7 +1123,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
                       const share = props.payload.share;
                       return [`${value.toLocaleString()} ${currency} (${share.toFixed(1)}%)`, name];
                     }}
-                    cursor={{ fill: '#333', opacity: 0.4 }}
+                    cursor={false}
                   />
                   <Bar 
                     dataKey="value" 
@@ -1219,7 +1219,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
                       contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff' }}
                       itemStyle={{ color: '#fff' }}
                       formatter={(value: number) => `${value.toLocaleString()} ${currency}`}
-                      cursor={{ fill: '#333', opacity: 0.4 }}
+                      cursor={false}
                     />
                     <Bar dataKey="value" radius={[0, 4, 4, 0]} minPointSize={10}>
                       {metrics.disciplineData.map((entry, index) => (
