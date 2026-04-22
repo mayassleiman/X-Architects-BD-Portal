@@ -355,9 +355,15 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
   ), [items, activeTab, searchQuery, viewFilter, selectedRegions, selectedSectorFilter]);
 
   const groupItems = (list: PipelineItem[]) => {
-    // For report view, always sort by date (descending)
+    // For report view, sort by probability (Highest -> Medium -> Low) then date
     const sortedList = isReportView 
       ? [...list].sort((a, b) => {
+          const probWeight = { "High": 3, "Medium": 2, "Low": 1, undefined: 0 };
+          const pA = probWeight[a.probability as keyof typeof probWeight] || 0;
+          const pB = probWeight[b.probability as keyof typeof probWeight] || 0;
+          
+          if (pB !== pA) return pB - pA;
+          
           const dateA = a.submissionDate ? new Date(a.submissionDate).getTime() : 0;
           const dateB = b.submissionDate ? new Date(b.submissionDate).getTime() : 0;
           return dateB - dateA;
@@ -783,13 +789,13 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
   return (
     <ReportLayout title="Pipeline Report" subtitle="Project Opportunities & Variations" isReportView={isReportView}>
       <div className="space-y-8">
-        <div className="flex justify-between items-end print:hidden">
-          <div>
-            <h1 className="text-4xl font-light tracking-tight text-[var(--text-primary)] mb-2">PIPELINE</h1>
-            <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Project Opportunities & Variations</p>
-          </div>
-          <div className="flex items-center gap-4">
-            {!isReportView && (
+        {!isReportView && (
+          <div className="flex justify-between items-end print:hidden">
+            <div>
+              <h1 className="text-4xl font-light tracking-tight text-[var(--text-primary)] mb-2">PIPELINE</h1>
+              <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Project Opportunities & Variations</p>
+            </div>
+            <div className="flex items-center gap-4">
               <div className="flex items-center gap-3">
                 {availableRegions.length > 0 && (
                   <div className="flex items-center gap-2 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 relative group transition-all duration-300 hover:border-[var(--text-secondary)] hover:shadow-sm cursor-pointer">
@@ -860,8 +866,6 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                   ))}
                 </div>
               </div>
-            )}
-            {!isReportView && (
               <>
                 <button 
                   onClick={() => window.print()}
@@ -881,9 +885,9 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                   Add Entry
                 </button>
               </>
-            )}
+            </div>
           </div>
-        </div>
+        )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 print:grid-cols-3">
@@ -1166,18 +1170,67 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
       <div className="space-y-6 print:break-before-page">
         {isReportView ? (
           <div className="space-y-12">
-            {(["Submitted Proposals", "Proposals to be Submitted", "Potential VOs"] as TabType[]).map(tab => {
-              const grouped = getGroupedItemsForTab(tab);
-              if (Object.keys(grouped).length === 0) return null;
+            {(() => {
+              // Helper to filter items for report sections
+              const getFilteredItems = (filterFn: (i: PipelineItem) => boolean) => {
+                return items.filter(i => {
+                  if (!filterFn(i)) return false;
+                  
+                  // Common filters
+                  const searchMatches = (i.name || "").toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                      (i.client && i.client.toLowerCase().includes(searchQuery.toLowerCase()));
+                  if (!searchMatches) return false;
+                  
+                  const disciplineMatches = viewFilter === "All" || (Array.isArray(i.disciplines) && i.disciplines.some(d => {
+                    if (viewFilter === "Architecture") return d === "Architecture";
+                    if (viewFilter === "Interior") return d === "Interior";
+                    if (viewFilter === "CS") return d === "Construction Supervision";
+                    return false;
+                  }));
+                  if (!disciplineMatches) return false;
+                  
+                  const regionMatches = selectedRegions.length === 0 || (i.region && selectedRegions.includes(i.region));
+                  if (!regionMatches) return false;
+                  
+                  const sectorMatches = selectedSectorFilter === null || i.sector === selectedSectorFilter;
+                  if (!sectorMatches) return false;
+                  
+                  return true;
+                });
+              };
+
+              // Section 1: Submitted proposals and VOs
+              const submittedAndVOsList = getFilteredItems(i => {
+                const tab = getTabForItem(i);
+                return tab === "Submitted Proposals" || tab === "Potential VOs";
+              });
+              const groupedSubmitted = groupItems(submittedAndVOsList);
+              
+              // Section 2: Proposals to be submitted
+              const toSubmitList = getFilteredItems(i => getTabForItem(i) === "Proposals to be Submitted");
+              const groupedToSubmit = groupItems(toSubmitList);
+
               return (
-                <section key={tab}>
-                  <div className="mb-4 border-b border-[var(--border)] pb-2">
-                    <h3 className="text-lg font-light text-[var(--text-primary)]">{tab}</h3>
-                  </div>
-                  {renderCleanGroupedItems(grouped)}
-                </section>
+                <>
+                  {Object.keys(groupedSubmitted).length > 0 && (
+                    <section>
+                      <div className="mb-4 border-b border-[var(--border)] pb-2">
+                        <h3 className="text-lg font-light text-[var(--text-primary)] uppercase tracking-wide">Submitted proposals and VOs</h3>
+                      </div>
+                      {renderCleanGroupedItems(groupedSubmitted)}
+                    </section>
+                  )}
+                  {Object.keys(groupedToSubmit).length > 0 && (
+                    <section>
+                      <div className="mb-4 border-b border-[var(--border)] pb-2">
+                        <h3 className="text-lg font-light text-[var(--text-primary)] uppercase tracking-wide">Proposals to be submitted</h3>
+                      </div>
+                      {renderCleanGroupedItems(groupedToSubmit)}
+                    </section>
+                  )}
+                </>
               );
-            })}
+            })()}
           </div>
         ) : (
           <>
