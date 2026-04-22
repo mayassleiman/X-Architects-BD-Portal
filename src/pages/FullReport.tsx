@@ -26,11 +26,10 @@ export function FullReport() {
     engagements: true
   });
 
-  // Date range state
-  const [dateRange, setDateRange] = useState({
-    startDate: "",
-    endDate: ""
-  });
+  // Date range states
+  const [meetingsDateRange, setMeetingsDateRange] = useState({ startDate: "", endDate: "" });
+  const [registrationsDateRange, setRegistrationsDateRange] = useState({ startDate: "", endDate: "" });
+  const [engagementsDateRange, setEngagementsDateRange] = useState({ startDate: "", endDate: "" });
 
   React.useEffect(() => {
     const now = new Date();
@@ -101,34 +100,59 @@ export function FullReport() {
               </div>
             </div>
             
-            <div>
-              <h4 className="text-sm font-mono text-[var(--text-secondary)] mb-3 uppercase">Global Date Range</h4>
-              <p className="text-xs text-[var(--text-tertiary)] mb-4">Applies to Meetings, Registrations, and Engagements sections.</p>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs text-[var(--text-secondary)] mb-1">Start Date</label>
+            <div className="space-y-6">
+              <div>
+                <h4 className="text-sm font-mono text-[var(--text-secondary)] mb-3 uppercase">Meetings Date Range</h4>
+                <div className="grid grid-cols-2 gap-4">
                   <input 
                     type="date" 
-                    value={dateRange.startDate}
-                    onChange={e => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
-                    className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-[var(--text-primary)] text-sm focus:border-[var(--text-primary)] focus:outline-none"
+                    value={meetingsDateRange.startDate}
+                    onChange={e => setMeetingsDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                    className="bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-[var(--text-primary)] text-sm focus:border-[var(--text-primary)] focus:outline-none"
                   />
-                </div>
-                <div>
-                  <label className="block text-xs text-[var(--text-secondary)] mb-1">End Date</label>
                   <input 
                     type="date" 
-                    value={dateRange.endDate}
-                    onChange={e => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
-                    className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-[var(--text-primary)] text-sm focus:border-[var(--text-primary)] focus:outline-none"
+                    value={meetingsDateRange.endDate}
+                    onChange={e => setMeetingsDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                    className="bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-[var(--text-primary)] text-sm focus:border-[var(--text-primary)] focus:outline-none"
                   />
                 </div>
-                <button 
-                  onClick={() => setDateRange({ startDate: "", endDate: "" })}
-                  className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] underline"
-                >
-                  Clear Dates
-                </button>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-mono text-[var(--text-secondary)] mb-3 uppercase">Registrations Date Range</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <input 
+                    type="date" 
+                    value={registrationsDateRange.startDate}
+                    onChange={e => setRegistrationsDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                    className="bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-[var(--text-primary)] text-sm focus:border-[var(--text-primary)] focus:outline-none"
+                  />
+                  <input 
+                    type="date" 
+                    value={registrationsDateRange.endDate}
+                    onChange={e => setRegistrationsDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                    className="bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-[var(--text-primary)] text-sm focus:border-[var(--text-primary)] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-mono text-[var(--text-secondary)] mb-3 uppercase">Engagements Date Range</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <input 
+                    type="date" 
+                    value={engagementsDateRange.startDate}
+                    onChange={e => setEngagementsDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                    className="bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-[var(--text-primary)] text-sm focus:border-[var(--text-primary)] focus:outline-none"
+                  />
+                  <input 
+                    type="date" 
+                    value={engagementsDateRange.endDate}
+                    onChange={e => setEngagementsDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                    className="bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-[var(--text-primary)] text-sm focus:border-[var(--text-primary)] focus:outline-none"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -211,8 +235,8 @@ export function FullReport() {
                   </div>
                   <Meetings 
                     isReportView={true} 
-                    startDate={dateRange.startDate} 
-                    endDate={dateRange.endDate} 
+                    startDate={meetingsDateRange.startDate} 
+                    endDate={meetingsDateRange.endDate} 
                     controlledDate={reportMeetingDate}
                   />
                 </section>
@@ -229,8 +253,8 @@ export function FullReport() {
                     <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Distribution & Counts</p>
                   </div>
                   <MeetingsChartOnly 
-                    startDate={dateRange.startDate} 
-                    endDate={dateRange.endDate} 
+                    startDate={meetingsDateRange.startDate} 
+                    endDate={meetingsDateRange.endDate} 
                     onWeekSelect={(date) => setReportMeetingDate(date)}
                     controlledDate={reportMeetingDate}
                   />
@@ -261,7 +285,7 @@ export function FullReport() {
                     <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">REGISTRATIONS</h2>
                     <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Companies Registered in Selected Period</p>
                   </div>
-                  <Registrations isReportView={true} startDate={dateRange.startDate} endDate={dateRange.endDate} />
+                  <Registrations isReportView={true} startDate={registrationsDateRange.startDate} endDate={registrationsDateRange.endDate} />
                 </section>
               </td>
             </tr>
@@ -275,7 +299,7 @@ export function FullReport() {
                     <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">RECENT ENGAGEMENTS</h2>
                     <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Engagements for Selected Period</p>
                   </div>
-                  <RecentEngagements startDate={dateRange.startDate} endDate={dateRange.endDate} />
+                  <RecentEngagements startDate={engagementsDateRange.startDate} endDate={engagementsDateRange.endDate} />
                 </section>
               </td>
             </tr>
