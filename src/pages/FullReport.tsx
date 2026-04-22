@@ -27,7 +27,6 @@ export function FullReport() {
   });
 
   // Date range states
-  const [meetingsDateRange, setMeetingsDateRange] = useState({ startDate: "", endDate: "" });
   const [registrationsDateRange, setRegistrationsDateRange] = useState({ startDate: "", endDate: "" });
   const [engagementsDateRange, setEngagementsDateRange] = useState({ startDate: "", endDate: "" });
 
@@ -101,24 +100,6 @@ export function FullReport() {
             </div>
             
             <div className="space-y-6">
-              <div>
-                <h4 className="text-sm font-mono text-[var(--text-secondary)] mb-3 uppercase">Meetings Date Range</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <input 
-                    type="date" 
-                    value={meetingsDateRange.startDate}
-                    onChange={e => setMeetingsDateRange(prev => ({ ...prev, startDate: e.target.value }))}
-                    className="bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-[var(--text-primary)] text-sm focus:border-[var(--text-primary)] focus:outline-none"
-                  />
-                  <input 
-                    type="date" 
-                    value={meetingsDateRange.endDate}
-                    onChange={e => setMeetingsDateRange(prev => ({ ...prev, endDate: e.target.value }))}
-                    className="bg-[var(--bg-tertiary)] border border-[var(--border)] p-2 text-[var(--text-primary)] text-sm focus:border-[var(--text-primary)] focus:outline-none"
-                  />
-                </div>
-              </div>
-
               <div>
                 <h4 className="text-sm font-mono text-[var(--text-secondary)] mb-3 uppercase">Registrations Date Range</h4>
                 <div className="grid grid-cols-2 gap-4">
@@ -235,8 +216,6 @@ export function FullReport() {
                   </div>
                   <Meetings 
                     isReportView={true} 
-                    startDate={meetingsDateRange.startDate} 
-                    endDate={meetingsDateRange.endDate} 
                     controlledDate={reportMeetingDate}
                   />
                 </section>
@@ -253,8 +232,6 @@ export function FullReport() {
                     <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Distribution & Counts</p>
                   </div>
                   <MeetingsChartOnly 
-                    startDate={meetingsDateRange.startDate} 
-                    endDate={meetingsDateRange.endDate} 
                     onWeekSelect={(date) => setReportMeetingDate(date)}
                     controlledDate={reportMeetingDate}
                   />
@@ -334,19 +311,13 @@ export function FullReport() {
 }
 
 function MeetingsChartOnly({ 
-  startDate, 
-  endDate, 
   onWeekSelect, 
   controlledDate 
 }: { 
-  startDate?: string, 
-  endDate?: string,
   onWeekSelect?: (date: Date) => void,
   controlledDate?: Date
 }) {
     return <MeetingsWrapperForStats 
-      startDate={startDate} 
-      endDate={endDate} 
       onWeekSelect={onWeekSelect}
       controlledDate={controlledDate}
     />;
