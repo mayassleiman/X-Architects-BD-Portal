@@ -13,6 +13,7 @@ import { Logo } from "../components/ui/Logo";
 export function FullReport() {
   const [currentDate, setCurrentDate] = React.useState("");
   const [showSettings, setShowSettings] = useState(false);
+  const [reportMeetingDate, setReportMeetingDate] = useState<Date>(new Date());
   
   // Section visibility state
   const [sections, setSections] = useState({
@@ -208,7 +209,12 @@ export function FullReport() {
                     <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">MEETINGS SCHEDULE</h2>
                     <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Weekly Overview</p>
                   </div>
-                  <Meetings isReportView={true} startDate={dateRange.startDate} endDate={dateRange.endDate} />
+                  <Meetings 
+                    isReportView={true} 
+                    startDate={dateRange.startDate} 
+                    endDate={dateRange.endDate} 
+                    controlledDate={reportMeetingDate}
+                  />
                 </section>
               </td>
             </tr>
@@ -222,7 +228,12 @@ export function FullReport() {
                     <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">MEETINGS ANALYTICS</h2>
                     <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Distribution & Counts</p>
                   </div>
-                  <MeetingsChartOnly startDate={dateRange.startDate} endDate={dateRange.endDate} />
+                  <MeetingsChartOnly 
+                    startDate={dateRange.startDate} 
+                    endDate={dateRange.endDate} 
+                    onWeekSelect={(date) => setReportMeetingDate(date)}
+                    controlledDate={reportMeetingDate}
+                  />
                 </section>
               </td>
             </tr>
@@ -298,6 +309,21 @@ export function FullReport() {
   );
 }
 
-function MeetingsChartOnly({ startDate, endDate }: { startDate?: string, endDate?: string }) {
-    return <MeetingsWrapperForStats startDate={startDate} endDate={endDate} />;
+function MeetingsChartOnly({ 
+  startDate, 
+  endDate, 
+  onWeekSelect, 
+  controlledDate 
+}: { 
+  startDate?: string, 
+  endDate?: string,
+  onWeekSelect?: (date: Date) => void,
+  controlledDate?: Date
+}) {
+    return <MeetingsWrapperForStats 
+      startDate={startDate} 
+      endDate={endDate} 
+      onWeekSelect={onWeekSelect}
+      controlledDate={controlledDate}
+    />;
 }

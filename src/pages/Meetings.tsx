@@ -22,11 +22,27 @@ const LEVELS = [
   { id: 4, label: "Negotiation", tagClass: "bg-emerald-500 text-white border-emerald-600", cardClass: "bg-emerald-50 border-l-4 border-l-emerald-500 text-emerald-900" },
 ];
 
-export function Meetings({ isReportView = false, defaultViewMode = 'list', startDate, endDate }: { isReportView?: boolean, defaultViewMode?: 'list' | 'calendar' | 'stats', startDate?: string, endDate?: string }) {
+export function Meetings({ 
+  isReportView = false, 
+  defaultViewMode = 'list', 
+  startDate, 
+  endDate,
+  controlledDate,
+  onWeekSelect,
+  lockViewMode = false
+}: { 
+  isReportView?: boolean, 
+  defaultViewMode?: 'list' | 'calendar' | 'stats', 
+  startDate?: string, 
+  endDate?: string,
+  controlledDate?: Date,
+  onWeekSelect?: (startDate: Date) => void,
+  lockViewMode?: boolean
+}) {
   const { searchQuery } = useSearch();
   const [meetings, setMeetings] = React.useState<Meeting[]>([]);
   const [viewMode, setViewMode] = React.useState<'list' | 'calendar' | 'stats'>(defaultViewMode);
-  const [currentDate, setCurrentDate] = React.useState(new Date());
+  const [currentDate, setCurrentDate] = React.useState(controlledDate || new Date());
   const [selectedMonth, setSelectedMonth] = React.useState(new Date());
   const [selectedQuarter, setSelectedQuarter] = React.useState<number | null>(isReportView ? Math.floor(new Date().getMonth() / 3) : null);
   const [isModalOpen, setIsModalOpen] = React.useState(false);
@@ -64,6 +80,12 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list', start
   React.useEffect(() => {
     localStorage.setItem('meetings_endDateFilter', endDateFilter);
   }, [endDateFilter]);
+
+  React.useEffect(() => {
+    if (controlledDate) {
+      setCurrentDate(controlledDate);
+    }
+  }, [controlledDate]);
 
   const fetchMeetings = () => {
     fetch('/api/meetings')
@@ -366,35 +388,50 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list', start
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between no-print">
-        <div>
-          <h1 className="text-4xl font-light tracking-tight text-[var(--text-primary)] mb-2">MEETINGS</h1>
-          <div className="flex items-center gap-4">
-            <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Schedule & Coordination</p>
-            {viewMode === 'calendar' && !isReportView && (
-              <div className="flex items-center gap-2 ml-4 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg p-1">
-                <button onClick={handlePrevWeek} className="p-1 hover:bg-[var(--bg-tertiary)] rounded transition-colors">
-                  <ChevronLeft size={14} className="text-[var(--text-secondary)]" />
-                </button>
-                <span className="text-xs font-mono text-[var(--text-primary)] px-2 min-w-[140px] text-center">
-                  {new Date(weekDates[0]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(weekDates[6]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                </span>
-                <button onClick={handleNextWeek} className="p-1 hover:bg-[var(--bg-tertiary)] rounded transition-colors">
-                  <ChevronRight size={14} className="text-[var(--text-secondary)]" />
-                </button>
-                <button onClick={handleToday} className="text-[10px] font-bold uppercase px-2 py-1 hover:bg-[var(--bg-tertiary)] rounded text-[var(--text-secondary)] ml-1">
-                  Today
-                </button>
-              </div>
-            )}
-            {viewMode === 'calendar' && isReportView && (
-              <div className="flex items-center gap-2 ml-4">
-                <span className="text-xs font-mono text-[var(--text-primary)] px-2 min-w-[140px] text-center border border-[var(--border)] rounded py-1">
-                  {new Date(weekDates[0]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(weekDates[6]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                </span>
-              </div>
-            )}
+        {!isReportView && (
+          <div>
+            <h1 className="text-4xl font-light tracking-tight text-[var(--text-primary)] mb-2">MEETINGS</h1>
+            <div className="flex items-center gap-4">
+              <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Schedule & Coordination</p>
+              {viewMode === 'calendar' && (
+                <div className="flex items-center gap-2 ml-4 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg p-1">
+                  <button onClick={handlePrevWeek} className="p-1 hover:bg-[var(--bg-tertiary)] rounded transition-colors">
+                    <ChevronLeft size={14} className="text-[var(--text-secondary)]" />
+                  </button>
+                  <span className="text-xs font-mono text-[var(--text-primary)] px-2 min-w-[140px] text-center">
+                    {new Date(weekDates[0]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(weekDates[6]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </span>
+                  <button onClick={handleNextWeek} className="p-1 hover:bg-[var(--bg-tertiary)] rounded transition-colors">
+                    <ChevronRight size={14} className="text-[var(--text-secondary)]" />
+                  </button>
+                  <button onClick={handleToday} className="text-[10px] font-bold uppercase px-2 py-1 hover:bg-[var(--bg-tertiary)] rounded text-[var(--text-secondary)] ml-1">
+                    Today
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
+        
+        {isReportView && viewMode === 'calendar' && (
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg p-0.5">
+              <button onClick={handlePrevWeek} className="p-1 hover:bg-[var(--bg-tertiary)] rounded transition-colors">
+                <ChevronLeft size={14} className="text-[var(--text-secondary)]" />
+              </button>
+              <button onClick={handleNextWeek} className="p-1 hover:bg-[var(--bg-tertiary)] rounded transition-colors">
+                <ChevronRight size={14} className="text-[var(--text-secondary)]" />
+              </button>
+            </div>
+            <span className="text-xs font-mono text-[var(--text-primary)] px-2 min-w-[140px] text-center border border-[var(--border)] rounded py-1">
+              {new Date(weekDates[0]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(weekDates[6]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            </span>
+            <button onClick={handleToday} className="text-[10px] font-bold uppercase px-2 py-1 hover:bg-[var(--bg-tertiary)] rounded text-[var(--text-secondary)]">
+              Today
+            </button>
+          </div>
+        )}
+
         {!isReportView && (
           <div className="flex items-center gap-4">
             <div className="flex bg-[var(--card-bg)] border border-[var(--border)] rounded-lg p-1">
@@ -515,8 +552,14 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list', start
                     }
 
                     if (item && item.startDate) {
-                      setCurrentDate(item.startDate);
-                      setViewMode('calendar');
+                      if (onWeekSelect) {
+                        onWeekSelect(item.startDate);
+                      }
+                      
+                      if (!lockViewMode) {
+                        setCurrentDate(item.startDate);
+                        setViewMode('calendar');
+                      }
                     }
                   }}
                 >
@@ -580,7 +623,12 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list', start
 
                     if (item && item.date) {
                       setSelectedMonth(item.date);
-                      setCurrentDate(item.date);
+                      if (onWeekSelect) {
+                        onWeekSelect(item.date);
+                      }
+                      if (!lockViewMode) {
+                        setCurrentDate(item.date);
+                      }
                     }
                   }}
                 >
@@ -633,13 +681,20 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list', start
 
                     if (item && typeof item.index === 'number') {
                       if (selectedQuarter === item.index) {
-                          setSelectedQuarter(null);
+                        setSelectedQuarter(null);
                       } else {
-                          setSelectedQuarter(item.index);
-                          // Also set selectedMonth to the first month of that quarter to keep views synced
-                          const firstMonthDate = new Date(new Date().getFullYear(), item.index * 3, 1);
-                          setSelectedMonth(firstMonthDate);
+                        setSelectedQuarter(item.index);
+                        // Also set selectedMonth to the first month of that quarter to keep views synced
+                        const firstMonthDate = new Date(new Date().getFullYear(), item.index * 3, 1);
+                        setSelectedMonth(firstMonthDate);
+                        
+                        if (onWeekSelect) {
+                          onWeekSelect(firstMonthDate);
+                        }
+                        
+                        if (!lockViewMode) {
                           setCurrentDate(firstMonthDate);
+                        }
                       }
                     }
                   }}
@@ -886,6 +941,6 @@ export function Meetings({ isReportView = false, defaultViewMode = 'list', start
   );
 }
 
-export function MeetingsWrapperForStats({ startDate, endDate }: { startDate?: string, endDate?: string }) {
-  return <Meetings isReportView={true} defaultViewMode="stats" startDate={startDate} endDate={endDate} />;
+export function MeetingsWrapperForStats({ startDate, endDate, onWeekSelect, controlledDate }: { startDate?: string, endDate?: string, onWeekSelect?: (date: Date) => void, controlledDate?: Date }) {
+  return <Meetings isReportView={true} defaultViewMode="stats" startDate={startDate} endDate={endDate} onWeekSelect={onWeekSelect} lockViewMode={true} controlledDate={controlledDate} />;
 }
