@@ -15,6 +15,7 @@ import {
   PanelLeftOpen,
   Mail,
   TrendingUp,
+  Calculator,
 } from "lucide-react";
 import { Logo } from "../ui/Logo";
 import { cn } from "../../lib/utils";
@@ -29,6 +30,7 @@ const navItems = [
   { icon: Calendar, label: "Meetings", href: "/meetings" },
   { icon: BarChart3, label: "Pipeline", href: "/pipeline" },
   { icon: Briefcase, label: "Tasks", href: "/tasks" },
+  { icon: Calculator, label: "Top Down Calc", href: "/top-down-calc" },
 ];
 
 interface SidebarProps {

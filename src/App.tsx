@@ -21,6 +21,7 @@ import { SearchProvider } from "./context/SearchContext";
 import { UserProvider, useUser } from "./context/UserContext";
 import { CurrencyProvider } from "./context/CurrencyContext";
 import { Login } from "./pages/Login";
+import { TopDownCalc } from "./pages/TopDownCalc";
 
 // Placeholder components for other routes
 const Placeholder = ({ title }: { title: string }) => (
@@ -63,6 +64,7 @@ function AppRoutes() {
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/report" element={<FullReport />} />
+                  <Route path="/top-down-calc" element={<TopDownCalc />} />
                 </Routes>
                 <FollowUpReminder />
               </AppLayout>

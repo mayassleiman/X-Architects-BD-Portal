@@ -121,6 +121,21 @@ db.exec(`
     key TEXT PRIMARY KEY,
     value TEXT
   );
+
+  CREATE TABLE IF NOT EXISTS top_down_calcs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id TEXT,
+    client_name TEXT,
+    proposal_name TEXT,
+    proposal_number TEXT,
+    submission_date TEXT,
+    phases TEXT,
+    global_design_fee_percentage REAL,
+    assets TEXT,
+    total_construction_cost REAL,
+    total_design_fee REAL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
 `);
 
 // Seed default market sectors if empty
@@ -226,6 +241,13 @@ try {
 }
 try {
   db.exec("ALTER TABLE registrations ADD COLUMN password TEXT");
+} catch (error) {
+  // Column likely already exists, ignore
+}
+
+// Migration: Add disciplines column to top_down_calcs if it doesn't exist
+try {
+  db.exec("ALTER TABLE top_down_calcs ADD COLUMN disciplines TEXT");
 } catch (error) {
   // Column likely already exists, ignore
 }

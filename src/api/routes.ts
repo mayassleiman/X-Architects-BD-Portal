@@ -675,4 +675,143 @@ router.put('/settings/:key', (req, res) => {
   res.json({ success: true });
 });
 
+// --- Top Down Calculations API ---
+
+// Get all calculations
+router.get('/top-down-calc', (req, res) => {
+  try {
+    const stmt = db.prepare('SELECT * FROM top_down_calcs ORDER BY created_at DESC');
+    const calcs = stmt.all();
+    const parsedCalcs = calcs.map((c: any) => ({
+      id: c.id,
+      projectId: c.project_id,
+      clientName: c.client_name,
+      proposalName: c.proposal_name,
+      proposalNumber: c.proposal_number,
+      submissionDate: c.submission_date,
+      phases: c.phases ? JSON.parse(c.phases) : [],
+      globalDesignFeePercentage: c.global_design_fee_percentage,
+      assets: c.assets ? JSON.parse(c.assets) : [],
+      disciplines: c.disciplines ? JSON.parse(c.disciplines) : [],
+      totalConstructionCost: c.total_construction_cost,
+      totalDesignFee: c.total_design_fee,
+      createdAt: c.created_at
+    }));
+    res.json(parsedCalcs);
+  } catch (error) {
+    console.error('Error fetching top down calculations:', error);
+    res.status(500).json({ error: 'Failed to fetch calculations' });
+  }
+});
+
+// Create a calculation
+router.post('/top-down-calc', (req, res) => {
+  const {
+    projectId,
+    clientName,
+    proposalName,
+    proposalNumber,
+    submissionDate,
+    phases,
+    globalDesignFeePercentage,
+    assets,
+    disciplines,
+    totalConstructionCost,
+    totalDesignFee
+  } = req.body;
+
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO top_down_calcs (
+        project_id, client_name, proposal_name, proposal_number, submission_date,
+        phases, global_design_fee_percentage, assets, total_construction_cost, total_design_fee, disciplines
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const info = stmt.run(
+      projectId || null,
+      clientName || '',
+      proposalName || '',
+      proposalNumber || '',
+      submissionDate || '',
+      JSON.stringify(phases || []),
+      globalDesignFeePercentage || 0,
+      JSON.stringify(assets || []),
+      totalConstructionCost || 0,
+      totalDesignFee || 0,
+      JSON.stringify(disciplines || [])
+    );
+    res.json({ id: info.lastInsertRowid, success: true });
+  } catch (error) {
+    console.error('Error creating calculation:', error);
+    res.status(500).json({ error: 'Failed to create calculation' });
+  }
+});
+
+// Update a calculation
+router.put('/top-down-calc/:id', (req, res) => {
+  const { id } = req.params;
+  const {
+    projectId,
+    clientName,
+    proposalName,
+    proposalNumber,
+    submissionDate,
+    phases,
+    globalDesignFeePercentage,
+    assets,
+    disciplines,
+    totalConstructionCost,
+    totalDesignFee
+  } = req.body;
+
+  try {
+    const stmt = db.prepare(`
+      UPDATE top_down_calcs SET
+        project_id = ?,
+        client_name = ?,
+        proposal_name = ?,
+        proposal_number = ?,
+        submission_date = ?,
+        phases = ?,
+        global_design_fee_percentage = ?,
+        assets = ?,
+        total_construction_cost = ?,
+        total_design_fee = ?,
+        disciplines = ?
+      WHERE id = ?
+    `);
+    stmt.run(
+      projectId || null,
+      clientName || '',
+      proposalName || '',
+      proposalNumber || '',
+      submissionDate || '',
+      JSON.stringify(phases || []),
+      globalDesignFeePercentage || 0,
+      JSON.stringify(assets || []),
+      totalConstructionCost || 0,
+      totalDesignFee || 0,
+      JSON.stringify(disciplines || []),
+      id
+    );
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating calculation:', error);
+    res.status(500).json({ error: 'Failed to update calculation' });
+  }
+});
+
+// Delete a calculation
+router.delete('/top-down-calc/:id', (req, res) => {
+  const { id } = req.params;
+  try {
+    const stmt = db.prepare('DELETE FROM top_down_calcs WHERE id = ?');
+    stmt.run(id);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting calculation:', error);
+    res.status(500).json({ error: 'Failed to delete calculation' });
+  }
+});
+
 export default router;
