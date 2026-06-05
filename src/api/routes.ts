@@ -695,7 +695,8 @@ router.get('/top-down-calc', (req, res) => {
       disciplines: c.disciplines ? JSON.parse(c.disciplines) : [],
       totalConstructionCost: c.total_construction_cost,
       totalDesignFee: c.total_design_fee,
-      createdAt: c.created_at
+      createdAt: c.created_at,
+      areaMode: c.area_mode || "BUA"
     }));
     res.json(parsedCalcs);
   } catch (error) {
@@ -717,15 +718,16 @@ router.post('/top-down-calc', (req, res) => {
     assets,
     disciplines,
     totalConstructionCost,
-    totalDesignFee
+    totalDesignFee,
+    areaMode
   } = req.body;
 
   try {
     const stmt = db.prepare(`
       INSERT INTO top_down_calcs (
         project_id, client_name, proposal_name, proposal_number, submission_date,
-        phases, global_design_fee_percentage, assets, total_construction_cost, total_design_fee, disciplines
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        phases, global_design_fee_percentage, assets, total_construction_cost, total_design_fee, disciplines, area_mode
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const info = stmt.run(
       projectId || null,
@@ -738,7 +740,8 @@ router.post('/top-down-calc', (req, res) => {
       JSON.stringify(assets || []),
       totalConstructionCost || 0,
       totalDesignFee || 0,
-      JSON.stringify(disciplines || [])
+      JSON.stringify(disciplines || []),
+      areaMode || 'BUA'
     );
     res.json({ id: info.lastInsertRowid, success: true });
   } catch (error) {
@@ -761,7 +764,8 @@ router.put('/top-down-calc/:id', (req, res) => {
     assets,
     disciplines,
     totalConstructionCost,
-    totalDesignFee
+    totalDesignFee,
+    areaMode
   } = req.body;
 
   try {
@@ -777,7 +781,8 @@ router.put('/top-down-calc/:id', (req, res) => {
         assets = ?,
         total_construction_cost = ?,
         total_design_fee = ?,
-        disciplines = ?
+        disciplines = ?,
+        area_mode = ?
       WHERE id = ?
     `);
     stmt.run(
@@ -792,6 +797,7 @@ router.put('/top-down-calc/:id', (req, res) => {
       totalConstructionCost || 0,
       totalDesignFee || 0,
       JSON.stringify(disciplines || []),
+      areaMode || 'BUA',
       id
     );
     res.json({ success: true });

@@ -134,7 +134,8 @@ db.exec(`
     assets TEXT,
     total_construction_cost REAL,
     total_design_fee REAL,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    area_mode TEXT DEFAULT 'BUA'
   );
 `);
 
@@ -248,6 +249,13 @@ try {
 // Migration: Add disciplines column to top_down_calcs if it doesn't exist
 try {
   db.exec("ALTER TABLE top_down_calcs ADD COLUMN disciplines TEXT");
+} catch (error) {
+  // Column likely already exists, ignore
+}
+
+// Migration: Add area_mode column to top_down_calcs if it doesn't exist
+try {
+  db.exec("ALTER TABLE top_down_calcs ADD COLUMN area_mode TEXT DEFAULT 'BUA'");
 } catch (error) {
   // Column likely already exists, ignore
 }

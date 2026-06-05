@@ -139,7 +139,7 @@ export function TopDownCalc() {
   const [proposalName, setProposalName] = useState<string>("");
   const [proposalNumber, setProposalNumber] = useState<string>("");
   const [submissionDate, setSubmissionDate] = useState<string>("");
-  const [globalDesignFeePercentage, setGlobalDesignFeePercentage] = useState<number>(5.0);
+  const [globalDesignFeePercentage, setGlobalDesignFeePercentage] = useState<number>(2.35);
   const [areaMode, setAreaMode] = useState<"BUA" | "GFA">("BUA");
 
   // Custom and active phases
@@ -147,18 +147,10 @@ export function TopDownCalc() {
   const [newPhaseName, setNewPhaseName] = useState<string>("");
   const [newPhaseWeight, setNewPhaseWeight] = useState<number>(5);
   const [draggedPhaseIndex, setDraggedPhaseIndex] = useState<number | null>(null);
+  const [draggedDisciplineIndex, setDraggedDisciplineIndex] = useState<number | null>(null);
 
   // Section 2 State: Assets
-  const [assets, setAssets] = useState<Asset[]>([
-    {
-      id: "asset-1",
-      name: "Main Tower",
-      quantity: 1,
-      gfa: 15000,
-      constructionRate: 4500,
-      activePhaseIds: DEFAULT_PHASES.map((p) => p.id)
-    }
-  ]);
+  const [assets, setAssets] = useState<Asset[]>([]);
 
   // Asset Row Form Add
   const [newAssetName, setNewAssetName] = useState<string>("");
@@ -264,6 +256,34 @@ export function TopDownCalc() {
     setDraggedPhaseIndex(null);
     setPhases(updated);
     showNotification("Design phases rearranged successfully", "success");
+  };
+
+  // Discipline Drag and Drop Handlers (Section 3)
+  const handleDisciplineDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedDisciplineIndex(index);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDisciplineDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDisciplineDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    if (draggedDisciplineIndex === null || draggedDisciplineIndex === targetIndex) return;
+
+    const list = [...disciplines];
+    const draggedItem = list[draggedDisciplineIndex];
+    list.splice(draggedDisciplineIndex, 1);
+    list.splice(targetIndex, 0, draggedItem);
+
+    // Group XAs automatically at the beginning
+    const xas = list.filter((d) => d.isXA);
+    const nonXas = list.filter((d) => !d.isXA);
+
+    setDisciplines([...xas, ...nonXas]);
+    setDraggedDisciplineIndex(null);
+    showNotification("Disciplines rearranged successfully.", "success");
   };
 
   const addCustomPhase = () => {
@@ -374,10 +394,6 @@ export function TopDownCalc() {
   };
 
   const removeAsset = (id: string) => {
-    if (assets.length <= 1) {
-      showNotification("You must have at least one building/asset in the estimation.", "error");
-      return;
-    }
     setAssets(assets.filter((a) => a.id !== id));
     showNotification("Asset removed.", "success");
   };
@@ -541,26 +557,29 @@ export function TopDownCalc() {
       percentage: 0,
       isXA: false
     };
-    setDisciplines([...disciplines, newDisc]);
+    const updated = [...disciplines, newDisc];
+    const xas = updated.filter((d) => d.isXA);
+    const nonXas = updated.filter((d) => !d.isXA);
+    setDisciplines([...xas, ...nonXas]);
     setNewDisciplineName("");
     showNotification("New discipline added successfully.", "success");
   };
 
   const removeDiscipline = (id: string) => {
-    setDisciplines(disciplines.filter((d) => d.id !== id));
+    const updated = disciplines.filter((d) => d.id !== id);
+    const xas = updated.filter((d) => d.isXA);
+    const nonXas = updated.filter((d) => !d.isXA);
+    setDisciplines([...xas, ...nonXas]);
     showNotification("Discipline removed from list.", "success");
   };
 
   const updateDiscipline = (id: string, updates: Partial<Discipline>) => {
-    setDisciplines((prev) =>
-      prev.map((d) => {
-        if (d.id === id) {
-          const updated = { ...d, ...updates };
-          return updated;
-        }
-        return d;
-      })
-    );
+    setDisciplines((prev) => {
+      const updated = prev.map((d) => (d.id === id ? { ...d, ...updates } : d));
+      const xas = updated.filter((d) => d.isXA);
+      const nonXas = updated.filter((d) => !d.isXA);
+      return [...xas, ...nonXas];
+    });
   };
 
   // Export Top-Down calculation to Excel Sheet
@@ -990,7 +1009,10 @@ export function TopDownCalc() {
     setPhases(calc.phases);
     setGlobalDesignFeePercentage(calc.globalDesignFeePercentage);
     setAssets(calc.assets);
-    setDisciplines(calc.disciplines && calc.disciplines.length > 0 ? calc.disciplines : DEFAULT_DISCIPLINES);
+    const rawDisc = calc.disciplines && calc.disciplines.length > 0 ? calc.disciplines : DEFAULT_DISCIPLINES;
+    const xas = rawDisc.filter((d) => d.isXA);
+    const nonXas = rawDisc.filter((d) => !d.isXA);
+    setDisciplines([...xas, ...nonXas]);
     setAreaMode(calc.areaMode || "BUA");
     setActiveTab("calculator");
     showNotification(`Loaded estimation: ${calc.proposalName}`, "success");
@@ -1005,18 +1027,9 @@ export function TopDownCalc() {
     setProposalNumber("");
     setSubmissionDate("");
     setPhases(DEFAULT_PHASES);
-    setGlobalDesignFeePercentage(5.0);
+    setGlobalDesignFeePercentage(2.35);
     setAreaMode("BUA");
-    setAssets([
-      {
-        id: "asset-1",
-        name: "Main Tower",
-        quantity: 1,
-        gfa: 15000,
-        constructionRate: 4500,
-        activePhaseIds: DEFAULT_PHASES.map((p) => p.id)
-      }
-    ]);
+    setAssets([]);
     setDisciplines(DEFAULT_DISCIPLINES);
     showNotification("Workspace cleared. Ready for new top-down calculation.", "success");
   };
@@ -1174,9 +1187,9 @@ export function TopDownCalc() {
                             ? "bg-amber-500 text-white shadow-sm"
                             : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                         )}
-                        title="Use Built-up Area (Default)"
+                        title="Use Built-up Area"
                       >
-                        BUA (Default)
+                        BUA
                       </button>
                       <button
                         type="button"
@@ -1218,15 +1231,15 @@ export function TopDownCalc() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-[10px] font-mono uppercase text-[var(--text-secondary)] mb-1">
-                    Client Name
+                    Proposal Number (RFP No.)
                   </label>
                   <div className="relative">
-                    <User className="absolute left-3 top-2.5 text-[var(--text-secondary)]" size={14} />
+                    <Hash className="absolute left-3 top-2.5 text-[var(--text-secondary)]" size={14} />
                     <input
                       type="text"
-                      value={clientName}
-                      onChange={(e) => setClientName(e.target.value)}
-                      placeholder="e.g. Emaar, Red Sea Global"
+                      value={proposalNumber}
+                      onChange={(e) => setProposalNumber(e.target.value)}
+                      placeholder="e.g. P12048"
                       className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-lg pl-9 pr-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-emerald-500"
                     />
                   </div>
@@ -1250,15 +1263,15 @@ export function TopDownCalc() {
 
                 <div>
                   <label className="block text-[10px] font-mono uppercase text-[var(--text-secondary)] mb-1">
-                    Proposal Number (RFP No.)
+                    Client Name
                   </label>
                   <div className="relative">
-                    <Hash className="absolute left-3 top-2.5 text-[var(--text-secondary)]" size={14} />
+                    <User className="absolute left-3 top-2.5 text-[var(--text-secondary)]" size={14} />
                     <input
                       type="text"
-                      value={proposalNumber}
-                      onChange={(e) => setProposalNumber(e.target.value)}
-                      placeholder="e.g. P12048"
+                      value={clientName}
+                      onChange={(e) => setClientName(e.target.value)}
+                      placeholder="e.g. Emaar, Red Sea Global"
                       className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-lg pl-9 pr-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-emerald-500"
                     />
                   </div>
@@ -1685,8 +1698,15 @@ export function TopDownCalc() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--border)]">
-                    {assets.map((asset) => {
-                      const cost = asset.quantity * asset.gfa * asset.constructionRate;
+                    {assets.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="px-4 py-8 text-center text-xs text-[var(--text-secondary)] font-mono">
+                          No specified building assets. Add a unit block below to compute design fees.
+                        </td>
+                      </tr>
+                    ) : (
+                      assets.map((asset) => {
+                        const cost = asset.quantity * asset.gfa * asset.constructionRate;
                       
                       // Calculate individual asset design fee contribution
                       const activePhasesSumWeight = phases
@@ -1771,7 +1791,7 @@ export function TopDownCalc() {
                           </td>
                         </tr>
                       );
-                    })}
+                    }))}
                   </tbody>
                 </table>
               </div>
@@ -1963,16 +1983,27 @@ export function TopDownCalc() {
                       </button>
                     </div>
                   ) : (
-                    disciplineMetrics.breakdown.map((disc) => (
+                    disciplineMetrics.breakdown.map((disc, index) => (
                       <div
                         key={disc.id}
+                        draggable
+                        onDragStart={(e) => handleDisciplineDragStart(e, index)}
+                        onDragOver={handleDisciplineDragOver}
+                        onDrop={(e) => handleDisciplineDrop(e, index)}
                         className={cn(
                           "grid grid-cols-12 gap-2 p-3 items-center text-xs transition-colors hover:bg-[var(--bg-primary)]/40",
-                          disc.isXA ? "bg-emerald-500/[0.015]" : ""
+                          disc.isXA ? "bg-emerald-500/[0.015]" : "",
+                          draggedDisciplineIndex === index && "opacity-40 bg-[var(--bg-tertiary)]"
                         )}
                       >
                         {/* Scope select Column */}
-                        <div className="col-span-2 flex justify-center">
+                        <div className="col-span-2 flex justify-center items-center gap-1.5">
+                          <span 
+                            className="text-neutral-500 cursor-grab active:cursor-grabbing p-1 shrink-0 hover:text-emerald-500"
+                            title="Drag to rearrange"
+                          >
+                            <GripVertical size={13} />
+                          </span>
                           <label className="relative inline-flex items-center cursor-pointer select-none">
                             <input
                               type="checkbox"
