@@ -696,7 +696,10 @@ router.get('/top-down-calc', (req, res) => {
       totalConstructionCost: c.total_construction_cost,
       totalDesignFee: c.total_design_fee,
       createdAt: c.created_at,
-      areaMode: c.area_mode || "BUA"
+      areaMode: c.area_mode || "BUA",
+      plotArea: c.plot_area,
+      far: c.far,
+      maxPlotCoverage: c.max_plot_coverage
     }));
     res.json(parsedCalcs);
   } catch (error) {
@@ -719,15 +722,19 @@ router.post('/top-down-calc', (req, res) => {
     disciplines,
     totalConstructionCost,
     totalDesignFee,
-    areaMode
+    areaMode,
+    plotArea,
+    far,
+    maxPlotCoverage
   } = req.body;
 
   try {
     const stmt = db.prepare(`
       INSERT INTO top_down_calcs (
         project_id, client_name, proposal_name, proposal_number, submission_date,
-        phases, global_design_fee_percentage, assets, total_construction_cost, total_design_fee, disciplines, area_mode
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        phases, global_design_fee_percentage, assets, total_construction_cost, total_design_fee, disciplines, area_mode,
+        plot_area, far, max_plot_coverage
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const info = stmt.run(
       projectId || null,
@@ -741,7 +748,10 @@ router.post('/top-down-calc', (req, res) => {
       totalConstructionCost || 0,
       totalDesignFee || 0,
       JSON.stringify(disciplines || []),
-      areaMode || 'BUA'
+      areaMode || 'BUA',
+      plotArea !== undefined ? plotArea : null,
+      far !== undefined ? far : null,
+      maxPlotCoverage !== undefined ? maxPlotCoverage : null
     );
     res.json({ id: info.lastInsertRowid, success: true });
   } catch (error) {
@@ -765,7 +775,10 @@ router.put('/top-down-calc/:id', (req, res) => {
     disciplines,
     totalConstructionCost,
     totalDesignFee,
-    areaMode
+    areaMode,
+    plotArea,
+    far,
+    maxPlotCoverage
   } = req.body;
 
   try {
@@ -782,7 +795,10 @@ router.put('/top-down-calc/:id', (req, res) => {
         total_construction_cost = ?,
         total_design_fee = ?,
         disciplines = ?,
-        area_mode = ?
+        area_mode = ?,
+        plot_area = ?,
+        far = ?,
+        max_plot_coverage = ?
       WHERE id = ?
     `);
     stmt.run(
@@ -798,6 +814,9 @@ router.put('/top-down-calc/:id', (req, res) => {
       totalDesignFee || 0,
       JSON.stringify(disciplines || []),
       areaMode || 'BUA',
+      plotArea !== undefined ? plotArea : null,
+      far !== undefined ? far : null,
+      maxPlotCoverage !== undefined ? maxPlotCoverage : null,
       id
     );
     res.json({ success: true });

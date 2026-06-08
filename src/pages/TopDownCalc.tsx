@@ -21,7 +21,10 @@ import {
   Briefcase,
   FileSpreadsheet,
   Download,
-  GripVertical
+  GripVertical,
+  Compass,
+  Layers,
+  Maximize2
 } from "lucide-react";
 import { useCurrency } from "../context/CurrencyContext";
 import { cn } from "../lib/utils";
@@ -67,6 +70,9 @@ interface TopDownCalculation {
   createdAt?: string;
   disciplines?: Discipline[];
   areaMode?: "BUA" | "GFA";
+  plotArea?: number;
+  far?: number;
+  maxPlotCoverage?: number;
 }
 
 interface PipelineProject {
@@ -141,6 +147,9 @@ export function TopDownCalc() {
   const [submissionDate, setSubmissionDate] = useState<string>("");
   const [globalDesignFeePercentage, setGlobalDesignFeePercentage] = useState<number>(2.35);
   const [areaMode, setAreaMode] = useState<"BUA" | "GFA">("BUA");
+  const [plotArea, setPlotArea] = useState<string>("");
+  const [far, setFar] = useState<string>("");
+  const [maxPlotCoverage, setMaxPlotCoverage] = useState<string>("");
 
   // Custom and active phases
   const [phases, setPhases] = useState<Phase[]>(DEFAULT_PHASES);
@@ -391,6 +400,45 @@ export function TopDownCalc() {
     setNewAssetGfa(5000);
     setNewAssetRate(3500);
     showNotification(`Added asset: ${newAsset.name}`, "success");
+  };
+
+  const handleAutoComposeAsset = () => {
+    const parsedPlotArea = Number(plotArea) || 0;
+    const parsedFar = Number(far) || 0;
+    const parsedCoverage = Number(maxPlotCoverage) || 0;
+
+    if (parsedPlotArea <= 0 || parsedFar <= 0) {
+      showNotification("Please specify valid Plot Area and FAR to calculate allowable GFA.", "error");
+      return;
+    }
+
+    const calculatedGfa = parsedPlotArea * parsedFar;
+    const maxFootprint = parsedCoverage > 0 ? (parsedPlotArea * (parsedCoverage / 100)) : 0;
+    
+    let floorCount = 1;
+    if (maxFootprint > 0) {
+      floorCount = Math.ceil(calculatedGfa / maxFootprint);
+    } else {
+      // Default guess if coverage is not provided
+      floorCount = Math.ceil(parsedFar / 0.4); // assume 40% coverage
+    }
+
+    const isTower = floorCount >= 5;
+    const deducedShapeName = isTower 
+      ? `Tower (Vertical Shape - ${floorCount} Floors)` 
+      : `Horizontal Layout (Low-Rise - ${floorCount} Floors)`;
+
+    const newAsset: Asset = {
+      id: "asset-" + Date.now(),
+      name: deducedShapeName,
+      quantity: 1,
+      gfa: Math.round(calculatedGfa),
+      constructionRate: 4500, // standard default rate
+      activePhaseIds: phases.map((p) => p.id)
+    };
+
+    setAssets([newAsset]);
+    showNotification("Successfully composed the allowable building asset block from plot parameters!", "success");
   };
 
   const removeAsset = (id: string) => {
@@ -957,7 +1005,10 @@ export function TopDownCalc() {
       disciplines,
       totalConstructionCost: calculatedMetrics.totalConstructionCost,
       totalDesignFee: calculatedMetrics.totalDesignFee,
-      areaMode
+      areaMode,
+      plotArea: plotArea ? Number(plotArea) : undefined,
+      far: far ? Number(far) : undefined,
+      maxPlotCoverage: maxPlotCoverage ? Number(maxPlotCoverage) : undefined
     };
 
     try {
@@ -1014,6 +1065,9 @@ export function TopDownCalc() {
     const nonXas = rawDisc.filter((d) => !d.isXA);
     setDisciplines([...xas, ...nonXas]);
     setAreaMode(calc.areaMode || "BUA");
+    setPlotArea(calc.plotArea !== undefined && calc.plotArea !== null ? String(calc.plotArea) : "");
+    setFar(calc.far !== undefined && calc.far !== null ? String(calc.far) : "");
+    setMaxPlotCoverage(calc.maxPlotCoverage !== undefined && calc.maxPlotCoverage !== null ? String(calc.maxPlotCoverage) : "");
     setActiveTab("calculator");
     showNotification(`Loaded estimation: ${calc.proposalName}`, "success");
   };
@@ -1031,6 +1085,9 @@ export function TopDownCalc() {
     setAreaMode("BUA");
     setAssets([]);
     setDisciplines(DEFAULT_DISCIPLINES);
+    setPlotArea("");
+    setFar("");
+    setMaxPlotCoverage("");
     showNotification("Workspace cleared. Ready for new top-down calculation.", "success");
   };
 
@@ -1289,6 +1346,158 @@ export function TopDownCalc() {
                       onChange={(e) => setSubmissionDate(e.target.value)}
                       className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-lg pl-9 pr-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-emerald-500"
                     />
+                  </div>
+                </div>
+              </div>
+
+              {/* Plot Parameters & Smart Shape Deduction */}
+              <div className="border-t border-[var(--border)]/70 pt-5 mt-5">
+                <h3 className="text-xs font-mono uppercase text-[var(--text-secondary)] tracking-wider font-bold mb-3 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Plot Limits & Smart Shape Deduction Model
+                </h3>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                  {/* Inputs side */}
+                  <div className="lg:col-span-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-mono uppercase text-[var(--text-secondary)] mb-1">
+                        Plot Area (SqM) <span className="text-[9px] text-[var(--text-secondary)] lowercase font-normal">(optional)</span>
+                      </label>
+                      <div className="relative">
+                        <Compass className="absolute left-3 top-2.5 text-[var(--text-secondary)]" size={14} />
+                        <input
+                          type="number"
+                          value={plotArea}
+                          onChange={(e) => setPlotArea(e.target.value)}
+                          placeholder="e.g. 12500"
+                          min="0"
+                          step="any"
+                          className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-lg pl-9 pr-3 py-2 text-xs text-[var(--text-primary)] font-mono focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-mono uppercase text-[var(--text-secondary)] mb-1">
+                        FAR (Floor Area Ratio) <span className="text-[9px] text-[var(--text-secondary)] lowercase font-normal">(optional)</span>
+                      </label>
+                      <div className="relative">
+                        <Layers className="absolute left-3 top-2.5 text-[var(--text-secondary)]" size={14} />
+                        <input
+                          type="number"
+                          value={far}
+                          onChange={(e) => setFar(e.target.value)}
+                          placeholder="e.g. 3.5"
+                          min="0"
+                          step="0.05"
+                          className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-lg pl-9 pr-3 py-2 text-xs text-[var(--text-primary)] font-mono focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-mono uppercase text-[var(--text-secondary)] mb-1">
+                        Max Plot Coverage % <span className="text-[9px] text-[var(--text-secondary)] lowercase font-normal">(optional)</span>
+                      </label>
+                      <div className="relative">
+                        <Maximize2 className="absolute left-3 top-2.5 text-[var(--text-secondary)]" size={14} />
+                        <input
+                          type="number"
+                          value={maxPlotCoverage}
+                          onChange={(e) => setMaxPlotCoverage(e.target.value)}
+                          placeholder="e.g. 40"
+                          min="0"
+                          max="100"
+                          step="0.5"
+                          className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-lg pl-9 pr-3 py-2 text-xs text-[var(--text-primary)] font-mono focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Deduction Output Side */}
+                  <div className="lg:col-span-6">
+                    {plotArea && Number(plotArea) > 0 ? (
+                      (() => {
+                        const pArea = Number(plotArea) || 0;
+                        const pFar = Number(far) || 0;
+                        const pCov = Number(maxPlotCoverage) || 0;
+                        const calcGfa = pArea * pFar;
+                        const maxFootprint = pCov > 0 ? (pArea * (pCov / 100)) : 0;
+                        
+                        let deducedFloors = 1;
+                        if (maxFootprint > 0 && calcGfa > 0) {
+                          deducedFloors = Math.ceil(calcGfa / maxFootprint);
+                        } else if (pFar > 0) {
+                          // Assume 40% coverage standard if missing
+                          deducedFloors = Math.ceil(pFar / 0.4);
+                        }
+
+                        const isTower = deducedFloors >= 5;
+
+                        return (
+                          <div className="bg-emerald-500/[0.02] border border-emerald-500/20 rounded-xl p-3.5 flex flex-col sm:flex-row gap-4 items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              {/* Conceptual Volume Diagram wireframe */}
+                              <div className="relative w-12 h-12 bg-emerald-500/10 rounded-lg flex items-center justify-center border border-emerald-500/20 shrink-0">
+                                {isTower ? (
+                                  <div className="flex flex-col gap-0.5 items-center justify-center w-6 h-10 border border-emerald-500/40 bg-emerald-500/5">
+                                    <span className="w-4 h-0.5 bg-emerald-500/30" />
+                                    <span className="w-4 h-0.5 bg-emerald-500/30" />
+                                    <span className="w-4 h-0.5 bg-emerald-500/30" />
+                                    <span className="w-4 h-0.5 bg-emerald-500/30" />
+                                  </div>
+                                ) : (
+                                  <div className="flex flex-col gap-0.5 items-center justify-center w-10 h-6 border border-emerald-500/40 bg-emerald-500/5">
+                                    <span className="w-8 h-0.5 bg-emerald-500/30" />
+                                    <span className="w-8 h-0.5 bg-emerald-500/30" />
+                                  </div>
+                                )}
+                                <span className="absolute bottom-0 right-0 px-1 py-0.5 bg-emerald-600 text-[white] text-[7px] font-mono leading-none rounded-tl font-bold uppercase">
+                                  {isTower ? "Tower" : "Horiz"}
+                                </span>
+                              </div>
+
+                              <div className="space-y-0.5">
+                                <span className="text-[9px] font-mono uppercase text-emerald-500 font-bold block leading-none">
+                                  Deducted Building Volume Shape:
+                                </span>
+                                <h4 className="text-xs font-bold text-[var(--text-primary)]">
+                                  {isTower ? (
+                                    <span>Vertical Tower Building Shape</span>
+                                  ) : (
+                                    <span>Horizontal / Low-Rise Shape</span>
+                                  )}
+                                </h4>
+                                <div className="text-[10px] text-[var(--text-secondary)] font-mono space-y-0.5">
+                                  {pFar > 0 && (
+                                    <div>Max Allowable GFA: <b className="text-[var(--text-primary)]">{calcGfa.toLocaleString()} SqM</b></div>
+                                  )}
+                                  {maxFootprint > 0 && (
+                                    <div>Max Footprint Area: <b className="text-[var(--text-primary)]">{maxFootprint.toLocaleString()} SqM</b></div>
+                                  )}
+                                  <div>Deducted Floor Count: <b className="text-emerald-500">{deducedFloors} Stories</b></div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={handleAutoComposeAsset}
+                              className="w-full sm:w-auto px-3.5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-[10px] uppercase tracking-wider rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm hover:shadow-md shrink-0"
+                            >
+                              <Plus size={11} /> Compose Asset
+                            </button>
+                          </div>
+                        );
+                      })()
+                    ) : (
+                      <div className="h-full min-h-[72px] flex items-center justify-center border border-dashed border-[var(--border)] rounded-xl px-4 py-3 bg-[var(--bg-tertiary)]/30 text-center">
+                        <p className="text-[10px] text-[var(--text-secondary)] font-mono">
+                          Enter Plot Area above to activate real-time volume & shapely floor count deduction.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

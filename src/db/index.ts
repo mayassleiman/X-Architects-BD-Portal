@@ -135,7 +135,10 @@ db.exec(`
     total_construction_cost REAL,
     total_design_fee REAL,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    area_mode TEXT DEFAULT 'BUA'
+    area_mode TEXT DEFAULT 'BUA',
+    plot_area REAL,
+    far REAL,
+    max_plot_coverage REAL
   );
 `);
 
@@ -256,6 +259,23 @@ try {
 // Migration: Add area_mode column to top_down_calcs if it doesn't exist
 try {
   db.exec("ALTER TABLE top_down_calcs ADD COLUMN area_mode TEXT DEFAULT 'BUA'");
+} catch (error) {
+  // Column likely already exists, ignore
+}
+
+// Migration: Add plot_area, far, max_plot_coverage columns to top_down_calcs if they don't exist
+try {
+  db.exec("ALTER TABLE top_down_calcs ADD COLUMN plot_area REAL");
+} catch (error) {
+  // Column likely already exists, ignore
+}
+try {
+  db.exec("ALTER TABLE top_down_calcs ADD COLUMN far REAL");
+} catch (error) {
+  // Column likely already exists, ignore
+}
+try {
+  db.exec("ALTER TABLE top_down_calcs ADD COLUMN max_plot_coverage REAL");
 } catch (error) {
   // Column likely already exists, ignore
 }
