@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { 
   Calculator, 
   Plus, 
@@ -16,6 +16,8 @@ import {
   FolderOpen, 
   FileText, 
   ChevronRight, 
+  ChevronUp,
+  ChevronDown,
   CheckSquare, 
   Database,
   Briefcase,
@@ -124,6 +126,64 @@ const DEFAULT_PHASES: Phase[] = [
   { id: "ifc", name: "IFCs", weight: 5 }
 ];
 
+// Custom helper component for discipline percentage inputs to satisfy:
+// 1. Not seeing the zero to the left of the number if changing manually.
+// 2. Increase or decrease the number by 0.5% in each click.
+// 3. Keep the possibility to enter any decimal number manually.
+const DisciplinePercentageInput = ({
+  value,
+  onChange,
+  step = 0.5
+}: {
+  value: number;
+  onChange: (val: number) => void;
+  step?: number;
+}) => {
+  const ref = useRef<HTMLInputElement>(null);
+  const [localVal, setLocalVal] = useState<string>(value === 0 ? "" : String(value));
+
+  useEffect(() => {
+    // Only update local value from parent prop if the user is not actively typing in it
+    if (document.activeElement !== ref.current) {
+      setLocalVal(value === 0 ? "" : String(value));
+    }
+  }, [value]);
+
+  const handleChange = (valStr: string) => {
+    setLocalVal(valStr);
+    const parsed = parseFloat(valStr);
+    if (!isNaN(parsed)) {
+      onChange(parsed);
+    } else {
+      onChange(0);
+    }
+  };
+
+  const handleBlur = () => {
+    if (localVal === "" || isNaN(parseFloat(localVal))) {
+      setLocalVal("");
+      onChange(0);
+    } else {
+      setLocalVal(String(parseFloat(localVal)));
+    }
+  };
+
+  return (
+    <input
+      ref={ref}
+      type="number"
+      step={step}
+      min="0"
+      max="100"
+      value={localVal}
+      placeholder="0.0"
+      onChange={(e) => handleChange(e.target.value)}
+      onBlur={handleBlur}
+      className="w-14 bg-transparent border-0 text-center py-1.5 text-xs font-mono font-bold text-[var(--text-primary)] focus:outline-none focus:ring-0"
+    />
+  );
+};
+
 export function TopDownCalc() {
   const { currency } = useCurrency();
 
@@ -185,19 +245,19 @@ export function TopDownCalc() {
     setIsLoadingProjects(true);
     setIsLoadingHistory(true);
     try {
-      // 1. Fetch from Pipeline
-      const projRes = await fetch("/api/pipeline");
+      // 1. Fetch from Pipeline with cache-buster to prevent stale/cached responses
+      const projRes = await fetch(`/api/pipeline?_t=${Date.now()}`);
       if (projRes.ok) {
         const data = await projRes.json();
-        // Filter those with status === 'Pending' (this maps to "To Be Submitted")
+        // Include any RFP items (Pending, Submitted, Won, etc.) so they don't disappear when status changes
         const toSubmit = data.filter(
-          (p: any) => p.type === "RFP" && p.status === "Pending"
+          (p: any) => p.type === "RFP"
         );
         setPipelineProjects(toSubmit);
       }
 
-      // 2. Fetch from Top-Down Archive
-      const historyRes = await fetch("/api/top-down-calc");
+      // 2. Fetch from Top-Down Archive with cache-buster
+      const historyRes = await fetch(`/api/top-down-calc?_t=${Date.now()}`);
       if (historyRes.ok) {
         const data = await historyRes.json();
         setHistoricalCalcs(data);
@@ -437,8 +497,8 @@ export function TopDownCalc() {
       activePhaseIds: phases.map((p) => p.id)
     };
 
-    setAssets([newAsset]);
-    showNotification("Successfully composed the allowable building asset block from plot parameters!", "success");
+    setAssets([...assets, newAsset]);
+    showNotification("Successfully composed the allowable building asset block and added it to the assets list!", "success");
   };
 
   const removeAsset = (id: string) => {
@@ -1946,6 +2006,7 @@ export function TopDownCalc() {
                             <input
                               type="number"
                               min="0"
+                              step="500"
                               value={asset.gfa}
                               onChange={(e) => updateAssetField(asset.id, "gfa", Number(e.target.value) || 0)}
                               className="w-20 bg-transparent text-right border-b border-transparent hover:border-[var(--border)] focus:border-emerald-500 focus:outline-none text-xs font-mono font-medium text-[var(--text-primary)]"
@@ -1955,6 +2016,7 @@ export function TopDownCalc() {
                             <input
                               type="number"
                               min="0"
+                              step="250"
                               value={asset.constructionRate}
                               onChange={(e) => updateAssetField(asset.id, "constructionRate", Number(e.target.value) || 0)}
                               className="w-20 bg-transparent text-right border-b border-transparent hover:border-[var(--border)] focus:border-emerald-500 focus:outline-none text-xs font-mono font-bold text-emerald-500/80"
@@ -2043,6 +2105,7 @@ export function TopDownCalc() {
                     <input
                       type="number"
                       min="0"
+                      step="500"
                       value={newAssetGfa}
                       onChange={(e) => setNewAssetGfa(Number(e.target.value) || 0)}
                       className="w-full bg-[var(--bg-primary)] border border-[var(--border)] rounded-lg p-2 text-xs text-right text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
@@ -2055,6 +2118,7 @@ export function TopDownCalc() {
                     <input
                       type="number"
                       min="0"
+                      step="250"
                       value={newAssetRate}
                       onChange={(e) => setNewAssetRate(Number(e.target.value) || 0)}
                       className="w-full bg-[var(--bg-primary)] border border-[var(--border)] rounded-lg p-2 text-xs text-right text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
@@ -2240,14 +2304,10 @@ export function TopDownCalc() {
                         {/* Percentage edit column */}
                         <div className="col-span-2 flex justify-center">
                           <div className="relative rounded-lg overflow-hidden border border-[var(--border)] bg-[var(--bg-primary)] flex items-center pr-2">
-                            <input
-                              type="number"
-                              step="0.1"
-                              min="0"
-                              max="100"
+                            <DisciplinePercentageInput
+                              step={0.5}
                               value={disc.percentage}
-                              onChange={(e) => updateDiscipline(disc.id, { percentage: Number(e.target.value) || 0 })}
-                              className="w-14 bg-transparent border-0 text-center py-1.5 text-xs font-mono font-bold text-[var(--text-primary)] focus:outline-none focus:ring-0"
+                              onChange={(val) => updateDiscipline(disc.id, { percentage: val })}
                             />
                             <span className="text-[10px] text-[var(--text-secondary)] font-bold">%</span>
                           </div>
@@ -2356,17 +2416,35 @@ export function TopDownCalc() {
                       onChange={(e) => setGlobalDesignFeePercentage(Number(e.target.value) || 0)}
                       className="flex-1 accent-emerald-500 cursor-pointer h-1 bg-[var(--bg-tertiary)] rounded-lg appearance-none"
                     />
-                    <div className="flex items-center bg-[var(--bg-tertiary)] border border-[var(--border)] rounded px-1.5 py-0.5 shrink-0">
+                    <div className="flex items-center bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-lg px-2 py-1 shrink-0 gap-1.5 shadow-sm">
                       <input
                         type="number"
-                        step="0.01"
+                        step="0.05"
                         min="0"
                         max="100"
                         value={parseFloat(globalDesignFeePercentage.toFixed(2)) || 0}
                         onChange={(e) => setGlobalDesignFeePercentage(Number(e.target.value) || 0)}
-                        className="w-10 bg-transparent text-center font-mono font-bold text-xs text-emerald-500 focus:outline-none p-0 border-0 h-5"
+                        className="w-14 bg-transparent text-left font-mono font-bold text-xs text-emerald-500 focus:outline-none p-0 border-0 h-5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
-                      <span className="text-emerald-500/80 text-[10px] font-bold font-mono">%</span>
+                      <span className="text-emerald-500/80 text-[10px] font-bold font-mono mr-1">%</span>
+                      <div className="flex flex-col border-l border-[var(--border)] pl-1.5 gap-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setGlobalDesignFeePercentage(prev => Math.min(100, Number((prev + 0.05).toFixed(2))))}
+                          className="text-emerald-500 hover:text-emerald-400 p-0 hover:bg-emerald-500/10 rounded transition-colors"
+                          title="Increase by 0.05%"
+                        >
+                          <ChevronUp size={12} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setGlobalDesignFeePercentage(prev => Math.max(0, Number((prev - 0.05).toFixed(2))))}
+                          className="text-emerald-500 hover:text-emerald-400 p-0 hover:bg-emerald-500/10 rounded transition-colors"
+                          title="Decrease by 0.05%"
+                        >
+                          <ChevronDown size={12} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
