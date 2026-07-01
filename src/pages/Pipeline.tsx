@@ -111,8 +111,8 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
     const fetchData = async () => {
       try {
         const [pipelineRes, sectorsRes] = await Promise.all([
-          fetch('/api/pipeline'),
-          fetch('/api/market-sectors')
+          fetch(`/api/pipeline?_t=${Date.now()}`),
+          fetch(`/api/market-sectors?_t=${Date.now()}`)
         ]);
         
         const pipelineData = await pipelineRes.json();

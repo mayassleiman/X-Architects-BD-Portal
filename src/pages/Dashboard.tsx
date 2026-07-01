@@ -66,27 +66,28 @@ export function Dashboard() {
   const [targetData, setTargetData] = React.useState<{ target: number, achieved: number }>({ target: 0, achieved: 0 });
 
   React.useEffect(() => {
+    const timestamp = Date.now();
     // Fetch Actions
-    fetch('/api/actions')
+    fetch(`/api/actions?_t=${timestamp}`)
       .then(res => res.ok ? res.json() : [])
       .then(data => setApiActions(data))
       .catch(err => console.log("Failed to fetch actions"));
 
     // Fetch Registrations
-    fetch('/api/registrations')
+    fetch(`/api/registrations?_t=${timestamp}`)
       .then(res => res.ok ? res.json() : [])
       .then(data => setApiRegistrations(data))
       .catch(err => console.log("Failed to fetch registrations"));
 
     // Fetch Meetings
-    fetch('/api/meetings')
+    fetch(`/api/meetings?_t=${timestamp}`)
       .then(res => res.ok ? res.json() : [])
       .then(data => setApiMeetings(data))
       .catch(err => console.log("Failed to fetch meetings"));
 
     // Fetch Target Data
     const currentYear = new Date().getFullYear();
-    fetch(`/api/achieved-targets?year=${currentYear}`)
+    fetch(`/api/achieved-targets?year=${currentYear}&_t=${timestamp}`)
       .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (data) {

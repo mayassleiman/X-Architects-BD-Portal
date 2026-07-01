@@ -101,7 +101,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
 
   const fetchSectors = async () => {
     try {
-      const res = await fetch('/api/market-sectors');
+      const res = await fetch(`/api/market-sectors?_t=${Date.now()}`);
       const json = await res.json();
       setSectors(json);
     } catch (error) {
@@ -111,7 +111,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
 
   const fetchData = async () => {
     try {
-      const res = await fetch(`/api/achieved-targets?year=${year}`);
+      const res = await fetch(`/api/achieved-targets?year=${year}&_t=${Date.now()}`);
       const json = await res.json();
       setData(json);
       setNewTarget(json.target);
