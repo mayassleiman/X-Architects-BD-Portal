@@ -712,7 +712,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                         )}
                       >
                         <div 
-                          {...provided.dragHandleProps}
+                          {...(sortBy === "manual" ? provided.dragHandleProps : {})}
                           className={cn(
                             "p-3 bg-[var(--bg-tertiary)] border-b border-[var(--border)] flex items-center justify-between",
                             sortBy === "manual" ? "cursor-grab active:cursor-grabbing" : "cursor-default"
@@ -745,7 +745,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                                     <div 
                                       ref={provided.innerRef}
                                       {...provided.draggableProps}
-                                      {...provided.dragHandleProps}
+                                      {...(sortBy === "manual" ? provided.dragHandleProps : {})}
                                       className={cn(
                                         "bg-[var(--card-bg-inner)] border border-[var(--border)] p-3 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:border-[var(--text-secondary)] group relative pl-4 overflow-hidden print:break-inside-avoid",
                                         snapshot.isDragging && "shadow-lg border-[var(--text-primary)] z-50 scale-[1.02]"
@@ -833,7 +833,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
 
                                       {/* Action Buttons Container (Hidden by default, shown on hover at the end) */}
                                       {!isReportView && (
-                                        <div className="absolute top-0 right-0 bottom-0 flex items-center gap-1 px-3 bg-gradient-to-l from-[var(--card-bg-inner)] via-[var(--card-bg-inner)] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 translate-x-4 group-hover:translate-x-0">
+                                        <div className="absolute top-0 right-0 bottom-0 flex items-center gap-1 px-3 bg-gradient-to-l from-[var(--card-bg-inner)] via-[var(--card-bg-inner)] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 translate-x-4 group-hover:translate-x-0 z-20 pointer-events-none group-hover:pointer-events-auto">
                                           {item.type === "RFP" && item.status === "Pending" && (
                                             <button 
                                               onClick={() => handleQuickStatusToggle(item, "Submitted")}
