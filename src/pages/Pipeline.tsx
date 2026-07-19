@@ -312,6 +312,10 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
     return null;
   };
 
+  const pipelineItems = useMemo(() => {
+    return items.filter(i => getTabForItem(i) !== null);
+  }, [items]);
+
   const currentTabItems = useMemo(() => items.filter(i => 
     getTabForItem(i) === activeTab &&
     ((i.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -326,36 +330,99 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
     (selectedSectorFilter === null || i.sector === selectedSectorFilter)
   ), [items, activeTab, searchQuery, viewFilter, selectedRegions, selectedSectorFilter]);
 
-  const locationChartItems = useMemo(() => items.filter(i => 
-    getTabForItem(i) === activeTab &&
-    ((i.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-     (i.client && i.client.toLowerCase().includes(searchQuery.toLowerCase()))) &&
-    (viewFilter === "All" || (Array.isArray(i.disciplines) && i.disciplines.some(d => {
-      if (viewFilter === "Architecture") return d === "Architecture";
-      if (viewFilter === "Interior") return d === "Interior";
-      if (viewFilter === "CS") return d === "Construction Supervision";
-      return false;
-    }))) &&
-    (selectedSectorFilter === null || i.sector === selectedSectorFilter)
-  ), [items, activeTab, searchQuery, viewFilter, selectedSectorFilter]);
+  const filteredMetricsItems = useMemo(() => {
+    return pipelineItems.filter(i => {
+      const matchesSearch = !searchQuery || 
+        (i.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (i.client && i.client.toLowerCase().includes(searchQuery.toLowerCase()));
+      
+      const matchesDiscipline = viewFilter === "All" || (Array.isArray(i.disciplines) && i.disciplines.some(d => {
+        if (viewFilter === "Architecture") return d === "Architecture";
+        if (viewFilter === "Interior") return d === "Interior";
+        if (viewFilter === "CS") return d === "Construction Supervision";
+        return false;
+      }));
+
+      const matchesRegion = selectedRegions.length === 0 || (i.region && selectedRegions.includes(i.region));
+
+      const matchesSector = selectedSectorFilter === null || i.sector === selectedSectorFilter;
+
+      return matchesSearch && matchesDiscipline && matchesRegion && matchesSector;
+    });
+  }, [pipelineItems, searchQuery, viewFilter, selectedRegions, selectedSectorFilter]);
+
+  const locationChartItemsFiltered = useMemo(() => {
+    return pipelineItems.filter(i => {
+      const matchesSearch = !searchQuery || 
+        (i.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (i.client && i.client.toLowerCase().includes(searchQuery.toLowerCase()));
+      
+      const matchesDiscipline = viewFilter === "All" || (Array.isArray(i.disciplines) && i.disciplines.some(d => {
+        if (viewFilter === "Architecture") return d === "Architecture";
+        if (viewFilter === "Interior") return d === "Interior";
+        if (viewFilter === "CS") return d === "Construction Supervision";
+        return false;
+      }));
+
+      const matchesSector = selectedSectorFilter === null || i.sector === selectedSectorFilter;
+
+      return matchesSearch && matchesDiscipline && matchesSector;
+    });
+  }, [pipelineItems, searchQuery, viewFilter, selectedSectorFilter]);
+
+  const sectorChartItemsFiltered = useMemo(() => {
+    return pipelineItems.filter(i => {
+      const matchesSearch = !searchQuery || 
+        (i.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (i.client && i.client.toLowerCase().includes(searchQuery.toLowerCase()));
+      
+      const matchesDiscipline = viewFilter === "All" || (Array.isArray(i.disciplines) && i.disciplines.some(d => {
+        if (viewFilter === "Architecture") return d === "Architecture";
+        if (viewFilter === "Interior") return d === "Interior";
+        if (viewFilter === "CS") return d === "Construction Supervision";
+        return false;
+      }));
+
+      const matchesRegion = selectedRegions.length === 0 || (i.region && selectedRegions.includes(i.region));
+
+      return matchesSearch && matchesDiscipline && matchesRegion;
+    });
+  }, [pipelineItems, searchQuery, viewFilter, selectedRegions]);
+
+  const disciplineChartItemsFiltered = useMemo(() => {
+    return pipelineItems.filter(i => {
+      const matchesSearch = !searchQuery || 
+        (i.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (i.client && i.client.toLowerCase().includes(searchQuery.toLowerCase()));
+      
+      const matchesRegion = selectedRegions.length === 0 || (i.region && selectedRegions.includes(i.region));
+
+      const matchesSector = selectedSectorFilter === null || i.sector === selectedSectorFilter;
+
+      return matchesSearch && matchesRegion && matchesSector;
+    });
+  }, [pipelineItems, searchQuery, selectedRegions, selectedSectorFilter]);
 
   const locationChartData = useMemo(() => {
     const dataMap: { [key: string]: number } = {};
-    locationChartItems.forEach(item => {
+    locationChartItemsFiltered.forEach(item => {
       const loc = item.region || "No Location Specified";
       const val = getFilteredValue(item);
       dataMap[loc] = (dataMap[loc] || 0) + val;
     });
 
+    const totalLocationChartValue = locationChartItemsFiltered.reduce((acc, curr) => acc + getFilteredValue(curr), 0);
+
     return Object.entries(dataMap)
       .map(([name, value]) => ({
         name,
         value,
-        color: getSectionColor(name, sectors)
+        color: getSectionColor(name, sectors),
+        percentage: totalLocationChartValue > 0 ? (value / totalLocationChartValue) * 100 : 0
       }))
       .filter(d => d.value > 0)
       .sort((a, b) => b.value - a.value);
-  }, [locationChartItems, sectors, viewFilter]);
+  }, [locationChartItemsFiltered, sectors, viewFilter]);
 
   const handleLocationBarClick = (locationName: string) => {
     setSelectedRegions(prev => {
@@ -369,24 +436,17 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
 
   // Calculations
   const metrics = useMemo(() => {
-    // If sorting by location, only include currentTabItems (visible in the active tab)
-    // Otherwise, include all active items that belong to any of the 4 tabs
-    const activeItems = sortBy === "location" 
-      ? currentTabItems 
-      : items.filter(i => getTabForItem(i) !== null);
-
-    const totalRFP = activeItems.filter(i => i.type === "RFP").reduce((acc, curr) => acc + getFilteredValue(curr), 0);
-    const totalVO = activeItems.filter(i => i.type === "VO").reduce((acc, curr) => acc + getFilteredValue(curr), 0);
+    const totalRFP = filteredMetricsItems.filter(i => i.type === "RFP").reduce((acc, curr) => acc + getFilteredValue(curr), 0);
+    const totalVO = filteredMetricsItems.filter(i => i.type === "VO").reduce((acc, curr) => acc + getFilteredValue(curr), 0);
     const totalPipeline = totalRFP + totalVO;
 
-    // Absolute totals for discipline breakdown (ignoring view filter)
-    const absoluteTotalPipeline = activeItems.reduce((acc, curr) => {
+    const absoluteTotalPipeline = disciplineChartItemsFiltered.reduce((acc, curr) => {
       return acc + (curr.values.architecture || 0) + (curr.values.interior || 0) + (curr.values.cs || 0) + (curr.values.vo || 0);
     }, 0);
 
-    const totalArch = activeItems.reduce((acc, curr) => acc + (curr.values.architecture || 0), 0);
-    const totalInt = activeItems.reduce((acc, curr) => acc + (curr.values.interior || 0), 0);
-    const totalSupervision = activeItems.reduce((acc, curr) => acc + (curr.values.cs || 0), 0);
+    const totalArch = disciplineChartItemsFiltered.reduce((acc, curr) => acc + (curr.values.architecture || 0), 0);
+    const totalInt = disciplineChartItemsFiltered.reduce((acc, curr) => acc + (curr.values.interior || 0), 0);
+    const totalSupervision = disciplineChartItemsFiltered.reduce((acc, curr) => acc + (curr.values.cs || 0), 0);
 
     const disciplineData = [
       { name: "Architecture", value: totalArch, color: DISCIPLINE_COLORS["Architecture"], percentage: absoluteTotalPipeline > 0 ? (totalArch / absoluteTotalPipeline) * 100 : 0 },
@@ -394,19 +454,20 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
       { name: "CS", value: totalSupervision, color: DISCIPLINE_COLORS["Construction Supervision"], percentage: absoluteTotalPipeline > 0 ? (totalSupervision / absoluteTotalPipeline) * 100 : 0 },
     ];
 
+    const totalSectorChartValue = sectorChartItemsFiltered.reduce((acc, curr) => acc + getFilteredValue(curr), 0);
     const sectorData = sectors.map(sector => {
-      const sectorItems = activeItems.filter(i => i.sector === sector.name);
+      const sectorItems = sectorChartItemsFiltered.filter(i => i.sector === sector.name);
       const value = sectorItems.reduce((acc, curr) => acc + getFilteredValue(curr), 0);
       return { 
         name: sector.name, 
         value, 
         color: sector.color,
-        percentage: totalPipeline > 0 ? (value / totalPipeline) * 100 : 0
+        percentage: totalSectorChartValue > 0 ? (value / totalSectorChartValue) * 100 : 0
       };
     }).filter(d => d.value > 0);
 
     return { totalRFP, totalVO, totalPipeline, sectorData, disciplineData, absoluteTotalPipeline };
-  }, [items, viewFilter, sortBy, currentTabItems, sectors]);
+  }, [filteredMetricsItems, disciplineChartItemsFiltered, sectorChartItemsFiltered, sectors, viewFilter]);
 
   const renderLocationSummary = (groupName: string, groupItems: PipelineItem[]) => {
     if (sortBy !== "location") return null;
@@ -1259,13 +1320,13 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
             isReportView ? "flex-col md:flex-row" : "flex-col"
           )}>
             <div className={cn(
-              "h-64 min-w-0 min-h-0 print:overflow-visible",
-              isReportView ? "flex-1 w-full md:w-2/3 print:h-80" : "w-full print:h-80"
+              "h-80 min-w-0 min-h-0 print:overflow-visible",
+              isReportView ? "flex-1 w-full md:w-2/3 print:h-96" : "w-full print:h-96"
             )}>
-              <ResponsiveContainer width="100%" height={256}>
+              <ResponsiveContainer width="100%" height={320}>
                 <BarChart 
                   data={locationChartData} 
-                  margin={{ top: 20, right: 30, left: 10, bottom: 5 }} 
+                  margin={{ top: 20, right: 30, left: 10, bottom: 65 }} 
                   barSize={30}
                   onClick={(state) => {
                     if (!state || !state.activeLabel) {
@@ -1280,6 +1341,10 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                     fontSize={10} 
                     tickLine={false}
                     axisLine={false}
+                    angle={-35}
+                    textAnchor="end"
+                    interval={0}
+                    height={65}
                   />
                   <YAxis 
                     stroke="#888" 
@@ -1384,13 +1449,13 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
             isReportView ? "flex-col md:flex-row" : "flex-col"
           )}>
             <div className={cn(
-              "h-64 min-w-0 min-h-0 print:overflow-visible",
-              isReportView ? "flex-1 w-full md:w-2/3 print:h-80" : "w-full print:h-80"
+              "h-80 min-w-0 min-h-0 print:overflow-visible",
+              isReportView ? "flex-1 w-full md:w-2/3 print:h-96" : "w-full print:h-96"
             )}>
-              <ResponsiveContainer width="100%" height={256}>
+              <ResponsiveContainer width="100%" height={320}>
                 <BarChart 
                   data={metrics.sectorData} 
-                  margin={{ top: 20, right: 30, left: 10, bottom: 5 }} 
+                  margin={{ top: 20, right: 30, left: 10, bottom: 65 }} 
                   barSize={30}
                   onClick={(state) => {
                     if (!state || !state.activeLabel) {
@@ -1405,6 +1470,10 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                     fontSize={10} 
                     tickLine={false}
                     axisLine={false}
+                    angle={-35}
+                    textAnchor="end"
+                    interval={0}
+                    height={65}
                   />
                   <YAxis 
                     stroke="#888" 
