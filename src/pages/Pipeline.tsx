@@ -134,10 +134,10 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
   const [items, setItems] = useState<PipelineItem[]>([]);
   const [sectors, setSectors] = useState<MarketSector[]>([]);
   const [activeTab, setActiveTab] = useState<TabType>("Submitted Proposals");
-  const [selectedSectorFilter, setSelectedSectorFilter] = useState<string | null>(null);
+  const [selectedSectors, setSelectedSectors] = useState<string[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [viewFilter, setViewFilter] = useState<"All" | "Architecture" | "Interior" | "CS">("All");
+  const [selectedDisciplines, setSelectedDisciplines] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<"manual" | "probability" | "value" | "date" | "location">("manual");
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
 
@@ -156,13 +156,15 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
 
   const getFilteredValue = (item: PipelineItem) => {
     if (item.type === "VO") {
-      return viewFilter === "All" ? (item.values.vo || 0) : 0;
+      return selectedDisciplines.length === 0 ? (item.values.vo || 0) : 0;
     }
-    if (viewFilter === "All") return getTotalValue(item);
-    if (viewFilter === "Architecture") return item.values.architecture || 0;
-    if (viewFilter === "Interior") return item.values.interior || 0;
-    if (viewFilter === "CS") return item.values.cs || 0;
-    return 0;
+    if (selectedDisciplines.length === 0) return getTotalValue(item);
+    
+    let sum = 0;
+    if (selectedDisciplines.includes("Architecture")) sum += item.values.architecture || 0;
+    if (selectedDisciplines.includes("Interior")) sum += item.values.interior || 0;
+    if (selectedDisciplines.includes("CS")) sum += item.values.cs || 0;
+    return sum;
   };
 
   const sortItems = (itemsList: PipelineItem[]) => {
@@ -320,15 +322,15 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
     getTabForItem(i) === activeTab &&
     ((i.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
      (i.client && i.client.toLowerCase().includes(searchQuery.toLowerCase()))) &&
-    (viewFilter === "All" || (Array.isArray(i.disciplines) && i.disciplines.some(d => {
-      if (viewFilter === "Architecture") return d === "Architecture";
-      if (viewFilter === "Interior") return d === "Interior";
-      if (viewFilter === "CS") return d === "Construction Supervision";
+    (selectedDisciplines.length === 0 || (Array.isArray(i.disciplines) && i.disciplines.some(d => {
+      if (selectedDisciplines.includes("Architecture") && d === "Architecture") return true;
+      if (selectedDisciplines.includes("Interior") && d === "Interior") return true;
+      if (selectedDisciplines.includes("CS") && d === "Construction Supervision") return true;
       return false;
     }))) &&
     (selectedRegions.length === 0 || (i.region && selectedRegions.includes(i.region))) &&
-    (selectedSectorFilter === null || i.sector === selectedSectorFilter)
-  ), [items, activeTab, searchQuery, viewFilter, selectedRegions, selectedSectorFilter]);
+    (selectedSectors.length === 0 || (i.sector && selectedSectors.includes(i.sector)))
+  ), [items, activeTab, searchQuery, selectedDisciplines, selectedRegions, selectedSectors]);
 
   const filteredMetricsItems = useMemo(() => {
     return pipelineItems.filter(i => {
@@ -336,20 +338,20 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
         (i.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
         (i.client && i.client.toLowerCase().includes(searchQuery.toLowerCase()));
       
-      const matchesDiscipline = viewFilter === "All" || (Array.isArray(i.disciplines) && i.disciplines.some(d => {
-        if (viewFilter === "Architecture") return d === "Architecture";
-        if (viewFilter === "Interior") return d === "Interior";
-        if (viewFilter === "CS") return d === "Construction Supervision";
+      const matchesDiscipline = selectedDisciplines.length === 0 || (Array.isArray(i.disciplines) && i.disciplines.some(d => {
+        if (selectedDisciplines.includes("Architecture") && d === "Architecture") return true;
+        if (selectedDisciplines.includes("Interior") && d === "Interior") return true;
+        if (selectedDisciplines.includes("CS") && d === "Construction Supervision") return true;
         return false;
       }));
 
       const matchesRegion = selectedRegions.length === 0 || (i.region && selectedRegions.includes(i.region));
 
-      const matchesSector = selectedSectorFilter === null || i.sector === selectedSectorFilter;
+      const matchesSector = selectedSectors.length === 0 || (i.sector && selectedSectors.includes(i.sector));
 
       return matchesSearch && matchesDiscipline && matchesRegion && matchesSector;
     });
-  }, [pipelineItems, searchQuery, viewFilter, selectedRegions, selectedSectorFilter]);
+  }, [pipelineItems, searchQuery, selectedDisciplines, selectedRegions, selectedSectors]);
 
   const locationChartItemsFiltered = useMemo(() => {
     return pipelineItems.filter(i => {
@@ -357,18 +359,18 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
         (i.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
         (i.client && i.client.toLowerCase().includes(searchQuery.toLowerCase()));
       
-      const matchesDiscipline = viewFilter === "All" || (Array.isArray(i.disciplines) && i.disciplines.some(d => {
-        if (viewFilter === "Architecture") return d === "Architecture";
-        if (viewFilter === "Interior") return d === "Interior";
-        if (viewFilter === "CS") return d === "Construction Supervision";
+      const matchesDiscipline = selectedDisciplines.length === 0 || (Array.isArray(i.disciplines) && i.disciplines.some(d => {
+        if (selectedDisciplines.includes("Architecture") && d === "Architecture") return true;
+        if (selectedDisciplines.includes("Interior") && d === "Interior") return true;
+        if (selectedDisciplines.includes("CS") && d === "Construction Supervision") return true;
         return false;
       }));
 
-      const matchesSector = selectedSectorFilter === null || i.sector === selectedSectorFilter;
+      const matchesSector = selectedSectors.length === 0 || (i.sector && selectedSectors.includes(i.sector));
 
       return matchesSearch && matchesDiscipline && matchesSector;
     });
-  }, [pipelineItems, searchQuery, viewFilter, selectedSectorFilter]);
+  }, [pipelineItems, searchQuery, selectedDisciplines, selectedSectors]);
 
   const sectorChartItemsFiltered = useMemo(() => {
     return pipelineItems.filter(i => {
@@ -376,10 +378,10 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
         (i.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
         (i.client && i.client.toLowerCase().includes(searchQuery.toLowerCase()));
       
-      const matchesDiscipline = viewFilter === "All" || (Array.isArray(i.disciplines) && i.disciplines.some(d => {
-        if (viewFilter === "Architecture") return d === "Architecture";
-        if (viewFilter === "Interior") return d === "Interior";
-        if (viewFilter === "CS") return d === "Construction Supervision";
+      const matchesDiscipline = selectedDisciplines.length === 0 || (Array.isArray(i.disciplines) && i.disciplines.some(d => {
+        if (selectedDisciplines.includes("Architecture") && d === "Architecture") return true;
+        if (selectedDisciplines.includes("Interior") && d === "Interior") return true;
+        if (selectedDisciplines.includes("CS") && d === "Construction Supervision") return true;
         return false;
       }));
 
@@ -387,7 +389,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
 
       return matchesSearch && matchesDiscipline && matchesRegion;
     });
-  }, [pipelineItems, searchQuery, viewFilter, selectedRegions]);
+  }, [pipelineItems, searchQuery, selectedDisciplines, selectedRegions]);
 
   const disciplineChartItemsFiltered = useMemo(() => {
     return pipelineItems.filter(i => {
@@ -397,11 +399,11 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
       
       const matchesRegion = selectedRegions.length === 0 || (i.region && selectedRegions.includes(i.region));
 
-      const matchesSector = selectedSectorFilter === null || i.sector === selectedSectorFilter;
+      const matchesSector = selectedSectors.length === 0 || (i.sector && selectedSectors.includes(i.sector));
 
       return matchesSearch && matchesRegion && matchesSector;
     });
-  }, [pipelineItems, searchQuery, selectedRegions, selectedSectorFilter]);
+  }, [pipelineItems, searchQuery, selectedRegions, selectedSectors]);
 
   const locationChartData = useMemo(() => {
     const dataMap: { [key: string]: number } = {};
@@ -422,7 +424,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
       }))
       .filter(d => d.value > 0)
       .sort((a, b) => b.value - a.value);
-  }, [locationChartItemsFiltered, sectors, viewFilter]);
+  }, [locationChartItemsFiltered, sectors, selectedDisciplines]);
 
   const handleLocationBarClick = (locationName: string) => {
     setSelectedRegions(prev => {
@@ -467,7 +469,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
     }).filter(d => d.value > 0);
 
     return { totalRFP, totalVO, totalPipeline, sectorData, disciplineData, absoluteTotalPipeline };
-  }, [filteredMetricsItems, disciplineChartItemsFiltered, sectorChartItemsFiltered, sectors, viewFilter]);
+  }, [filteredMetricsItems, disciplineChartItemsFiltered, sectorChartItemsFiltered, sectors, selectedDisciplines]);
 
   const renderLocationSummary = (groupName: string, groupItems: PipelineItem[]) => {
     if (sortBy !== "location") return null;
@@ -475,17 +477,17 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
     const sectionTotal = groupItems.reduce((acc, curr) => acc + getFilteredValue(curr), 0);
     if (sectionTotal === 0) return null;
 
-    // Calculate discipline split, respecting the current viewFilter
-    const totalArch = viewFilter === "All" || viewFilter === "Architecture"
+    // Calculate discipline split, respecting the current selectedDisciplines
+    const totalArch = selectedDisciplines.length === 0 || selectedDisciplines.includes("Architecture")
       ? groupItems.reduce((acc, curr) => acc + (curr.values.architecture || 0), 0)
       : 0;
-    const totalInt = viewFilter === "All" || viewFilter === "Interior"
+    const totalInt = selectedDisciplines.length === 0 || selectedDisciplines.includes("Interior")
       ? groupItems.reduce((acc, curr) => acc + (curr.values.interior || 0), 0)
       : 0;
-    const totalCS = viewFilter === "All" || viewFilter === "CS"
+    const totalCS = selectedDisciplines.length === 0 || selectedDisciplines.includes("CS")
       ? groupItems.reduce((acc, curr) => acc + (curr.values.cs || 0), 0)
       : 0;
-    const totalVO = viewFilter === "All"
+    const totalVO = selectedDisciplines.length === 0
       ? groupItems.filter(i => i.type === "VO").reduce((acc, curr) => acc + (curr.values.vo || 0), 0)
       : 0;
 
@@ -513,7 +515,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
           {/* Discipline Split Column */}
           <div className="space-y-2">
             <h5 className="text-[10px] font-mono uppercase tracking-wider text-[var(--text-secondary)] font-bold">
-              Discipline Split ({viewFilter === "All" ? "All Disciplines" : viewFilter})
+              Discipline Split ({selectedDisciplines.length === 0 ? "All Disciplines" : selectedDisciplines.join(", ")})
             </h5>
             <div className="space-y-2">
               {disciplineSplit.map(disc => {
@@ -632,14 +634,14 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
       getTabForItem(i) === tab &&
       ((i.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
        (i.client && i.client.toLowerCase().includes(searchQuery.toLowerCase()))) &&
-      (viewFilter === "All" || (Array.isArray(i.disciplines) && i.disciplines.some(d => {
-        if (viewFilter === "Architecture") return d === "Architecture";
-        if (viewFilter === "Interior") return d === "Interior";
-        if (viewFilter === "CS") return d === "Construction Supervision";
+      (selectedDisciplines.length === 0 || (Array.isArray(i.disciplines) && i.disciplines.some(d => {
+        if (selectedDisciplines.includes("Architecture") && d === "Architecture") return true;
+        if (selectedDisciplines.includes("Interior") && d === "Interior") return true;
+        if (selectedDisciplines.includes("CS") && d === "Construction Supervision") return true;
         return false;
       }))) &&
       (selectedRegions.length === 0 || (i.region && selectedRegions.includes(i.region))) &&
-      (selectedSectorFilter === null || i.sector === selectedSectorFilter)
+      (selectedSectors.length === 0 || (i.sector && selectedSectors.includes(i.sector)))
     );
     return groupItems(tabItems);
   };
@@ -891,7 +893,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                       <div className="text-right flex flex-col items-end gap-1.5">
                         <div>
                           <span className="text-sm font-mono text-[var(--text-primary)] block">{getFilteredValue(item).toLocaleString()} {currency}</span>
-                          {viewFilter !== "All" && (
+                          {selectedDisciplines.length > 0 && (
                             <span className="text-[10px] text-[var(--text-secondary)]">of {getTotalValue(item).toLocaleString()} Total</span>
                           )}
                         </div>
@@ -900,10 +902,10 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                     {item.type === "RFP" && Array.isArray(item.disciplines) && (
                       <div className="mt-2 flex flex-wrap gap-1.5 relative z-10">
                         {item.disciplines.map((d) => {
-                          const isSelected = viewFilter === "All" || 
-                                            (viewFilter === "Architecture" && d === "Architecture") ||
-                                            (viewFilter === "Interior" && d === "Interior") ||
-                                            (viewFilter === "CS" && d === "Construction Supervision");
+                          const isSelected = selectedDisciplines.length === 0 || 
+                                            (selectedDisciplines.includes("Architecture") && d === "Architecture") ||
+                                            (selectedDisciplines.includes("Interior") && d === "Interior") ||
+                                            (selectedDisciplines.includes("CS") && d === "Construction Supervision");
                           const color = DISCIPLINE_COLORS[d] || 'var(--text-secondary)';
                           return (
                             <span key={d} className={cn(
@@ -1057,7 +1059,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                                         <div className="text-right flex flex-col items-end gap-1.5">
                                           <div>
                                             <span className="text-sm font-mono text-[var(--text-primary)] block">{getFilteredValue(item).toLocaleString()} {currency}</span>
-                                            {viewFilter !== "All" && (
+                                            {selectedDisciplines.length > 0 && (
                                               <span className="text-[10px] text-[var(--text-secondary)]">of {getTotalValue(item).toLocaleString()} Total</span>
                                             )}
                                           </div>
@@ -1067,10 +1069,10 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                                       {item.type === "RFP" && Array.isArray(item.disciplines) && (
                                         <div className="mt-2 flex flex-wrap gap-1.5 relative z-10">
                                           {item.disciplines.map((d) => {
-                                            const isSelected = viewFilter === "All" || 
-                                                              (viewFilter === "Architecture" && d === "Architecture") ||
-                                                              (viewFilter === "Interior" && d === "Interior") ||
-                                                              (viewFilter === "CS" && d === "Construction Supervision");
+                                            const isSelected = selectedDisciplines.length === 0 || 
+                                                              (selectedDisciplines.includes("Architecture") && d === "Architecture") ||
+                                                              (selectedDisciplines.includes("Interior") && d === "Interior") ||
+                                                              (selectedDisciplines.includes("CS") && d === "Construction Supervision");
                                             const color = DISCIPLINE_COLORS[d] || 'var(--text-secondary)';
                                             return (
                                               <span key={d} className={cn(
@@ -1176,45 +1178,6 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-3">
-                {availableRegions.length > 0 && (
-                  <div className="flex items-center gap-2 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 relative group transition-all duration-300 hover:border-[var(--text-secondary)] hover:shadow-sm cursor-pointer">
-                    <span className="text-xs font-mono uppercase text-[var(--text-secondary)]">Region:</span>
-                    <div className="text-xs font-medium text-[var(--text-primary)] flex items-center gap-1">
-                      {selectedRegions.length === 0 ? "All" : `${selectedRegions.length} Selected`}
-                    </div>
-                    <div className="absolute top-full right-0 mt-2 w-48 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 translate-y-2 group-hover:translate-y-0 z-50 p-2">
-                      <div className="space-y-1 max-h-48 overflow-y-auto">
-                        <label className="flex items-center gap-2 p-1.5 hover:bg-[var(--bg-tertiary)] rounded cursor-pointer transition-colors">
-                          <input 
-                            type="checkbox" 
-                            checked={selectedRegions.length === 0}
-                            onChange={() => setSelectedRegions([])}
-                            className="rounded border-[var(--border)] text-[var(--text-primary)] focus:ring-0 transition-all"
-                          />
-                          <span className="text-xs text-[var(--text-primary)]">All Regions</span>
-                        </label>
-                        <div className="h-px bg-[var(--border)] my-1" />
-                        {availableRegions.map(region => (
-                          <label key={region} className="flex items-center gap-2 p-1.5 hover:bg-[var(--bg-tertiary)] rounded cursor-pointer transition-colors">
-                            <input 
-                              type="checkbox" 
-                              checked={selectedRegions.includes(region)}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setSelectedRegions([...selectedRegions, region]);
-                                } else {
-                                  setSelectedRegions(selectedRegions.filter(r => r !== region));
-                                }
-                              }}
-                              className="rounded border-[var(--border)] text-[var(--text-primary)] focus:ring-0 transition-all"
-                            />
-                            <span className="text-xs text-[var(--text-primary)]">{region}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
                 <div className="flex items-center gap-2 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 transition-all duration-300 hover:border-[var(--text-secondary)] hover:shadow-sm">
                   <span className="text-xs font-mono uppercase text-[var(--text-secondary)]">Sort:</span>
                   <select 
@@ -1228,22 +1191,6 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                     <option value="date">Date</option>
                     <option value="location">Location</option>
                   </select>
-                </div>
-                <div className="flex bg-[var(--card-bg)] border border-[var(--border)] rounded-lg p-1">
-                  {(["All", "Architecture", "Interior", "CS"] as const).map((filter) => (
-                    <button
-                      key={filter}
-                      onClick={() => setViewFilter(filter)}
-                      className={cn(
-                        "px-3 py-1.5 text-xs font-medium rounded transition-all duration-300 hover:scale-105 active:scale-95",
-                        viewFilter === filter 
-                          ? "bg-[var(--text-primary)] text-[var(--bg-primary)] shadow-sm" 
-                          : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]"
-                      )}
-                    >
-                      {filter === "CS" ? "Supervision" : filter}
-                    </button>
-                  ))}
                 </div>
               </div>
               <>
@@ -1273,7 +1220,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 print:grid-cols-3">
         <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[var(--text-secondary)] group cursor-default">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xs font-mono uppercase text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors">Total Pipeline Value ({viewFilter})</h3>
+            <h3 className="text-xs font-mono uppercase text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors">Total Pipeline Value ({selectedDisciplines.length === 0 ? "All" : selectedDisciplines.join(", ")})</h3>
             <DollarSign size={20} className="text-emerald-400 group-hover:scale-110 transition-transform duration-300" />
           </div>
           <p className="text-3xl font-medium text-[var(--text-primary)]">
@@ -1282,7 +1229,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
         </div>
         <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[var(--text-secondary)] group cursor-default">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xs font-mono uppercase text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors">RFP Value ({viewFilter})</h3>
+            <h3 className="text-xs font-mono uppercase text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors">RFP Value ({selectedDisciplines.length === 0 ? "All" : selectedDisciplines.join(", ")})</h3>
             <Briefcase size={20} className="text-blue-400 group-hover:scale-110 transition-transform duration-300" />
           </div>
           <p className="text-3xl font-medium text-[var(--text-primary)]">
@@ -1312,7 +1259,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
         )}>
           <h3 className="text-sm font-medium text-[var(--text-primary)] mb-6 flex items-center gap-2 group-hover:text-blue-400 transition-colors">
             <MapPin size={16} className="group-hover:rotate-12 transition-transform" />
-            Location Distribution ({viewFilter})
+            Location Distribution ({selectedDisciplines.length === 0 ? "All" : selectedDisciplines.join(", ")})
           </h3>
           
           <div className={cn(
@@ -1436,7 +1383,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
         )}>
           <h3 className="text-sm font-medium text-[var(--text-primary)] mb-6 flex items-center gap-2 group-hover:text-emerald-400 transition-colors">
             <BarChart2 size={16} className="group-hover:rotate-12 transition-transform" />
-            Sector Distribution ({viewFilter})
+            Sector Distribution
           </h3>
           
           <div className={cn(
@@ -1444,19 +1391,14 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
             isReportView ? "flex-col md:flex-row" : "flex-col"
           )}>
             <div className={cn(
-              "h-80 min-w-0 min-h-0 print:overflow-visible",
-              isReportView ? "flex-1 w-full md:w-2/3 print:h-96" : "w-full print:h-96"
+               "h-80 min-w-0 min-h-0 print:overflow-visible",
+               isReportView ? "flex-1 w-full md:w-2/3 print:h-96" : "w-full print:h-96"
             )}>
               <ResponsiveContainer width="100%" height={320}>
                 <BarChart 
                   data={metrics.sectorData} 
                   margin={{ top: 20, right: 30, left: 10, bottom: 5 }} 
                   barSize={30}
-                  onClick={(state) => {
-                    if (!state || !state.activeLabel) {
-                      setSelectedSectorFilter(null);
-                    }
-                  }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                   <XAxis 
@@ -1489,22 +1431,30 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                     minPointSize={10}
                     className="outline-none"
                     onClick={(data) => {
-                      if (selectedSectorFilter === data.name) {
-                        setSelectedSectorFilter(null);
-                      } else {
-                        setSelectedSectorFilter(data.name);
+                      if (data && data.name) {
+                        setSelectedSectors(prev => {
+                          if (prev.includes(data.name)) {
+                            return prev.filter(s => s !== data.name);
+                          } else {
+                            return [...prev, data.name];
+                          }
+                        });
                       }
                     }}
                   >
-                    {metrics.sectorData.map((entry, index) => (
-                      <Cell 
-                        key={`cell-${index}`} 
-                        fill={entry.color} 
-                        opacity={selectedSectorFilter && selectedSectorFilter !== entry.name ? 0.3 : 1}
-                        className="hover:opacity-80 transition-opacity cursor-pointer outline-none" 
-                        tabIndex={-1}
-                      />
-                    ))}
+                    {metrics.sectorData.map((entry, index) => {
+                      const hasSelection = selectedSectors.length > 0;
+                      const isSelected = selectedSectors.includes(entry.name);
+                      return (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={entry.color} 
+                          opacity={hasSelection && !isSelected ? 0.3 : 1}
+                          className="hover:opacity-80 transition-opacity cursor-pointer outline-none" 
+                          tabIndex={-1}
+                        />
+                      );
+                    })}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -1513,12 +1463,20 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
               "space-y-3",
               isReportView ? "flex-none w-full md:w-1/3 border-l border-[var(--border)] pl-8 print:pl-6" : "mt-6"
             )}>
-              {metrics.sectorData.map((sector, index) => {
-                const isSelected = selectedSectorFilter === sector.name;
+              {metrics.sectorData.map((sector) => {
+                const isSelected = selectedSectors.includes(sector.name);
                 return (
                   <div 
                     key={sector.name} 
-                    onClick={() => setSelectedSectorFilter(isSelected ? null : sector.name)}
+                    onClick={() => {
+                      setSelectedSectors(prev => {
+                        if (prev.includes(sector.name)) {
+                          return prev.filter(s => s !== sector.name);
+                        } else {
+                          return [...prev, sector.name];
+                        }
+                      });
+                    }}
                     className={cn(
                       "flex items-center justify-between text-xs hover:bg-[var(--bg-tertiary)] p-1.5 -mx-1.5 rounded transition-all cursor-pointer",
                       isSelected && "bg-[var(--bg-tertiary)] ring-1 ring-[var(--border-hover)]"
@@ -1540,6 +1498,14 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                   </div>
                 );
               })}
+              {selectedSectors.length > 0 && (
+                <button
+                  onClick={() => setSelectedSectors([])}
+                  className="text-[10px] font-mono text-emerald-400 hover:text-emerald-300 uppercase tracking-wider transition-colors pt-1 block"
+                >
+                  Clear Selection
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -1567,11 +1533,6 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                   data={metrics.disciplineData} 
                   margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
                   barSize={20}
-                  onClick={(state) => {
-                    if (!state || !state.activeLabel) {
-                      setViewFilter("All");
-                    }
-                  }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#333" horizontal={false} />
                   <XAxis 
@@ -1604,24 +1565,30 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                     minPointSize={10}
                     className="outline-none"
                     onClick={(data) => {
-                      if (!data) return;
-                      const name = data.name as any;
-                      if (viewFilter === name) {
-                        setViewFilter("All");
-                      } else {
-                        setViewFilter(name);
+                      if (data && data.name) {
+                        setSelectedDisciplines(prev => {
+                          if (prev.includes(data.name)) {
+                            return prev.filter(d => d !== data.name);
+                          } else {
+                            return [...prev, data.name];
+                          }
+                        });
                       }
                     }}
                   >
-                    {metrics.disciplineData.map((entry, index) => (
-                      <Cell 
-                        key={`cell-${index}`} 
-                        fill={entry.color}
-                        opacity={viewFilter !== "All" && viewFilter !== entry.name ? 0.3 : 1}
-                        className="hover:opacity-80 transition-opacity cursor-pointer outline-none"
-                        tabIndex={-1}
-                      />
-                    ))}
+                    {metrics.disciplineData.map((entry, index) => {
+                      const hasSelection = selectedDisciplines.length > 0;
+                      const isSelected = selectedDisciplines.includes(entry.name);
+                      return (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={entry.color}
+                          opacity={hasSelection && !isSelected ? 0.3 : 1}
+                          className="hover:opacity-80 transition-opacity cursor-pointer outline-none"
+                          tabIndex={-1}
+                        />
+                      );
+                    })}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -1636,12 +1603,20 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                   ? (d.value / metrics.absoluteTotalPipeline) * 100 
                   : 0;
                 
-                const isSelected = viewFilter === d.name;
+                const isSelected = selectedDisciplines.includes(d.name);
 
                 return (
                   <div 
                     key={d.name} 
-                    onClick={() => setViewFilter(isSelected ? "All" : d.name as any)}
+                    onClick={() => {
+                      setSelectedDisciplines(prev => {
+                        if (prev.includes(d.name)) {
+                          return prev.filter(item => item !== d.name);
+                        } else {
+                          return [...prev, d.name];
+                        }
+                      });
+                    }}
                     className={cn(
                       "flex items-center justify-between text-xs hover:bg-[var(--bg-tertiary)] p-1.5 -mx-1.5 rounded transition-all cursor-pointer",
                       isSelected && "bg-[var(--bg-tertiary)] ring-1 ring-[var(--border-hover)]"
@@ -1661,6 +1636,14 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                   </div>
                 );
               })}
+              {selectedDisciplines.length > 0 && (
+                <button
+                  onClick={() => setSelectedDisciplines([])}
+                  className="text-[10px] font-mono text-blue-400 hover:text-blue-300 uppercase tracking-wider transition-colors pt-1 block"
+                >
+                  Clear Selection
+                </button>
+              )}
               <div className="pt-3 border-t border-[var(--border)] flex justify-between items-center text-xs">
                 <span className="text-[var(--text-secondary)] font-medium">Total Revenue</span>
                 <span className="font-mono text-[var(--text-primary)] font-bold text-sm">{metrics.absoluteTotalPipeline.toLocaleString()} {currency}</span>
@@ -1684,10 +1667,10 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                                       (i.client && i.client.toLowerCase().includes(searchQuery.toLowerCase()));
                   if (!searchMatches) return false;
                   
-                  const disciplineMatches = viewFilter === "All" || (Array.isArray(i.disciplines) && i.disciplines.some(d => {
-                    if (viewFilter === "Architecture") return d === "Architecture";
-                    if (viewFilter === "Interior") return d === "Interior";
-                    if (viewFilter === "CS") return d === "Construction Supervision";
+                  const disciplineMatches = selectedDisciplines.length === 0 || (Array.isArray(i.disciplines) && i.disciplines.some(d => {
+                    if (selectedDisciplines.includes("Architecture") && d === "Architecture") return true;
+                    if (selectedDisciplines.includes("Interior") && d === "Interior") return true;
+                    if (selectedDisciplines.includes("CS") && d === "Construction Supervision") return true;
                     return false;
                   }));
                   if (!disciplineMatches) return false;
@@ -1695,7 +1678,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                   const regionMatches = selectedRegions.length === 0 || (i.region && selectedRegions.includes(i.region));
                   if (!regionMatches) return false;
                   
-                  const sectorMatches = selectedSectorFilter === null || i.sector === selectedSectorFilter;
+                  const sectorMatches = selectedSectors.length === 0 || (i.sector && selectedSectors.includes(i.sector));
                   if (!sectorMatches) return false;
                   
                   return true;
