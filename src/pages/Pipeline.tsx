@@ -93,7 +93,31 @@ const getSectionColor = (sectionName: string, sectorsList: MarketSector[]) => {
   if (sectionName === "Medium Probability") return "#f59e0b"; // Amber
   if (sectionName === "Low Probability") return "#ef4444"; // Red
   if (sectionName.includes("Proposals by")) return "var(--text-primary)";
-  return sectorsList.find(s => s.name === sectionName)?.color || "var(--text-secondary)";
+  
+  const foundSector = sectorsList.find(s => s.name === sectionName);
+  if (foundSector) return foundSector.color;
+
+  // For locations, let's use a nice dynamic set of colors
+  const locationColors = [
+    "#3b82f6", // Blue
+    "#10b981", // Emerald
+    "#8b5cf6", // Purple
+    "#ec4899", // Pink
+    "#f59e0b", // Amber
+    "#06b6d4", // Cyan
+    "#14b8a6", // Teal
+    "#f97316", // Orange
+  ];
+  
+  if (sectionName === "No Location Specified") return "#94a3b8"; // Slate gray
+
+  // Simple string hashing
+  let hash = 0;
+  for (let i = 0; i < sectionName.length; i++) {
+    hash = sectionName.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % locationColors.length;
+  return locationColors[index];
 };
 
 const getDisciplineShortName = (d: string) => {
@@ -113,7 +137,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewFilter, setViewFilter] = useState<"All" | "Architecture" | "Interior" | "CS">("All");
-  const [sortBy, setSortBy] = useState<"manual" | "probability" | "value" | "date">("manual");
+  const [sortBy, setSortBy] = useState<"manual" | "probability" | "value" | "date" | "location">("manual");
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
 
   const availableRegions = useMemo(() => {
@@ -287,10 +311,27 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
     return null;
   };
 
+  const currentTabItems = useMemo(() => items.filter(i => 
+    getTabForItem(i) === activeTab &&
+    ((i.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+     (i.client && i.client.toLowerCase().includes(searchQuery.toLowerCase()))) &&
+    (viewFilter === "All" || (Array.isArray(i.disciplines) && i.disciplines.some(d => {
+      if (viewFilter === "Architecture") return d === "Architecture";
+      if (viewFilter === "Interior") return d === "Interior";
+      if (viewFilter === "CS") return d === "Construction Supervision";
+      return false;
+    }))) &&
+    (selectedRegions.length === 0 || (i.region && selectedRegions.includes(i.region))) &&
+    (selectedSectorFilter === null || i.sector === selectedSectorFilter)
+  ), [items, activeTab, searchQuery, viewFilter, selectedRegions, selectedSectorFilter]);
+
   // Calculations
   const metrics = useMemo(() => {
-    // Include items that belong to any of the 4 tabs
-    const activeItems = items.filter(i => getTabForItem(i) !== null);
+    // If sorting by location, only include currentTabItems (visible in the active tab)
+    // Otherwise, include all active items that belong to any of the 4 tabs
+    const activeItems = sortBy === "location" 
+      ? currentTabItems 
+      : items.filter(i => getTabForItem(i) !== null);
 
     const totalRFP = activeItems.filter(i => i.type === "RFP").reduce((acc, curr) => acc + getFilteredValue(curr), 0);
     const totalVO = activeItems.filter(i => i.type === "VO").reduce((acc, curr) => acc + getFilteredValue(curr), 0);
@@ -323,7 +364,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
     }).filter(d => d.value > 0);
 
     return { totalRFP, totalVO, totalPipeline, sectorData, disciplineData, absoluteTotalPipeline };
-  }, [items, viewFilter]);
+  }, [items, viewFilter, sortBy, currentTabItems, sectors]);
 
   const [achievingItem, setAchievingItem] = useState<{ item: PipelineItem, status: "Achieved" | "Approved" } | null>(null);
   const [achievementDate, setAchievementDate] = useState(new Date().toISOString().split('T')[0]);
@@ -393,20 +434,6 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
     return groupItems(tabItems);
   };
 
-  const currentTabItems = useMemo(() => items.filter(i => 
-    getTabForItem(i) === activeTab &&
-    ((i.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-     (i.client && i.client.toLowerCase().includes(searchQuery.toLowerCase()))) &&
-    (viewFilter === "All" || (Array.isArray(i.disciplines) && i.disciplines.some(d => {
-      if (viewFilter === "Architecture") return d === "Architecture";
-      if (viewFilter === "Interior") return d === "Interior";
-      if (viewFilter === "CS") return d === "Construction Supervision";
-      return false;
-    }))) &&
-    (selectedRegions.length === 0 || (i.region && selectedRegions.includes(i.region))) &&
-    (selectedSectorFilter === null || i.sector === selectedSectorFilter)
-  ), [items, activeTab, searchQuery, viewFilter, selectedRegions, selectedSectorFilter]);
-
   const groupItems = (list: PipelineItem[]) => {
     // For report view, sort by probability (Highest -> Medium -> Low) then date
     const sortedList = isReportView 
@@ -434,6 +461,17 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
       if (medium.length > 0) grouped["Medium Probability"] = medium;
       if (low.length > 0) grouped["Low Probability"] = low;
       
+      return grouped;
+    }
+
+    if (sortBy === "location") {
+      sortedList.forEach(item => {
+        const loc = item.region || "No Location Specified";
+        if (!grouped[loc]) {
+          grouped[loc] = [];
+        }
+        grouped[loc].push(item);
+      });
       return grouped;
     }
 
@@ -571,7 +609,11 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
     const isSectorGrouping = sortBy === "manual" || sortBy === undefined;
     const orderedSectors = isSectorGrouping && sectorOrder.filter(s => grouped[s]).length > 0 
       ? sectorOrder.filter(s => grouped[s])
-      : Object.keys(grouped);
+      : Object.keys(grouped).sort((a, b) => {
+          if (a === "No Location Specified") return 1;
+          if (b === "No Location Specified") return -1;
+          return a.localeCompare(b);
+        });
 
     return (
       <div className="space-y-4">
@@ -586,7 +628,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: sectorColor }} />
                   <h4 className="text-xs font-mono uppercase tracking-wider font-bold" style={{ color: sectorColor }}>
-                    {sector}
+                    {sector} <span className="opacity-65 text-[10px] font-normal font-sans tracking-normal ml-1.5">({sectorItems.length} {activeTab === "Potential VOs" ? (sectorItems.length === 1 ? 'VO' : 'VOs') : (sectorItems.length === 1 ? 'RFP' : 'RFPs')})</span>
                   </h4>
                 </div>
                 <span className="text-xs font-mono font-bold text-[var(--text-secondary)]">
@@ -683,7 +725,11 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
     const isSectorGrouping = sortBy === "manual" || sortBy === undefined;
     const orderedSectors = isSectorGrouping && sectorOrder.filter(s => grouped[s]).length > 0 
       ? sectorOrder.filter(s => grouped[s])
-      : Object.keys(grouped);
+      : Object.keys(grouped).sort((a, b) => {
+          if (a === "No Location Specified") return 1;
+          if (b === "No Location Specified") return -1;
+          return a.localeCompare(b);
+        });
 
     return (
       <DragDropContext onDragEnd={onDragEnd}>
@@ -724,7 +770,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                               className="text-xs font-mono uppercase tracking-wider font-bold"
                               style={{ color: sectorColor }}
                             >
-                              {sector}
+                              {sector} <span className="opacity-65 text-[10px] font-normal font-sans tracking-normal ml-1.5">({sectorItems.length} {activeTab === "Potential VOs" ? (sectorItems.length === 1 ? 'VO' : 'VOs') : (sectorItems.length === 1 ? 'RFP' : 'RFPs')})</span>
                             </h4>
                           </div>
                           <span className="text-xs font-mono font-bold text-[var(--text-secondary)]">
@@ -968,6 +1014,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                     <option value="probability">Probability</option>
                     <option value="value">Value</option>
                     <option value="date">Date</option>
+                    <option value="location">Location</option>
                   </select>
                 </div>
                 <div className="flex bg-[var(--card-bg)] border border-[var(--border)] rounded-lg p-1">
