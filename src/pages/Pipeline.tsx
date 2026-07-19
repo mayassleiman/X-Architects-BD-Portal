@@ -21,7 +21,8 @@ import {
   Library, 
   Trophy, 
   Building,
-  HelpCircle
+  HelpCircle,
+  MapPin
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, ResponsiveContainer, Tooltip, Legend, LabelList } from "recharts";
@@ -325,6 +326,47 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
     (selectedSectorFilter === null || i.sector === selectedSectorFilter)
   ), [items, activeTab, searchQuery, viewFilter, selectedRegions, selectedSectorFilter]);
 
+  const locationChartItems = useMemo(() => items.filter(i => 
+    getTabForItem(i) === activeTab &&
+    ((i.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+     (i.client && i.client.toLowerCase().includes(searchQuery.toLowerCase()))) &&
+    (viewFilter === "All" || (Array.isArray(i.disciplines) && i.disciplines.some(d => {
+      if (viewFilter === "Architecture") return d === "Architecture";
+      if (viewFilter === "Interior") return d === "Interior";
+      if (viewFilter === "CS") return d === "Construction Supervision";
+      return false;
+    }))) &&
+    (selectedSectorFilter === null || i.sector === selectedSectorFilter)
+  ), [items, activeTab, searchQuery, viewFilter, selectedSectorFilter]);
+
+  const locationChartData = useMemo(() => {
+    const dataMap: { [key: string]: number } = {};
+    locationChartItems.forEach(item => {
+      const loc = item.region || "No Location Specified";
+      const val = getFilteredValue(item);
+      dataMap[loc] = (dataMap[loc] || 0) + val;
+    });
+
+    return Object.entries(dataMap)
+      .map(([name, value]) => ({
+        name,
+        value,
+        color: getSectionColor(name, sectors)
+      }))
+      .filter(d => d.value > 0)
+      .sort((a, b) => b.value - a.value);
+  }, [locationChartItems, sectors, viewFilter]);
+
+  const handleLocationBarClick = (locationName: string) => {
+    setSelectedRegions(prev => {
+      if (prev.includes(locationName)) {
+        return prev.filter(r => r !== locationName);
+      } else {
+        return [...prev, locationName];
+      }
+    });
+  };
+
   // Calculations
   const metrics = useMemo(() => {
     // If sorting by location, only include currentTabItems (visible in the active tab)
@@ -365,6 +407,113 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
 
     return { totalRFP, totalVO, totalPipeline, sectorData, disciplineData, absoluteTotalPipeline };
   }, [items, viewFilter, sortBy, currentTabItems, sectors]);
+
+  const renderLocationSummary = (groupName: string, groupItems: PipelineItem[]) => {
+    if (sortBy !== "location") return null;
+
+    const sectionTotal = groupItems.reduce((acc, curr) => acc + getFilteredValue(curr), 0);
+    if (sectionTotal === 0) return null;
+
+    // Calculate discipline split, respecting the current viewFilter
+    const totalArch = viewFilter === "All" || viewFilter === "Architecture"
+      ? groupItems.reduce((acc, curr) => acc + (curr.values.architecture || 0), 0)
+      : 0;
+    const totalInt = viewFilter === "All" || viewFilter === "Interior"
+      ? groupItems.reduce((acc, curr) => acc + (curr.values.interior || 0), 0)
+      : 0;
+    const totalCS = viewFilter === "All" || viewFilter === "CS"
+      ? groupItems.reduce((acc, curr) => acc + (curr.values.cs || 0), 0)
+      : 0;
+    const totalVO = viewFilter === "All"
+      ? groupItems.filter(i => i.type === "VO").reduce((acc, curr) => acc + (curr.values.vo || 0), 0)
+      : 0;
+
+    const disciplineSplit = [
+      { name: "Architecture", value: totalArch, color: DISCIPLINE_COLORS["Architecture"] },
+      { name: "Interior Design", value: totalInt, color: DISCIPLINE_COLORS["Interior"] },
+      { name: "Construction Supervision", value: totalCS, color: DISCIPLINE_COLORS["Construction Supervision"] },
+    ].filter(d => d.value > 0);
+
+    // Sector breakdown for this location
+    const sectorBreakdown = sectors.map(sec => {
+      const itemsOfSec = groupItems.filter(i => i.sector === sec.name);
+      const value = itemsOfSec.reduce((acc, curr) => acc + getFilteredValue(curr), 0);
+      return {
+        name: sec.name,
+        value,
+        color: sec.color,
+        percentage: sectionTotal > 0 ? (value / sectionTotal) * 100 : 0
+      };
+    }).filter(s => s.value > 0);
+
+    return (
+      <div className="px-4 py-3 bg-[var(--bg-tertiary)]/20 border-b border-[var(--border)] text-xs space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Discipline Split Column */}
+          <div className="space-y-2">
+            <h5 className="text-[10px] font-mono uppercase tracking-wider text-[var(--text-secondary)] font-bold">
+              Discipline Split ({viewFilter === "All" ? "All Disciplines" : viewFilter})
+            </h5>
+            <div className="space-y-2">
+              {disciplineSplit.map(disc => {
+                const pct = sectionTotal > 0 ? (disc.value / sectionTotal) * 100 : 0;
+                return (
+                  <div key={disc.name} className="space-y-1">
+                    <div className="flex justify-between items-center text-[11px]">
+                      <span className="text-[var(--text-secondary)] font-medium">{disc.name}</span>
+                      <span className="font-mono font-bold text-[var(--text-primary)]">
+                        {disc.value.toLocaleString()} {currency} <span className="text-[var(--text-tertiary)] font-normal text-[10px] ml-1">({pct.toFixed(1)}%)</span>
+                      </span>
+                    </div>
+                    <div className="w-full bg-[var(--bg-tertiary)] h-1.5 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all duration-500" style={{ backgroundColor: disc.color, width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+              {totalVO > 0 && (
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center text-[11px]">
+                    <span className="text-[var(--text-secondary)] font-medium">Variation Orders (VOs)</span>
+                    <span className="font-mono font-bold text-[var(--text-primary)]">
+                      {totalVO.toLocaleString()} {currency} <span className="text-[var(--text-tertiary)] font-normal text-[10px] ml-1">({((totalVO / sectionTotal) * 100).toFixed(1)}%)</span>
+                    </span>
+                  </div>
+                  <div className="w-full bg-[var(--bg-tertiary)] h-1.5 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-500 bg-amber-500" style={{ width: `${(totalVO / sectionTotal) * 100}%` }} />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Sector Split Column */}
+          <div className="space-y-2">
+            <h5 className="text-[10px] font-mono uppercase tracking-wider text-[var(--text-secondary)] font-bold">
+              Market Sector Split
+            </h5>
+            <div className="space-y-2">
+              {sectorBreakdown.map(sec => {
+                return (
+                  <div key={sec.name} className="space-y-1">
+                    <div className="flex justify-between items-center text-[11px]">
+                      <span className="text-[var(--text-secondary)] font-medium">{sec.name}</span>
+                      <span className="font-mono font-bold text-[var(--text-primary)]">
+                        {sec.value.toLocaleString()} {currency} <span className="text-[var(--text-tertiary)] font-normal text-[10px] ml-1">({sec.percentage.toFixed(1)}%)</span>
+                      </span>
+                    </div>
+                    <div className="w-full bg-[var(--bg-tertiary)] h-1.5 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all duration-500" style={{ backgroundColor: sec.color, width: `${sec.percentage}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const [achievingItem, setAchievingItem] = useState<{ item: PipelineItem, status: "Achieved" | "Approved" } | null>(null);
   const [achievementDate, setAchievementDate] = useState(new Date().toISOString().split('T')[0]);
@@ -635,6 +784,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                   Total: {sectionTotal.toLocaleString()} {currency}
                 </span>
               </div>
+              {renderLocationSummary(sector, sectorItems)}
               <div className="p-3 space-y-2">
                 {sectorItems.map((item) => (
                   <div key={item.id} className="bg-[var(--card-bg-inner)] border border-[var(--border)] p-3 relative pl-4 overflow-hidden print:break-inside-avoid">
@@ -777,6 +927,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                             Total: {sectionTotal.toLocaleString()} {currency}
                           </span>
                         </div>
+                        {renderLocationSummary(sector, sectorItems)}
                         <Droppable droppableId={sector} type="item" isDropDisabled={sortBy !== "manual" && sortBy !== undefined}>
                           {(provided) => (
                             <div 
@@ -1091,8 +1242,133 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
       {/* Dashboard Section */}
       <div className={cn(
         "grid gap-8 mb-8",
-        isReportView ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-2 print:grid-cols-2"
+        isReportView ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-3 print:grid-cols-3"
       )}>
+        {/* Location Breakdown Chart */}
+        <div className={cn(
+          "bg-[var(--card-bg)] border border-[var(--border)] p-6 transition-all duration-300 hover:border-[var(--text-secondary)] hover:shadow-lg group print:break-inside-avoid",
+          isReportView && "col-span-1"
+        )}>
+          <h3 className="text-sm font-medium text-[var(--text-primary)] mb-6 flex items-center gap-2 group-hover:text-blue-400 transition-colors">
+            <MapPin size={16} className="group-hover:rotate-12 transition-transform" />
+            Location Distribution ({viewFilter})
+          </h3>
+          
+          <div className={cn(
+            "flex gap-8",
+            isReportView ? "flex-col md:flex-row" : "flex-col"
+          )}>
+            <div className={cn(
+              "h-64 min-w-0 min-h-0 print:overflow-visible",
+              isReportView ? "flex-1 w-full md:w-2/3 print:h-80" : "w-full print:h-80"
+            )}>
+              <ResponsiveContainer width="100%" height={256}>
+                <BarChart 
+                  data={locationChartData} 
+                  margin={{ top: 20, right: 30, left: 10, bottom: 5 }} 
+                  barSize={30}
+                  onClick={(state) => {
+                    if (!state || !state.activeLabel) {
+                      setSelectedRegions([]);
+                    }
+                  }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                  <XAxis 
+                    dataKey="name" 
+                    stroke="#888" 
+                    fontSize={10} 
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis 
+                    stroke="#888" 
+                    fontSize={10} 
+                    tickLine={false}
+                    axisLine={false}
+                    domain={[0, 'auto']}
+                    tickFormatter={(value) => {
+                      if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+                      if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
+                      return value;
+                    }}
+                  />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff' }}
+                    itemStyle={{ color: '#fff' }}
+                    formatter={(value: number) => `${value.toLocaleString()} ${currency}`}
+                    cursor={false}
+                  />
+                  <Bar 
+                    dataKey="value" 
+                    radius={[4, 4, 0, 0]}
+                    minPointSize={10}
+                    className="outline-none"
+                    onClick={(data) => {
+                      if (!data) return;
+                      handleLocationBarClick(data.name);
+                    }}
+                  >
+                    {locationChartData.map((entry, index) => {
+                      const isSelected = selectedRegions.includes(entry.name);
+                      const hasSelection = selectedRegions.length > 0;
+                      return (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={entry.color} 
+                          opacity={hasSelection && !isSelected ? 0.3 : 1}
+                          className="hover:opacity-80 transition-opacity cursor-pointer outline-none" 
+                          tabIndex={-1}
+                        />
+                      );
+                    })}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className={cn(
+              "space-y-3 max-h-64 overflow-y-auto w-full",
+              isReportView ? "flex-none w-full md:w-1/3 border-l border-[var(--border)] pl-8 print:pl-6" : "mt-6"
+            )}>
+              {locationChartData.map((loc) => {
+                const isSelected = selectedRegions.includes(loc.name);
+                return (
+                  <div 
+                    key={loc.name} 
+                    onClick={() => handleLocationBarClick(loc.name)}
+                    className={cn(
+                      "flex items-center justify-between text-xs hover:bg-[var(--bg-tertiary)] p-1.5 -mx-1.5 rounded transition-all cursor-pointer",
+                      isSelected && "bg-[var(--bg-tertiary)] ring-1 ring-[var(--border-hover)]"
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: loc.color }} />
+                      <span className={cn(
+                        "text-[var(--text-secondary)]",
+                        isSelected && "text-[var(--text-primary)] font-medium"
+                      )}>{loc.name}</span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span className="text-[var(--text-primary)] font-mono font-bold">{loc.value.toLocaleString()} {currency}</span>
+                      <span className="text-[var(--text-tertiary)] w-12 text-right font-mono">
+                        {metrics.totalPipeline > 0 ? ((loc.value / metrics.totalPipeline) * 100).toFixed(1) : "0.0"}%
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+              {selectedRegions.length > 0 && (
+                <button
+                  onClick={() => setSelectedRegions([])}
+                  className="text-[10px] font-mono text-blue-400 hover:text-blue-300 uppercase tracking-wider transition-colors pt-1 block"
+                >
+                  Clear Selection
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* Sector Breakdown Chart */}
         <div className={cn(
           "bg-[var(--card-bg)] border border-[var(--border)] p-6 transition-all duration-300 hover:border-[var(--text-secondary)] hover:shadow-lg group print:break-inside-avoid",
