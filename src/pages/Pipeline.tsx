@@ -1326,7 +1326,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
               <ResponsiveContainer width="100%" height={320}>
                 <BarChart 
                   data={locationChartData} 
-                  margin={{ top: 20, right: 30, left: 10, bottom: 65 }} 
+                  margin={{ top: 20, right: 30, left: 10, bottom: 5 }} 
                   barSize={30}
                   onClick={(state) => {
                     if (!state || !state.activeLabel) {
@@ -1337,14 +1337,9 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                   <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                   <XAxis 
                     dataKey="name" 
-                    stroke="#888" 
-                    fontSize={10} 
+                    tick={false}
                     tickLine={false}
                     axisLine={false}
-                    angle={-35}
-                    textAnchor="end"
-                    interval={0}
-                    height={65}
                   />
                   <YAxis 
                     stroke="#888" 
@@ -1455,7 +1450,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
               <ResponsiveContainer width="100%" height={320}>
                 <BarChart 
                   data={metrics.sectorData} 
-                  margin={{ top: 20, right: 30, left: 10, bottom: 65 }} 
+                  margin={{ top: 20, right: 30, left: 10, bottom: 5 }} 
                   barSize={30}
                   onClick={(state) => {
                     if (!state || !state.activeLabel) {
@@ -1466,14 +1461,9 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                   <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                   <XAxis 
                     dataKey="name" 
-                    stroke="#888" 
-                    fontSize={10} 
+                    tick={false}
                     tickLine={false}
                     axisLine={false}
-                    angle={-35}
-                    textAnchor="end"
-                    interval={0}
-                    height={65}
                   />
                   <YAxis 
                     stroke="#888" 
