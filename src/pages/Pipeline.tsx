@@ -1,5 +1,28 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Plus, Briefcase, DollarSign, BarChart2, Layers, Check, X, Edit2, Trash2, ArrowRightLeft, Printer } from "lucide-react";
+import { 
+  Plus, 
+  Briefcase, 
+  DollarSign, 
+  BarChart2, 
+  Layers, 
+  Check, 
+  X, 
+  Edit2, 
+  Trash2, 
+  ArrowRightLeft, 
+  Printer,
+  Home, 
+  Building2, 
+  Hotel, 
+  HeartPulse, 
+  Milestone, 
+  Factory, 
+  GraduationCap, 
+  Library, 
+  Trophy, 
+  Building,
+  HelpCircle
+} from "lucide-react";
 import { cn } from "../lib/utils";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, ResponsiveContainer, Tooltip, Legend, LabelList } from "recharts";
 import { useSearch } from "../context/SearchContext";
@@ -49,6 +72,36 @@ const DISCIPLINES: Discipline[] = ["Architecture", "Interior", "Construction Sup
 type TabType = "Submitted Proposals" | "Proposals to be Submitted" | "Potential VOs";
 
 import { ReportLayout } from "../components/layout/ReportLayout";
+
+const getSectorIcon = (sectorName: string) => {
+  const name = (sectorName || "").toLowerCase();
+  if (name.includes("residential") || name.includes("housing") || name.includes("villa") || name.includes("home")) return Home;
+  if (name.includes("commercial") || name.includes("office") || name.includes("retail") || name.includes("corporate")) return Building2;
+  if (name.includes("hospitality") || name.includes("hotel") || name.includes("resort") || name.includes("tourism")) return Hotel;
+  if (name.includes("healthcare") || name.includes("hospital") || name.includes("medical") || name.includes("clinic")) return HeartPulse;
+  if (name.includes("infrastructure") || name.includes("road") || name.includes("bridge") || name.includes("utilities") || name.includes("public realm")) return Milestone;
+  if (name.includes("industrial") || name.includes("factory") || name.includes("warehouse")) return Factory;
+  if (name.includes("educational") || name.includes("school") || name.includes("university") || name.includes("education")) return GraduationCap;
+  if (name.includes("cultural") || name.includes("museum") || name.includes("art") || name.includes("library")) return Library;
+  if (name.includes("sports") || name.includes("stadium") || name.includes("gym")) return Trophy;
+  if (name.includes("mixed") || name.includes("complex")) return Building;
+  return HelpCircle;
+};
+
+const getSectionColor = (sectionName: string, sectorsList: MarketSector[]) => {
+  if (sectionName === "High Probability") return "#10b981"; // Emerald
+  if (sectionName === "Medium Probability") return "#f59e0b"; // Amber
+  if (sectionName === "Low Probability") return "#ef4444"; // Red
+  if (sectionName.includes("Proposals by")) return "var(--text-primary)";
+  return sectorsList.find(s => s.name === sectionName)?.color || "var(--text-secondary)";
+};
+
+const getDisciplineShortName = (d: string) => {
+  if (d === "Architecture") return "Arch";
+  if (d === "Interior") return "Int";
+  if (d === "Construction Supervision") return "CS";
+  return d;
+};
 
 export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
   const { searchQuery } = useSearch();
@@ -371,6 +424,33 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
       : sortItems(list);
       
     const grouped: Record<string, PipelineItem[]> = {};
+    
+    if (sortBy === "probability") {
+      const high = sortedList.filter(i => i.probability === "High");
+      const medium = sortedList.filter(i => i.probability === "Medium");
+      const low = sortedList.filter(i => i.probability === "Low" || !i.probability);
+      
+      if (high.length > 0) grouped["High Probability"] = high;
+      if (medium.length > 0) grouped["Medium Probability"] = medium;
+      if (low.length > 0) grouped["Low Probability"] = low;
+      
+      return grouped;
+    }
+
+    if (sortBy === "value") {
+      if (sortedList.length > 0) {
+        grouped["Proposals by Value"] = sortedList;
+      }
+      return grouped;
+    }
+
+    if (sortBy === "date") {
+      if (sortedList.length > 0) {
+        grouped["Proposals by Date"] = sortedList;
+      }
+      return grouped;
+    }
+      
     sectors.forEach(sector => {
       const sectorItems = sortedList.filter(i => i.sector === sector.name);
       if (sectorItems.length > 0) {
@@ -488,7 +568,8 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
   };
 
   const renderCleanGroupedItems = (grouped: Record<string, PipelineItem[]>) => {
-    const orderedSectors = sectorOrder.filter(s => grouped[s]).length > 0 
+    const isSectorGrouping = sortBy === "manual" || sortBy === undefined;
+    const orderedSectors = isSectorGrouping && sectorOrder.filter(s => grouped[s]).length > 0 
       ? sectorOrder.filter(s => grouped[s])
       : Object.keys(grouped);
 
@@ -497,43 +578,61 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
         {orderedSectors.map((sector) => {
           const sectorItems = grouped[sector];
           if (!sectorItems) return null;
-          const sectorColor = sectors.find(s => s.name === sector)?.color || 'var(--text-secondary)';
+          const sectorColor = getSectionColor(sector, sectors);
+          const sectionTotal = sectorItems.reduce((acc, curr) => acc + getFilteredValue(curr), 0);
           return (
             <div key={`sector-${sector}`} className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] overflow-hidden print:break-inside-avoid">
-              <div className="p-3 bg-[var(--bg-tertiary)] border-b border-[var(--border)] flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: sectorColor }} />
-                <h4 className="text-xs font-mono uppercase tracking-wider font-bold" style={{ color: sectorColor }}>
-                  {sector}
-                </h4>
+              <div className="p-3 bg-[var(--bg-tertiary)] border-b border-[var(--border)] flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: sectorColor }} />
+                  <h4 className="text-xs font-mono uppercase tracking-wider font-bold" style={{ color: sectorColor }}>
+                    {sector}
+                  </h4>
+                </div>
+                <span className="text-xs font-mono font-bold text-[var(--text-secondary)]">
+                  Total: {sectionTotal.toLocaleString()} {currency}
+                </span>
               </div>
               <div className="p-3 space-y-2">
                 {sectorItems.map((item) => (
                   <div key={item.id} className="bg-[var(--card-bg-inner)] border border-[var(--border)] p-3 relative pl-4 overflow-hidden print:break-inside-avoid">
                     <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: sectorColor }} />
-                    <div className="flex justify-between items-start pr-16">
-                      <div>
-                        <h5 className="text-sm font-medium" style={{ color: sectorColor }}>
-                          {item.rfpNumber && <span className="font-mono text-xs opacity-70 mr-2">{item.rfpNumber}</span>}
-                          {item.name}
-                        </h5>
-                        {item.client && <p className="text-xs text-[var(--text-secondary)] mt-0.5">{item.client}</p>}
-                        <div className="flex items-center gap-3 mt-1.5 text-[10px] text-[var(--text-secondary)] font-mono uppercase tracking-wider">
-                           {item.submissionDate && <span>{item.status === "Pending" ? "Submission Date" : "Date"}: {item.submissionDate}</span>}
-                           {item.region && <span>Region: {item.region}</span>}
-                           {item.probability && (
-                             <span className={cn(
-                               "px-1.5 py-0.5 rounded font-bold border",
-                               item.probability === "High" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : 
-                               item.probability === "Medium" ? "bg-amber-500/10 text-amber-500 border-amber-500/20" : "bg-red-500/10 text-red-500 border-red-500/20"
-                             )}>
-                               Prob: {item.probability}
-                             </span>
-                           )}
-                           {item.status !== "Submitted" && item.status !== "Pending" && (
-                             <span className="px-1.5 py-0.5 rounded font-bold border bg-[var(--bg-tertiary)] text-[var(--text-primary)] border-[var(--border)]">
-                               {item.status}
-                             </span>
-                           )}
+                    {item.probability && (
+                      <div 
+                        className={cn(
+                          "absolute right-0 top-0 bottom-0 w-1/2 pointer-events-none bg-gradient-to-l to-transparent",
+                          item.probability === "High" && "from-emerald-500/10 via-emerald-500/2",
+                          item.probability === "Medium" && "from-amber-500/10 via-amber-500/2",
+                          item.probability === "Low" && "from-red-500/10 via-red-500/2"
+                        )}
+                      />
+                    )}
+                    <div className="flex justify-between items-start pr-16 w-full">
+                      <div className="flex gap-3 items-start">
+                        {/* Sector icon */}
+                        {(() => {
+                          const IconComp = getSectorIcon(item.sector);
+                          return (
+                            <div className="p-1.5 bg-[var(--bg-tertiary)] rounded-lg text-[var(--text-primary)] shrink-0 border border-[var(--border)]" style={{ color: sectorColor }}>
+                              <IconComp size={16} />
+                            </div>
+                          );
+                        })()}
+                        <div>
+                          <h5 className="text-sm font-medium transition-colors" style={{ color: sectorColor }}>
+                            {item.rfpNumber && <span className="font-mono text-xs opacity-70 mr-2">{item.rfpNumber}</span>}
+                            {item.name}
+                          </h5>
+                          {item.client && <p className="text-xs text-[var(--text-secondary)] mt-0.5">{item.client}</p>}
+                          <div className="flex items-center gap-3 mt-1.5 text-[10px] text-[var(--text-secondary)] font-mono uppercase tracking-wider">
+                             {item.submissionDate && <span>{item.status === "Pending" ? "Submission Date" : "Date"}: {item.submissionDate}</span>}
+                             {item.region && <span>Region: {item.region}</span>}
+                             {item.status !== "Submitted" && item.status !== "Pending" && (
+                               <span className="px-1.5 py-0.5 rounded font-bold border bg-[var(--bg-tertiary)] text-[var(--text-primary)] border-[var(--border)]">
+                                 {item.status}
+                               </span>
+                             )}
+                          </div>
                         </div>
                       </div>
                       <div className="text-right flex flex-col items-end gap-1.5">
@@ -546,7 +645,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                       </div>
                     </div>
                     {item.type === "RFP" && Array.isArray(item.disciplines) && (
-                      <div className="mt-2 flex flex-wrap gap-1.5">
+                      <div className="mt-2 flex flex-wrap gap-1.5 relative z-10">
                         {item.disciplines.map((d) => {
                           const isSelected = viewFilter === "All" || 
                                             (viewFilter === "Architecture" && d === "Architecture") ||
@@ -559,7 +658,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                               !isSelected && "opacity-40 grayscale"
                             )}
                             style={{ borderColor: color, color: color, backgroundColor: `${color}1A` }}>
-                              {d === "Construction Supervision" ? "CS" : d}
+                              {getDisciplineShortName(d)}
                             </span>
                           );
                         })}
@@ -581,7 +680,8 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
   };
 
   const renderGroupedItems = (grouped: Record<string, PipelineItem[]>) => {
-    const orderedSectors = sectorOrder.filter(s => grouped[s]).length > 0 
+    const isSectorGrouping = sortBy === "manual" || sortBy === undefined;
+    const orderedSectors = isSectorGrouping && sectorOrder.filter(s => grouped[s]).length > 0 
       ? sectorOrder.filter(s => grouped[s])
       : Object.keys(grouped);
 
@@ -597,10 +697,11 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
               {orderedSectors.map((sector, index) => {
                 const sectorItems = grouped[sector];
                 if (!sectorItems) return null;
-                const sectorColor = sectors.find(s => s.name === sector)?.color || 'var(--text-secondary)';
+                const sectorColor = getSectionColor(sector, sectors);
+                const sectionTotal = sectorItems.reduce((acc, curr) => acc + getFilteredValue(curr), 0);
                 return (
                   // @ts-ignore
-                  <Draggable key={`sector-${sector}`} draggableId={`sector-${sector}`} index={index}>
+                  <Draggable key={`sector-${sector}`} draggableId={`sector-${sector}`} index={index} isDragDisabled={sortBy !== "manual"}>
                     {(provided, snapshot) => (
                       <div
                         ref={provided.innerRef}
@@ -612,15 +713,23 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                       >
                         <div 
                           {...provided.dragHandleProps}
-                          className="p-3 bg-[var(--bg-tertiary)] border-b border-[var(--border)] flex items-center gap-2 cursor-grab active:cursor-grabbing"
+                          className={cn(
+                            "p-3 bg-[var(--bg-tertiary)] border-b border-[var(--border)] flex items-center justify-between",
+                            sortBy === "manual" ? "cursor-grab active:cursor-grabbing" : "cursor-default"
+                          )}
                         >
-                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: sectorColor }} />
-                          <h4 
-                            className="text-xs font-mono uppercase tracking-wider font-bold"
-                            style={{ color: sectorColor }}
-                          >
-                            {sector}
-                          </h4>
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: sectorColor }} />
+                            <h4 
+                              className="text-xs font-mono uppercase tracking-wider font-bold"
+                              style={{ color: sectorColor }}
+                            >
+                              {sector}
+                            </h4>
+                          </div>
+                          <span className="text-xs font-mono font-bold text-[var(--text-secondary)]">
+                            Total: {sectionTotal.toLocaleString()} {currency}
+                          </span>
                         </div>
                         <Droppable droppableId={sector} type="item" isDropDisabled={sortBy !== "manual" && sortBy !== undefined}>
                           {(provided) => (
@@ -643,36 +752,48 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                                       )}
                                     >
                                       <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: sectorColor }} />
+                                      {item.probability && (
+                                        <div 
+                                          className={cn(
+                                            "absolute right-0 top-0 bottom-0 w-1/2 pointer-events-none bg-gradient-to-l to-transparent z-0",
+                                            item.probability === "High" && "from-emerald-500/10 via-emerald-500/2",
+                                            item.probability === "Medium" && "from-amber-500/10 via-amber-500/2",
+                                            item.probability === "Low" && "from-red-500/10 via-red-500/2"
+                                          )}
+                                        />
+                                      )}
                                       
-                                      <div className="flex justify-between items-start pr-16">
-                                        <div>
-                                          <h5 
-                                            className="text-sm font-medium transition-colors"
-                                            style={{ color: sectorColor }}
-                                          >
-                                            {item.rfpNumber && <span className="font-mono text-xs opacity-70 mr-2">{item.rfpNumber}</span>}
-                                            {item.name}
-                                          </h5>
-                                          {item.client && <p className="text-xs text-[var(--text-secondary)] mt-0.5">{item.client}</p>}
-                                          <div className="flex items-center gap-3 mt-1.5 text-[10px] text-[var(--text-secondary)] font-mono uppercase tracking-wider">
-                                             {item.submissionDate && <span>{item.status === "Pending" ? "Submission Date" : "Date"}: {item.submissionDate}</span>}
-                                             {item.region && <span>Region: {item.region}</span>}
-                                             {item.probability && (
-                                               <span className={cn(
-                                                 "px-1.5 py-0.5 rounded font-bold border",
-                                                 item.probability === "High" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : 
-                                                 item.probability === "Medium" ? "bg-amber-500/10 text-amber-500 border-amber-500/20" : "bg-red-500/10 text-red-500 border-red-500/20"
-                                               )}>
-                                                 Prob: {item.probability}
-                                               </span>
-                                             )}
-                                             {item.status !== "Submitted" && item.status !== "Pending" && (
-                                               <span
-                                                 className="px-1.5 py-0.5 rounded font-bold border bg-[var(--bg-tertiary)] text-[var(--text-primary)] border-[var(--border)]"
-                                               >
-                                                 {item.status}
-                                               </span>
-                                             )}
+                                      <div className="flex justify-between items-start pr-16 w-full relative z-10">
+                                        <div className="flex gap-3 items-start">
+                                          {/* Sector icon */}
+                                          {(() => {
+                                            const IconComp = getSectorIcon(item.sector);
+                                            return (
+                                              <div className="p-1.5 bg-[var(--bg-tertiary)] rounded-lg text-[var(--text-primary)] shrink-0 border border-[var(--border)]" style={{ color: sectorColor }}>
+                                                <IconComp size={16} />
+                                              </div>
+                                            );
+                                          })()}
+                                          <div>
+                                            <h5 
+                                              className="text-sm font-medium transition-colors"
+                                              style={{ color: sectorColor }}
+                                            >
+                                              {item.rfpNumber && <span className="font-mono text-xs opacity-70 mr-2">{item.rfpNumber}</span>}
+                                              {item.name}
+                                            </h5>
+                                            {item.client && <p className="text-xs text-[var(--text-secondary)] mt-0.5">{item.client}</p>}
+                                            <div className="flex items-center gap-3 mt-1.5 text-[10px] text-[var(--text-secondary)] font-mono uppercase tracking-wider">
+                                               {item.submissionDate && <span>{item.status === "Pending" ? "Submission Date" : "Date"}: {item.submissionDate}</span>}
+                                               {item.region && <span>Region: {item.region}</span>}
+                                               {item.status !== "Submitted" && item.status !== "Pending" && (
+                                                 <span
+                                                   className="px-1.5 py-0.5 rounded font-bold border bg-[var(--bg-tertiary)] text-[var(--text-primary)] border-[var(--border)]"
+                                                 >
+                                                   {item.status}
+                                                 </span>
+                                               )}
+                                            </div>
                                           </div>
                                         </div>
                                         <div className="text-right flex flex-col items-end gap-1.5">
@@ -686,7 +807,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                                       </div>
                                       
                                       {item.type === "RFP" && Array.isArray(item.disciplines) && (
-                                        <div className="mt-2 flex flex-wrap gap-1.5">
+                                        <div className="mt-2 flex flex-wrap gap-1.5 relative z-10">
                                           {item.disciplines.map((d) => {
                                             const isSelected = viewFilter === "All" || 
                                                               (viewFilter === "Architecture" && d === "Architecture") ||
@@ -703,7 +824,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                                                 color: color,
                                                 backgroundColor: `${color}1A`
                                               }}>
-                                                {d === "Construction Supervision" ? "CS" : d}
+                                                {getDisciplineShortName(d)}
                                               </span>
                                             );
                                           })}
