@@ -368,6 +368,66 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
     return metrics.chartData.find(d => d.name === 'Today');
   }, [metrics.chartData]);
 
+  const [statusBoxPos, setStatusBoxPos] = useState({ x: 0, y: 0 });
+  const [isDraggingStatusBox, setIsDraggingStatusBox] = useState(false);
+  const dragStartRef = useRef({ x: 0, y: 0 });
+  const boxStartRef = useRef({ x: 0, y: 0 });
+
+  const handleStatusBoxMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return; // Left click only
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingStatusBox(true);
+    dragStartRef.current = { x: e.clientX, y: e.clientY };
+    boxStartRef.current = { x: statusBoxPos.x, y: statusBoxPos.y };
+  };
+
+  const handleStatusBoxTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    e.stopPropagation();
+    setIsDraggingStatusBox(true);
+    dragStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    boxStartRef.current = { x: statusBoxPos.x, y: statusBoxPos.y };
+  };
+
+  useEffect(() => {
+    if (!isDraggingStatusBox) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const dx = e.clientX - dragStartRef.current.x;
+      const dy = e.clientY - dragStartRef.current.y;
+      setStatusBoxPos({
+        x: boxStartRef.current.x + dx,
+        y: boxStartRef.current.y + dy
+      });
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      const dx = e.touches[0].clientX - dragStartRef.current.x;
+      const dy = e.touches[0].clientY - dragStartRef.current.y;
+      setStatusBoxPos({
+        x: boxStartRef.current.x + dx,
+        y: boxStartRef.current.y + dy
+      });
+    };
+
+    const handleMouseUp = () => {
+      setIsDraggingStatusBox(false);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('touchmove', handleTouchMove, { passive: true });
+    window.addEventListener('touchend', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleMouseUp);
+    };
+  }, [isDraggingStatusBox]);
+
   // Load saved zoom domain when year changes
   useEffect(() => {
     if (isReportView) {
@@ -806,13 +866,25 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
           </h3>
           <div className="relative">
             {todayData && (
-              <div className="absolute top-2 right-4 bg-neutral-950/95 border border-neutral-800 p-3 rounded-xl shadow-2xl z-20 backdrop-blur-sm text-left max-w-[220px] pointer-events-none">
-                <div className="flex items-center gap-1.5 mb-1.5">
+              <div 
+                onMouseDown={handleStatusBoxMouseDown}
+                onTouchStart={handleStatusBoxTouchStart}
+                style={{
+                  transform: `translate(${statusBoxPos.x}px, ${statusBoxPos.y}px)`,
+                }}
+                className={cn(
+                  "absolute top-2 right-4 border p-3 rounded-xl shadow-2xl z-20 backdrop-blur-md text-left max-w-[220px] select-none cursor-grab active:cursor-grabbing transition-all duration-75",
+                  isDraggingStatusBox 
+                    ? "bg-neutral-950/70 border-neutral-700 shadow-emerald-500/5 scale-[1.02]" 
+                    : "bg-neutral-950/45 border-neutral-800/80"
+                )}
+              >
+                <div className="flex items-center gap-1.5 mb-1.5 pointer-events-none">
                   <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
                   <span className="text-white text-[10px] font-bold uppercase tracking-wider">Today's Status</span>
                   <span className="text-[9px] text-[var(--text-secondary)] font-mono ml-auto">{todayData.fullDate}</span>
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-1 pointer-events-none">
                   <div className="flex justify-between gap-6 text-[10px]">
                     <span className="text-amber-400 font-bold uppercase">Target:</span>
                     <span className="text-white font-mono font-bold">{(todayData.linearTarget || 0).toLocaleString()} {currency}</span>

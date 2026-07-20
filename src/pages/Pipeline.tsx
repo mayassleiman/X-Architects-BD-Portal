@@ -945,26 +945,23 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
           return (
             <div 
               key={`sector-${sector}`} 
-              className="relative bg-neutral-900/30 backdrop-blur-md border border-[var(--border)] rounded-2xl overflow-hidden transition-all duration-300 shadow-xl print:break-inside-avoid group/sector"
+              className="relative transition-all duration-300 print:break-inside-avoid group/sector mb-10 last:mb-0"
             >
-              {/* Modern ambient radial glow based on sector color */}
-              <div 
-                className="absolute -top-20 -left-20 w-44 h-44 rounded-full pointer-events-none blur-[60px] opacity-15" 
-                style={{ backgroundColor: sectorColor }}
-              />
-              <div className="relative p-4 bg-neutral-900/40 border-b border-[var(--border)] flex items-center justify-between z-10">
-                <div className="flex items-center gap-2.5">
-                  <span className="w-2.5 h-2.5 rounded-full shadow-[0_0_8px_currentColor]" style={{ backgroundColor: sectorColor, color: sectorColor }} />
-                  <h4 className="text-xs font-mono uppercase tracking-wider font-bold" style={{ color: sectorColor }}>
-                    {sector} <span className="opacity-65 text-[10px] font-normal font-sans tracking-normal ml-1.5">({sectorItems.length} {activeTab === "Potential VOs" ? (sectorItems.length === 1 ? 'VO' : 'VOs') : (sectorItems.length === 1 ? 'RFP' : 'RFPs')})</span>
+              <div className="relative pb-3 mb-4 border-b border-[var(--border)]/40 flex items-end justify-between z-10">
+                <div className="flex items-center">
+                  <h4 className="text-2xl md:text-3xl font-sans font-normal tracking-tight flex items-baseline gap-2" style={{ color: sectorColor }}>
+                    <span>{sector}</span>
+                    <span className="text-xs text-[var(--text-secondary)] font-normal tracking-normal ml-1">
+                      ({sectorItems.length} {activeTab === "Potential VOs" ? (sectorItems.length === 1 ? 'VO' : 'VOs') : (sectorItems.length === 1 ? 'RFP' : 'RFPs')})
+                    </span>
                   </h4>
                 </div>
-                <span className="text-xs font-mono font-bold px-3 py-1 bg-neutral-900/50 rounded-full border border-[var(--border)]" style={{ color: sectorColor }}>
-                  Total: {sectionTotal.toLocaleString()} {currency}
+                <span className="text-xs md:text-sm font-mono font-bold text-neutral-400">
+                  Total: <span style={{ color: sectorColor }} className="font-sans font-bold">{sectionTotal.toLocaleString()} {currency}</span>
                 </span>
               </div>
               {renderLocationSummary(sector, sectorItems)}
-              <div className="p-3 space-y-2">
+              <div className="space-y-3">
                 {sectorItems.map((item) => {
                   const buttonsWidth = getButtonsWidth(item);
                   return (
@@ -1214,41 +1211,36 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                         ref={provided.innerRef}
                         {...provided.draggableProps}
                         className={cn(
-                          "relative bg-neutral-900/30 backdrop-blur-md rounded-2xl border transition-all duration-300 overflow-hidden group/sector",
-                          snapshot.isDragging ? "shadow-2xl border-[var(--text-primary)] scale-[1.01] z-50 bg-neutral-900/50" : "border-[var(--border)] shadow-xl"
+                          "relative transition-all duration-300 group/sector mb-10 last:mb-0 pb-4",
+                          snapshot.isDragging && "bg-neutral-900/30 border border-[var(--border)] rounded-2xl p-4 shadow-2xl scale-[1.01] z-50"
                         )}
                       >
-                        {/* Modern ambient radial glow based on sector color */}
-                        <div 
-                          className="absolute -top-20 -left-20 w-44 h-44 rounded-full pointer-events-none blur-[60px] opacity-15" 
-                          style={{ backgroundColor: sectorColor }}
-                        />
                         <div 
                           {...(sortBy === "manual" ? provided.dragHandleProps : {})}
                           className={cn(
-                            "relative p-4 border-b flex items-center justify-between z-10",
-                            sortBy === "manual" ? "cursor-grab active:cursor-grabbing hover:bg-neutral-900/40" : "cursor-default",
-                            "bg-neutral-900/40 border-[var(--border)]"
+                            "relative pb-3 mb-4 border-b flex items-end justify-between z-10",
+                            sortBy === "manual" ? "cursor-grab active:cursor-grabbing hover:text-white" : "cursor-default",
+                            "border-[var(--border)]/40"
                           )}
                         >
-                          <div className="flex items-center gap-2.5">
-                            <span className="w-2.5 h-2.5 rounded-full shadow-[0_0_8px_currentColor]" style={{ backgroundColor: sectorColor, color: sectorColor }} />
+                          <div className="flex items-center">
                             <h4 
-                              className="text-xs font-mono uppercase tracking-wider font-bold"
+                              className="text-2xl md:text-3xl font-sans font-normal tracking-tight flex items-baseline gap-2"
                               style={{ color: sectorColor }}
                             >
-                              {sector} <span className="text-[var(--text-secondary)] font-normal font-sans tracking-normal ml-1.5 text-[10px]">({sectorItems.length} {activeTab === "Potential VOs" ? (sectorItems.length === 1 ? 'VO' : 'VOs') : (sectorItems.length === 1 ? 'RFP' : 'RFPs')})</span>
+                              <span>{sector}</span>
+                              <span className="text-xs text-[var(--text-secondary)] font-normal tracking-normal ml-1">({sectorItems.length} {activeTab === "Potential VOs" ? (sectorItems.length === 1 ? 'VO' : 'VOs') : (sectorItems.length === 1 ? 'RFP' : 'RFPs')})</span>
                             </h4>
                           </div>
-                          <span className="text-xs font-mono font-bold px-3 py-1 bg-neutral-900/50 rounded-full border border-[var(--border)]" style={{ color: sectorColor }}>
-                            Total: {sectionTotal.toLocaleString()} {currency}
+                          <span className="text-xs md:text-sm font-mono font-bold text-neutral-400">
+                            Total: <span style={{ color: sectorColor }} className="font-sans font-bold">{sectionTotal.toLocaleString()} {currency}</span>
                           </span>
                         </div>
                         {renderLocationSummary(sector, sectorItems)}
                         <Droppable droppableId={sector} type="item" isDropDisabled={sortBy !== "manual" && sortBy !== undefined}>
                           {(provided) => (
                             <div 
-                              className="p-3 space-y-2"
+                              className="space-y-3"
                               ref={provided.innerRef}
                               {...provided.droppableProps}
                             >
