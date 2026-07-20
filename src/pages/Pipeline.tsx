@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { 
   Plus, 
   Briefcase, 
@@ -22,7 +22,8 @@ import {
   Trophy, 
   Building,
   HelpCircle,
-  MapPin
+  MapPin,
+  GripVertical
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, ResponsiveContainer, Tooltip, Legend, LabelList } from "recharts";
@@ -140,6 +141,113 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
   const [selectedDisciplines, setSelectedDisciplines] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<"manual" | "probability" | "value" | "date" | "location">("manual");
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
+  const [swipedItemId, setSwipedItemId] = useState<string | null>(null);
+  const [isSwipingActive, setIsSwipingActive] = useState(false);
+  const swipeStart = useRef<{ x: number; y: number } | null>(null);
+
+  const getButtonsWidth = (item: PipelineItem) => {
+    let count = 2; // Edit and Delete are always present
+    if (item.type === "RFP" && item.status === "Pending") count = 3;
+    if (item.type === "RFP" && item.status === "Submitted") count = 3;
+    if (item.type === "VO" && (item.status === "Pending" || item.status === "Submitted")) count = 3;
+    return count * 75;
+  };
+
+  const handleSwipeStart = (e: React.MouseEvent | React.TouchEvent, itemId: string) => {
+    if (isReportView) return;
+    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+    swipeStart.current = { x: clientX, y: clientY };
+    setIsSwipingActive(true);
+  };
+
+  const handleSwipeMove = (e: React.MouseEvent | React.TouchEvent, itemId: string, maxOffset: number) => {
+    if (!swipeStart.current || !isSwipingActive) return;
+    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+    
+    const dx = clientX - swipeStart.current.x;
+    const dy = clientY - swipeStart.current.y;
+    
+    // If movement is predominantly vertical, abort swipe to allow natural scrolling or drag-and-drop
+    if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 10) {
+      swipeStart.current = null;
+      setIsSwipingActive(false);
+      return;
+    }
+    
+    // If movement is horizontal, proceed
+    if (Math.abs(dx) > 10) {
+      // Prevent browser default behavior
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+      const isCurrentlyOpen = swipedItemId === itemId;
+      const baseOffset = isCurrentlyOpen ? -maxOffset : 0;
+      let newOffset = baseOffset + dx;
+      
+      // Clamp values: can't swipe right past 15px, can't swipe left past maxOffset + 30px
+      newOffset = Math.max(-maxOffset - 30, Math.min(15, newOffset));
+      
+      const el = document.getElementById(`card-content-${itemId}`);
+      if (el) {
+        el.style.transform = `translateX(${newOffset}px)`;
+        el.style.transition = "none";
+      }
+    }
+  };
+
+  const handleSwipeEnd = (itemId: string, maxOffset: number) => {
+    if (!swipeStart.current) return;
+    setIsSwipingActive(false);
+    swipeStart.current = null;
+    
+    const el = document.getElementById(`card-content-${itemId}`);
+    if (el) {
+      el.style.transition = "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)";
+      
+      // Extract current translation X using standard fallback
+      const style = window.getComputedStyle(el);
+      let currentTranslateX = 0;
+      if (style.transform && style.transform !== "none") {
+        const parts = style.transform.split(/[()]/)[1]?.split(",");
+        if (parts) {
+          currentTranslateX = parseFloat(parts[4] || parts[12] || "0");
+        }
+      }
+      
+      // If swiped more than 40px to the left, snap open
+      if (currentTranslateX < -40) {
+        el.style.transform = `translateX(-${maxOffset}px)`;
+        setSwipedItemId(itemId);
+      } else {
+        el.style.transform = "translateX(0px)";
+        if (swipedItemId === itemId) {
+          setSwipedItemId(null);
+        }
+      }
+    }
+  };
+
+  // Close any swiped card when swipedItemId is updated to a different one or null
+  useEffect(() => {
+    items.forEach(item => {
+      if (item.id !== swipedItemId) {
+        const el = document.getElementById(`card-content-${item.id}`);
+        if (el) {
+          el.style.transition = "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)";
+          el.style.transform = "translateX(0px)";
+        }
+      } else {
+        const el = document.getElementById(`card-content-${item.id}`);
+        if (el) {
+          const maxOffset = getButtonsWidth(item);
+          el.style.transition = "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)";
+          el.style.transform = `translateX(-${maxOffset}px)`;
+        }
+      }
+    });
+  }, [swipedItemId, items]);
 
   const availableRegions = useMemo(() => {
     const regions = new Set<string>();
@@ -835,92 +943,232 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
           const sectorColor = getSectionColor(sector, sectors);
           const sectionTotal = sectorItems.reduce((acc, curr) => acc + getFilteredValue(curr), 0);
           return (
-            <div key={`sector-${sector}`} className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] overflow-hidden print:break-inside-avoid">
-              <div className="p-3 bg-[var(--bg-tertiary)] border-b border-[var(--border)] flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: sectorColor }} />
+            <div 
+              key={`sector-${sector}`} 
+              className="relative bg-neutral-900/30 backdrop-blur-md border border-[var(--border)] rounded-2xl overflow-hidden transition-all duration-300 shadow-xl print:break-inside-avoid group/sector"
+            >
+              {/* Modern ambient radial glow based on sector color */}
+              <div 
+                className="absolute -top-20 -left-20 w-44 h-44 rounded-full pointer-events-none blur-[60px] opacity-15" 
+                style={{ backgroundColor: sectorColor }}
+              />
+              <div className="relative p-4 bg-neutral-900/40 border-b border-[var(--border)] flex items-center justify-between z-10">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-2.5 h-2.5 rounded-full shadow-[0_0_8px_currentColor]" style={{ backgroundColor: sectorColor, color: sectorColor }} />
                   <h4 className="text-xs font-mono uppercase tracking-wider font-bold" style={{ color: sectorColor }}>
                     {sector} <span className="opacity-65 text-[10px] font-normal font-sans tracking-normal ml-1.5">({sectorItems.length} {activeTab === "Potential VOs" ? (sectorItems.length === 1 ? 'VO' : 'VOs') : (sectorItems.length === 1 ? 'RFP' : 'RFPs')})</span>
                   </h4>
                 </div>
-                <span className="text-xs font-mono font-bold text-[var(--text-secondary)]">
+                <span className="text-xs font-mono font-bold px-3 py-1 bg-neutral-900/50 rounded-full border border-[var(--border)]" style={{ color: sectorColor }}>
                   Total: {sectionTotal.toLocaleString()} {currency}
                 </span>
               </div>
               {renderLocationSummary(sector, sectorItems)}
               <div className="p-3 space-y-2">
-                {sectorItems.map((item) => (
-                  <div key={item.id} className="bg-[var(--card-bg-inner)] border border-[var(--border)] p-3 relative pl-4 overflow-hidden print:break-inside-avoid">
-                    <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: sectorColor }} />
-                    {item.probability && (
-                      <div 
-                        className={cn(
-                          "absolute right-0 top-0 bottom-0 w-1/2 pointer-events-none bg-gradient-to-l to-transparent",
-                          item.probability === "High" && "from-emerald-500/10 via-emerald-500/2",
-                          item.probability === "Medium" && "from-amber-500/10 via-amber-500/2",
-                          item.probability === "Low" && "from-red-500/10 via-red-500/2"
+                {sectorItems.map((item) => {
+                  const buttonsWidth = getButtonsWidth(item);
+                  return (
+                    <div 
+                      key={item.id} 
+                      className="relative overflow-hidden rounded-xl border border-[var(--border)] bg-neutral-900/40 print:break-inside-avoid"
+                    >
+                      {/* Action Buttons Background Container (iOS-Style swipe actions) */}
+                      {!isReportView && (
+                        <div 
+                          className="absolute right-0 top-0 bottom-0 flex h-full z-0 overflow-hidden"
+                          style={{ width: `${buttonsWidth}px` }}
+                        >
+                          {/* Status Toggle Button if applicable */}
+                          {item.type === "RFP" && item.status === "Pending" && (
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleQuickStatusToggle(item, "Submitted");
+                                setSwipedItemId(null);
+                              }}
+                              className="w-[75px] h-full bg-blue-600 hover:bg-blue-700 text-white flex flex-col items-center justify-center gap-1 transition-colors outline-none"
+                              title="Move to Submitted"
+                            >
+                              <ArrowRightLeft size={16} />
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-center px-1">Submit</span>
+                            </button>
+                          )}
+                          {item.type === "VO" && (item.status === "Pending" || item.status === "Submitted") && (
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleQuickStatusToggle(item, "Approved");
+                                setSwipedItemId(null);
+                              }}
+                              className="w-[75px] h-full bg-emerald-600 hover:bg-emerald-700 text-white flex flex-col items-center justify-center gap-1 transition-colors outline-none"
+                              title="Approve"
+                            >
+                              <Check size={16} />
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-center px-1">Approve</span>
+                            </button>
+                          )}
+                          {item.type === "RFP" && item.status === "Submitted" && (
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleQuickStatusToggle(item, "Achieved");
+                                setSwipedItemId(null);
+                              }}
+                              className="w-[75px] h-full bg-emerald-600 hover:bg-emerald-700 text-white flex flex-col items-center justify-center gap-1 transition-colors outline-none"
+                              title="Mark as Achieved"
+                            >
+                              <Check size={16} />
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-center px-1">Achieve</span>
+                            </button>
+                          )}
+                          
+                          {/* Edit Button */}
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEdit(item);
+                              setSwipedItemId(null);
+                            }}
+                            className="w-[75px] h-full bg-neutral-700 hover:bg-neutral-600 text-white flex flex-col items-center justify-center gap-1 transition-colors border-l border-neutral-800/50 outline-none"
+                            title="Edit"
+                          >
+                            <Edit2 size={16} />
+                            <span className="text-[9px] font-bold uppercase tracking-wider">Edit</span>
+                          </button>
+                          
+                          {/* Delete Button */}
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(item.id);
+                              setSwipedItemId(null);
+                            }}
+                            className="w-[75px] h-full bg-rose-600 hover:bg-rose-700 text-white flex flex-col items-center justify-center gap-1 transition-colors border-l border-neutral-800/50 outline-none"
+                            title="Delete"
+                          >
+                            <Trash2 size={16} />
+                            <span className="text-[9px] font-bold uppercase tracking-wider">Delete</span>
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Foreground Card Content */}
+                      <div
+                        id={`card-content-${item.id}`}
+                        onMouseDown={(e) => handleSwipeStart(e, item.id)}
+                        onMouseMove={(e) => handleSwipeMove(e, item.id, buttonsWidth)}
+                        onMouseUp={() => handleSwipeEnd(item.id, buttonsWidth)}
+                        onMouseLeave={() => handleSwipeEnd(item.id, buttonsWidth)}
+                        onTouchStart={(e) => handleSwipeStart(e, item.id)}
+                        onTouchMove={(e) => handleSwipeMove(e, item.id, buttonsWidth)}
+                        onTouchEnd={() => handleSwipeEnd(item.id, buttonsWidth)}
+                        style={{ transform: swipedItemId === item.id ? `translateX(-${buttonsWidth}px)` : 'translateX(0px)', transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }}
+                        className="bg-[var(--card-bg-inner)] p-3 pl-4 relative z-10 w-full h-full select-none"
+                      >
+                        {/* Left-edge sector color bar */}
+                        <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: sectorColor }} />
+                        
+                        {/* Subtle background gradient based on probability */}
+                        {item.probability && (
+                          <div 
+                            className={cn(
+                              "absolute right-0 top-0 bottom-0 w-1/2 pointer-events-none bg-gradient-to-l to-transparent z-0",
+                              item.probability === "High" && "from-emerald-500/20 via-emerald-500/4",
+                              item.probability === "Medium" && "from-amber-500/20 via-amber-500/4",
+                              item.probability === "Low" && "from-rose-500/20 via-rose-500/4"
+                            )}
+                          />
                         )}
-                      />
-                    )}
-                    <div className="flex justify-between items-start pr-16 w-full">
-                      <div className="flex gap-3 items-start">
-                        {/* Sector icon */}
-                        {(() => {
-                          const IconComp = getSectorIcon(item.sector);
-                          return (
-                            <div className="p-1.5 bg-[var(--bg-tertiary)] rounded-lg text-[var(--text-primary)] shrink-0 border border-[var(--border)]" style={{ color: sectorColor }}>
-                              <IconComp size={16} />
+
+                        <div className="flex justify-between items-start w-full relative z-10">
+                          <div className="flex gap-3 items-start min-w-0 flex-1">
+                            {/* Sector icon */}
+                            {(() => {
+                              const sectorObj = sectors.find(s => s.name === item.sector);
+                              if (sectorObj?.logo) {
+                                return (
+                                  <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-[var(--border)] bg-neutral-900/60 flex items-center justify-center">
+                                    <img 
+                                      src={sectorObj.logo} 
+                                      alt={item.sector} 
+                                      className="w-full h-full object-cover"
+                                      referrerPolicy="no-referrer"
+                                    />
+                                  </div>
+                                );
+                              } else {
+                                const IconComp = getSectorIcon(item.sector);
+                                return (
+                                  <div className="p-1.5 bg-[var(--bg-tertiary)] rounded-lg text-[var(--text-primary)] shrink-0 border border-[var(--border)]" style={{ color: sectorColor }}>
+                                    <IconComp size={16} />
+                                  </div>
+                                );
+                              }
+                            })()}
+                            <div className="min-w-0 flex-1">
+                              <h5 
+                                className="text-sm font-medium transition-colors truncate"
+                                style={{ color: sectorColor }}
+                              >
+                                {item.rfpNumber && <span className="font-mono text-xs opacity-70 mr-2">{item.rfpNumber}</span>}
+                                {item.name}
+                              </h5>
+                              {item.client && <p className="text-xs text-[var(--text-secondary)] mt-0.5 truncate">{item.client}</p>}
+                              <div className="flex flex-wrap items-center gap-3 mt-1.5 text-[10px] text-[var(--text-secondary)] font-mono uppercase tracking-wider">
+                                 {item.submissionDate && <span>{item.status === "Pending" ? "Submission Date" : "Date"}: {item.submissionDate}</span>}
+                                 {item.region && <span>Region: {item.region}</span>}
+                                 {item.status !== "Submitted" && item.status !== "Pending" && (
+                                   <span
+                                     className="px-1.5 py-0.5 rounded font-bold border bg-[var(--bg-tertiary)] text-[var(--text-primary)] border-[var(--border)] shrink-0"
+                                   >
+                                     {item.status}
+                                   </span>
+                                 )}
+                              </div>
                             </div>
-                          );
-                        })()}
-                        <div>
-                          <h5 className="text-sm font-medium transition-colors" style={{ color: sectorColor }}>
-                            {item.rfpNumber && <span className="font-mono text-xs opacity-70 mr-2">{item.rfpNumber}</span>}
-                            {item.name}
-                          </h5>
-                          {item.client && <p className="text-xs text-[var(--text-secondary)] mt-0.5">{item.client}</p>}
-                          <div className="flex items-center gap-3 mt-1.5 text-[10px] text-[var(--text-secondary)] font-mono uppercase tracking-wider">
-                             {item.submissionDate && <span>{item.status === "Pending" ? "Submission Date" : "Date"}: {item.submissionDate}</span>}
-                             {item.region && <span>Region: {item.region}</span>}
-                             {item.status !== "Submitted" && item.status !== "Pending" && (
-                               <span className="px-1.5 py-0.5 rounded font-bold border bg-[var(--bg-tertiary)] text-[var(--text-primary)] border-[var(--border)]">
-                                 {item.status}
-                               </span>
-                             )}
+                          </div>
+                          <div className="text-right flex flex-col items-end gap-1.5 shrink-0 pl-4">
+                            <div>
+                              <span className="text-sm font-mono text-[var(--text-primary)] block">{getFilteredValue(item).toLocaleString()} {currency}</span>
+                              {selectedDisciplines.length > 0 && (
+                                <span className="text-[10px] text-[var(--text-secondary)]">of {getTotalValue(item).toLocaleString()} Total</span>
+                              )}
+                            </div>
+                            {item.type === "RFP" && Array.isArray(item.disciplines) && (
+                              <div className="flex flex-wrap gap-1 items-center mt-1">
+                                {item.disciplines.map((d) => {
+                                  const isSelected = selectedDisciplines.length === 0 || 
+                                                    (selectedDisciplines.includes("Architecture") && d === "Architecture") ||
+                                                    (selectedDisciplines.includes("Interior") && d === "Interior") ||
+                                                    (selectedDisciplines.includes("CS") && d === "Construction Supervision");
+                                  const color = DISCIPLINE_COLORS[d] || 'var(--text-secondary)';
+                                  const val = d === "Architecture" ? (item.values.architecture || 0) :
+                                              d === "Interior" ? (item.values.interior || 0) :
+                                              d === "Construction Supervision" ? (item.values.cs || 0) : 0;
+                                  return (
+                                    <div key={d} className="relative group/tooltip">
+                                      <span className={cn(
+                                        "text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border transition-all cursor-help block whitespace-nowrap",
+                                        !isSelected && "opacity-40 grayscale"
+                                      )}
+                                      style={{ borderColor: color, color: color, backgroundColor: `${color}1A` }}>
+                                        {getDisciplineShortName(d)}
+                                      </span>
+                                      <div className="absolute bottom-full right-0 mb-2 px-2 py-1 bg-neutral-900 border border-neutral-800 text-white text-[10px] rounded shadow-xl opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 whitespace-nowrap z-50 font-mono">
+                                        <span className="font-sans text-neutral-400 mr-1">{d}:</span>
+                                        {val.toLocaleString()} {currency}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
-                      <div className="text-right flex flex-col items-end gap-1.5">
-                        <div>
-                          <span className="text-sm font-mono text-[var(--text-primary)] block">{getFilteredValue(item).toLocaleString()} {currency}</span>
-                          {selectedDisciplines.length > 0 && (
-                            <span className="text-[10px] text-[var(--text-secondary)]">of {getTotalValue(item).toLocaleString()} Total</span>
-                          )}
-                        </div>
-                      </div>
                     </div>
-                    {item.type === "RFP" && Array.isArray(item.disciplines) && (
-                      <div className="mt-2 flex flex-wrap gap-1.5 relative z-10">
-                        {item.disciplines.map((d) => {
-                          const isSelected = selectedDisciplines.length === 0 || 
-                                            (selectedDisciplines.includes("Architecture") && d === "Architecture") ||
-                                            (selectedDisciplines.includes("Interior") && d === "Interior") ||
-                                            (selectedDisciplines.includes("CS") && d === "Construction Supervision");
-                          const color = DISCIPLINE_COLORS[d] || 'var(--text-secondary)';
-                          return (
-                            <span key={d} className={cn(
-                              "text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border",
-                              !isSelected && "opacity-40 grayscale"
-                            )}
-                            style={{ borderColor: color, color: color, backgroundColor: `${color}1A` }}>
-                              {getDisciplineShortName(d)}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           );
@@ -966,27 +1214,33 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                         ref={provided.innerRef}
                         {...provided.draggableProps}
                         className={cn(
-                          "bg-[var(--card-bg)] rounded-xl border border-[var(--border)] overflow-hidden transition-all duration-300",
-                          snapshot.isDragging && "shadow-xl border-[var(--text-primary)] z-50"
+                          "relative bg-neutral-900/30 backdrop-blur-md rounded-2xl border transition-all duration-300 overflow-hidden group/sector",
+                          snapshot.isDragging ? "shadow-2xl border-[var(--text-primary)] scale-[1.01] z-50 bg-neutral-900/50" : "border-[var(--border)] shadow-xl"
                         )}
                       >
+                        {/* Modern ambient radial glow based on sector color */}
+                        <div 
+                          className="absolute -top-20 -left-20 w-44 h-44 rounded-full pointer-events-none blur-[60px] opacity-15" 
+                          style={{ backgroundColor: sectorColor }}
+                        />
                         <div 
                           {...(sortBy === "manual" ? provided.dragHandleProps : {})}
                           className={cn(
-                            "p-3 bg-[var(--bg-tertiary)] border-b border-[var(--border)] flex items-center justify-between",
-                            sortBy === "manual" ? "cursor-grab active:cursor-grabbing" : "cursor-default"
+                            "relative p-4 border-b flex items-center justify-between z-10",
+                            sortBy === "manual" ? "cursor-grab active:cursor-grabbing hover:bg-neutral-900/40" : "cursor-default",
+                            "bg-neutral-900/40 border-[var(--border)]"
                           )}
                         >
-                          <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: sectorColor }} />
+                          <div className="flex items-center gap-2.5">
+                            <span className="w-2.5 h-2.5 rounded-full shadow-[0_0_8px_currentColor]" style={{ backgroundColor: sectorColor, color: sectorColor }} />
                             <h4 
                               className="text-xs font-mono uppercase tracking-wider font-bold"
                               style={{ color: sectorColor }}
                             >
-                              {sector} <span className="opacity-65 text-[10px] font-normal font-sans tracking-normal ml-1.5">({sectorItems.length} {activeTab === "Potential VOs" ? (sectorItems.length === 1 ? 'VO' : 'VOs') : (sectorItems.length === 1 ? 'RFP' : 'RFPs')})</span>
+                              {sector} <span className="text-[var(--text-secondary)] font-normal font-sans tracking-normal ml-1.5 text-[10px]">({sectorItems.length} {activeTab === "Potential VOs" ? (sectorItems.length === 1 ? 'VO' : 'VOs') : (sectorItems.length === 1 ? 'RFP' : 'RFPs')})</span>
                             </h4>
                           </div>
-                          <span className="text-xs font-mono font-bold text-[var(--text-secondary)]">
+                          <span className="text-xs font-mono font-bold px-3 py-1 bg-neutral-900/50 rounded-full border border-[var(--border)]" style={{ color: sectorColor }}>
                             Total: {sectionTotal.toLocaleString()} {currency}
                           </span>
                         </div>
@@ -998,152 +1252,230 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                               ref={provided.innerRef}
                               {...provided.droppableProps}
                             >
-                              {sectorItems.map((item, itemIndex) => (
-                                // @ts-ignore
-                                <Draggable key={item.id} draggableId={item.id} index={itemIndex} isDragDisabled={sortBy !== "manual"}>
-                                  {(provided, snapshot) => (
-                                    <div 
-                                      ref={provided.innerRef}
-                                      {...provided.draggableProps}
-                                      {...(sortBy === "manual" ? provided.dragHandleProps : {})}
-                                      className={cn(
-                                        "bg-[var(--card-bg-inner)] border border-[var(--border)] p-3 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:border-[var(--text-secondary)] group relative pl-4 overflow-hidden print:break-inside-avoid",
-                                        snapshot.isDragging && "shadow-lg border-[var(--text-primary)] z-50 scale-[1.02]"
-                                      )}
-                                    >
-                                      <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: sectorColor }} />
-                                      {item.probability && (
-                                        <div 
-                                          className={cn(
-                                            "absolute right-0 top-0 bottom-0 w-1/2 pointer-events-none bg-gradient-to-l to-transparent z-0",
-                                            item.probability === "High" && "from-emerald-500/10 via-emerald-500/2",
-                                            item.probability === "Medium" && "from-amber-500/10 via-amber-500/2",
-                                            item.probability === "Low" && "from-red-500/10 via-red-500/2"
-                                          )}
-                                        />
-                                      )}
-                                      
-                                      <div className="flex justify-between items-start pr-16 w-full relative z-10">
-                                        <div className="flex gap-3 items-start">
-                                          {/* Sector icon */}
-                                          {(() => {
-                                            const IconComp = getSectorIcon(item.sector);
-                                            return (
-                                              <div className="p-1.5 bg-[var(--bg-tertiary)] rounded-lg text-[var(--text-primary)] shrink-0 border border-[var(--border)]" style={{ color: sectorColor }}>
-                                                <IconComp size={16} />
-                                              </div>
-                                            );
-                                          })()}
-                                          <div>
-                                            <h5 
-                                              className="text-sm font-medium transition-colors"
-                                              style={{ color: sectorColor }}
+                              {sectorItems.map((item, itemIndex) => {
+                                const buttonsWidth = getButtonsWidth(item);
+                                return (
+                                  // @ts-ignore
+                                  <Draggable key={item.id} draggableId={item.id} index={itemIndex} isDragDisabled={sortBy !== "manual"}>
+                                    {(provided, snapshot) => (
+                                      <div 
+                                        ref={provided.innerRef}
+                                        {...provided.draggableProps}
+                                        className={cn(
+                                          "relative overflow-hidden rounded-xl border border-[var(--border)] transition-all duration-300 hover:shadow-md hover:border-[var(--text-secondary)] hover:z-30 group print:break-inside-avoid bg-neutral-900/40",
+                                          snapshot.isDragging && "shadow-lg border-[var(--text-primary)] z-50 scale-[1.02]"
+                                        )}
+                                      >
+                                        {/* Action Buttons Background Container (iOS-Style swipe actions) */}
+                                        {!isReportView && (
+                                          <div 
+                                            className="absolute right-0 top-0 bottom-0 flex h-full z-0 overflow-hidden"
+                                            style={{ width: `${buttonsWidth}px` }}
+                                          >
+                                            {/* Status Toggle Button if applicable */}
+                                            {item.type === "RFP" && item.status === "Pending" && (
+                                              <button 
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleQuickStatusToggle(item, "Submitted");
+                                                  setSwipedItemId(null);
+                                                }}
+                                                className="w-[75px] h-full bg-blue-600 hover:bg-blue-700 text-white flex flex-col items-center justify-center gap-1 transition-colors outline-none"
+                                                title="Move to Submitted"
+                                              >
+                                                <ArrowRightLeft size={16} />
+                                                <span className="text-[9px] font-bold uppercase tracking-wider text-center px-1">Submit</span>
+                                              </button>
+                                            )}
+                                            {item.type === "VO" && (item.status === "Pending" || item.status === "Submitted") && (
+                                              <button 
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleQuickStatusToggle(item, "Approved");
+                                                  setSwipedItemId(null);
+                                                }}
+                                                className="w-[75px] h-full bg-emerald-600 hover:bg-emerald-700 text-white flex flex-col items-center justify-center gap-1 transition-colors outline-none"
+                                                title="Approve"
+                                              >
+                                                <Check size={16} />
+                                                <span className="text-[9px] font-bold uppercase tracking-wider text-center px-1">Approve</span>
+                                              </button>
+                                            )}
+                                            {item.type === "RFP" && item.status === "Submitted" && (
+                                              <button 
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleQuickStatusToggle(item, "Achieved");
+                                                  setSwipedItemId(null);
+                                                }}
+                                                className="w-[75px] h-full bg-emerald-600 hover:bg-emerald-700 text-white flex flex-col items-center justify-center gap-1 transition-colors outline-none"
+                                                title="Mark as Achieved"
+                                              >
+                                                <Check size={16} />
+                                                <span className="text-[9px] font-bold uppercase tracking-wider text-center px-1">Achieve</span>
+                                              </button>
+                                            )}
+                                            
+                                            {/* Edit Button */}
+                                            <button 
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleEdit(item);
+                                                setSwipedItemId(null);
+                                              }}
+                                              className="w-[75px] h-full bg-neutral-700 hover:bg-neutral-600 text-white flex flex-col items-center justify-center gap-1 transition-colors border-l border-neutral-800/50 outline-none"
+                                              title="Edit"
                                             >
-                                              {item.rfpNumber && <span className="font-mono text-xs opacity-70 mr-2">{item.rfpNumber}</span>}
-                                              {item.name}
-                                            </h5>
-                                            {item.client && <p className="text-xs text-[var(--text-secondary)] mt-0.5">{item.client}</p>}
-                                            <div className="flex items-center gap-3 mt-1.5 text-[10px] text-[var(--text-secondary)] font-mono uppercase tracking-wider">
-                                               {item.submissionDate && <span>{item.status === "Pending" ? "Submission Date" : "Date"}: {item.submissionDate}</span>}
-                                               {item.region && <span>Region: {item.region}</span>}
-                                               {item.status !== "Submitted" && item.status !== "Pending" && (
-                                                 <span
-                                                   className="px-1.5 py-0.5 rounded font-bold border bg-[var(--bg-tertiary)] text-[var(--text-primary)] border-[var(--border)]"
-                                                 >
-                                                   {item.status}
-                                                 </span>
-                                               )}
+                                              <Edit2 size={16} />
+                                              <span className="text-[9px] font-bold uppercase tracking-wider">Edit</span>
+                                            </button>
+                                            
+                                            {/* Delete Button */}
+                                            <button 
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDelete(item.id);
+                                                setSwipedItemId(null);
+                                              }}
+                                              className="w-[75px] h-full bg-rose-600 hover:bg-rose-700 text-white flex flex-col items-center justify-center gap-1 transition-colors border-l border-neutral-800/50 outline-none"
+                                              title="Delete"
+                                            >
+                                              <Trash2 size={16} />
+                                              <span className="text-[9px] font-bold uppercase tracking-wider">Delete</span>
+                                            </button>
+                                          </div>
+                                        )}
+
+                                        {/* Foreground Card Content */}
+                                        <div
+                                          id={`card-content-${item.id}`}
+                                          onMouseDown={(e) => handleSwipeStart(e, item.id)}
+                                          onMouseMove={(e) => handleSwipeMove(e, item.id, buttonsWidth)}
+                                          onMouseUp={() => handleSwipeEnd(item.id, buttonsWidth)}
+                                          onMouseLeave={() => handleSwipeEnd(item.id, buttonsWidth)}
+                                          onTouchStart={(e) => handleSwipeStart(e, item.id)}
+                                          onTouchMove={(e) => handleSwipeMove(e, item.id, buttonsWidth)}
+                                          onTouchEnd={() => handleSwipeEnd(item.id, buttonsWidth)}
+                                          style={{ transform: swipedItemId === item.id ? `translateX(-${buttonsWidth}px)` : 'translateX(0px)', transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }}
+                                          className="bg-[var(--card-bg-inner)] p-3 pl-4 relative z-10 w-full h-full select-none"
+                                        >
+                                          {/* Left-edge sector color bar */}
+                                          <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: sectorColor }} />
+                                          
+                                          {/* Subtle background gradient based on probability */}
+                                          {item.probability && (
+                                            <div 
+                                              className={cn(
+                                                "absolute right-0 top-0 bottom-0 w-1/2 pointer-events-none bg-gradient-to-l to-transparent z-0",
+                                                item.probability === "High" && "from-emerald-500/20 via-emerald-500/4",
+                                                item.probability === "Medium" && "from-amber-500/20 via-amber-500/4",
+                                                item.probability === "Low" && "from-rose-500/20 via-rose-500/4"
+                                              )}
+                                            />
+                                          )}
+
+                                          <div className="flex justify-between items-start w-full relative z-10">
+                                            <div className="flex gap-3 items-start min-w-0 flex-1">
+                                              {/* Drag Handle */}
+                                              {sortBy === "manual" && !isReportView && (
+                                                <div 
+                                                  {...provided.dragHandleProps}
+                                                  className="p-1 -ml-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-grab active:cursor-grabbing shrink-0 self-center z-30"
+                                                  title="Drag to reorder"
+                                                >
+                                                  <GripVertical size={16} />
+                                                </div>
+                                              )}
+
+                                              {/* Sector icon */}
+                                              {(() => {
+                                                const sectorObj = sectors.find(s => s.name === item.sector);
+                                                if (sectorObj?.logo) {
+                                                  return (
+                                                    <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-[var(--border)] bg-neutral-900/60 flex items-center justify-center">
+                                                      <img 
+                                                        src={sectorObj.logo} 
+                                                        alt={item.sector} 
+                                                        className="w-full h-full object-cover"
+                                                        referrerPolicy="no-referrer"
+                                                      />
+                                                    </div>
+                                                  );
+                                                } else {
+                                                  const IconComp = getSectorIcon(item.sector);
+                                                  return (
+                                                    <div className="p-1.5 bg-[var(--bg-tertiary)] rounded-lg text-[var(--text-primary)] shrink-0 border border-[var(--border)]" style={{ color: sectorColor }}>
+                                                      <IconComp size={16} />
+                                                    </div>
+                                                  );
+                                                }
+                                              })()}
+                                              <div className="min-w-0 flex-1">
+                                                <h5 
+                                                  className="text-sm font-medium transition-colors truncate"
+                                                  style={{ color: sectorColor }}
+                                                >
+                                                  {item.rfpNumber && <span className="font-mono text-xs opacity-70 mr-2">{item.rfpNumber}</span>}
+                                                  {item.name}
+                                                </h5>
+                                                {item.client && <p className="text-xs text-[var(--text-secondary)] mt-0.5 truncate">{item.client}</p>}
+                                                <div className="flex flex-wrap items-center gap-3 mt-1.5 text-[10px] text-[var(--text-secondary)] font-mono uppercase tracking-wider">
+                                                   {item.submissionDate && <span>{item.status === "Pending" ? "Submission Date" : "Date"}: {item.submissionDate}</span>}
+                                                   {item.region && <span>Region: {item.region}</span>}
+                                                   {item.status !== "Submitted" && item.status !== "Pending" && (
+                                                     <span
+                                                       className="px-1.5 py-0.5 rounded font-bold border bg-[var(--bg-tertiary)] text-[var(--text-primary)] border-[var(--border)] shrink-0"
+                                                     >
+                                                       {item.status}
+                                                     </span>
+                                                   )}
+                                                </div>
+                                              </div>
+                                            </div>
+                                            <div className="text-right flex flex-col items-end gap-1.5 shrink-0 pl-4">
+                                              <div>
+                                                <span className="text-sm font-mono text-[var(--text-primary)] block">{getFilteredValue(item).toLocaleString()} {currency}</span>
+                                                {selectedDisciplines.length > 0 && (
+                                                  <span className="text-[10px] text-[var(--text-secondary)]">of {getTotalValue(item).toLocaleString()} Total</span>
+                                                )}
+                                              </div>
+                                              {item.type === "RFP" && Array.isArray(item.disciplines) && (
+                                                <div className="flex flex-wrap gap-1 items-center mt-1">
+                                                  {item.disciplines.map((d) => {
+                                                    const isSelected = selectedDisciplines.length === 0 || 
+                                                                      (selectedDisciplines.includes("Architecture") && d === "Architecture") ||
+                                                                      (selectedDisciplines.includes("Interior") && d === "Interior") ||
+                                                                      (selectedDisciplines.includes("CS") && d === "Construction Supervision");
+                                                    const color = DISCIPLINE_COLORS[d] || 'var(--text-secondary)';
+                                                    const val = d === "Architecture" ? (item.values.architecture || 0) :
+                                                                d === "Interior" ? (item.values.interior || 0) :
+                                                                d === "Construction Supervision" ? (item.values.cs || 0) : 0;
+                                                    return (
+                                                      <div key={d} className="relative group/tooltip">
+                                                        <span className={cn(
+                                                          "text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border transition-all cursor-help block whitespace-nowrap",
+                                                          !isSelected && "opacity-40 grayscale"
+                                                        )}
+                                                        style={{ borderColor: color, color: color, backgroundColor: `${color}1A` }}>
+                                                          {getDisciplineShortName(d)}
+                                                        </span>
+                                                        <div className="absolute bottom-full right-0 mb-2 px-2 py-1 bg-neutral-900 border border-neutral-800 text-white text-[10px] rounded shadow-xl opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 whitespace-nowrap z-50 font-mono">
+                                                          <span className="font-sans text-neutral-400 mr-1">{d}:</span>
+                                                          {val.toLocaleString()} {currency}
+                                                        </div>
+                                                      </div>
+                                                    );
+                                                  })}
+                                                </div>
+                                              )}
                                             </div>
                                           </div>
                                         </div>
-                                        <div className="text-right flex flex-col items-end gap-1.5">
-                                          <div>
-                                            <span className="text-sm font-mono text-[var(--text-primary)] block">{getFilteredValue(item).toLocaleString()} {currency}</span>
-                                            {selectedDisciplines.length > 0 && (
-                                              <span className="text-[10px] text-[var(--text-secondary)]">of {getTotalValue(item).toLocaleString()} Total</span>
-                                            )}
-                                          </div>
-                                        </div>
                                       </div>
-                                      
-                                      {item.type === "RFP" && Array.isArray(item.disciplines) && (
-                                        <div className="mt-2 flex flex-wrap gap-1.5 relative z-10">
-                                          {item.disciplines.map((d) => {
-                                            const isSelected = selectedDisciplines.length === 0 || 
-                                                              (selectedDisciplines.includes("Architecture") && d === "Architecture") ||
-                                                              (selectedDisciplines.includes("Interior") && d === "Interior") ||
-                                                              (selectedDisciplines.includes("CS") && d === "Construction Supervision");
-                                            const color = DISCIPLINE_COLORS[d] || 'var(--text-secondary)';
-                                            return (
-                                              <span key={d} className={cn(
-                                                "text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border",
-                                                !isSelected && "opacity-40 grayscale"
-                                              )}
-                                              style={{
-                                                borderColor: color,
-                                                color: color,
-                                                backgroundColor: `${color}1A`
-                                              }}>
-                                                {getDisciplineShortName(d)}
-                                              </span>
-                                            );
-                                          })}
-                                        </div>
-                                      )}
-
-                                      {/* Action Buttons Container (Hidden by default, shown on hover at the end) */}
-                                      {!isReportView && (
-                                        <div className="absolute top-0 right-0 bottom-0 flex items-center gap-1 px-3 bg-gradient-to-l from-[var(--card-bg-inner)] via-[var(--card-bg-inner)] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 translate-x-4 group-hover:translate-x-0 z-20 pointer-events-none group-hover:pointer-events-auto">
-                                          {item.type === "RFP" && item.status === "Pending" && (
-                                            <button 
-                                              onClick={() => handleQuickStatusToggle(item, "Submitted")}
-                                              className="flex items-center gap-1 px-3 py-1.5 bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white rounded-full text-[10px] font-bold uppercase tracking-wider transition-colors shadow-sm"
-                                              title="Move to Submitted"
-                                            >
-                                              <ArrowRightLeft size={12} />
-                                              To Submitted
-                                            </button>
-                                          )}
-                                          {item.type === "VO" && (item.status === "Pending" || item.status === "Submitted") && (
-                                            <button 
-                                              onClick={() => handleQuickStatusToggle(item, "Approved")}
-                                              className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white rounded-full text-[10px] font-bold uppercase tracking-wider transition-colors shadow-sm"
-                                              title="Approve"
-                                            >
-                                              <Check size={12} />
-                                              Approve
-                                            </button>
-                                          )}
-                                          {item.type === "RFP" && item.status === "Submitted" && (
-                                            <button 
-                                              onClick={() => handleQuickStatusToggle(item, "Achieved")}
-                                              className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white rounded-full text-[10px] font-bold uppercase tracking-wider transition-colors shadow-sm"
-                                              title="Mark as Achieved"
-                                            >
-                                              <Check size={12} />
-                                              Achieved
-                                            </button>
-                                          )}
-                                          <button 
-                                            onClick={() => handleEdit(item)}
-                                            className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-2 bg-[var(--bg-primary)] rounded-full shadow-sm border border-[var(--border)] hover:scale-110 transition-all duration-200"
-                                            title="Edit"
-                                          >
-                                            <Edit2 size={14} />
-                                          </button>
-                                          <button 
-                                            onClick={() => handleDelete(item.id)}
-                                            className="text-[var(--text-secondary)] hover:text-red-400 p-2 bg-[var(--bg-primary)] rounded-full shadow-sm border border-[var(--border)] hover:scale-110 transition-all duration-200"
-                                            title="Delete"
-                                          >
-                                            <Trash2 size={14} />
-                                          </button>
-                                        </div>
-                                      )}
-                                    </div>
-                                  )}
-                                </Draggable>
-                              ))}
+                                    )}
+                                  </Draggable>
+                                );
+                              })}
                               {provided.placeholder}
                             </div>
                           )}

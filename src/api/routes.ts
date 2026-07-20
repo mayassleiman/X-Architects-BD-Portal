@@ -560,11 +560,11 @@ router.get('/market-sectors', (req, res) => {
 
 // Create Market Sector
 router.post('/market-sectors', (req, res) => {
-  const { name, color } = req.body;
+  const { name, color, logo } = req.body;
   try {
-    const stmt = db.prepare('INSERT INTO market_sectors (name, color) VALUES (?, ?)');
-    const info = stmt.run(name, color);
-    res.json({ id: info.lastInsertRowid, name, color });
+    const stmt = db.prepare('INSERT INTO market_sectors (name, color, logo) VALUES (?, ?, ?)');
+    const info = stmt.run(name, color, logo || null);
+    res.json({ id: info.lastInsertRowid, name, color, logo: logo || null });
   } catch (error: any) {
     if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
       res.status(400).json({ error: 'Market sector already exists' });
@@ -577,10 +577,10 @@ router.post('/market-sectors', (req, res) => {
 // Update Market Sector
 router.put('/market-sectors/:id', (req, res) => {
   const { id } = req.params;
-  const { name, color } = req.body;
+  const { name, color, logo } = req.body;
   try {
-    const stmt = db.prepare('UPDATE market_sectors SET name = ?, color = ? WHERE id = ?');
-    stmt.run(name, color, id);
+    const stmt = db.prepare('UPDATE market_sectors SET name = ?, color = ?, logo = ? WHERE id = ?');
+    stmt.run(name, color, logo || null, id);
     res.json({ success: true });
   } catch (error: any) {
     if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
@@ -597,6 +597,47 @@ router.delete('/market-sectors/:id', (req, res) => {
   const stmt = db.prepare('DELETE FROM market_sectors WHERE id = ?');
   stmt.run(id);
   res.json({ success: true });
+});
+
+// Upload Market Sector Logo
+router.post('/market-sectors/:id/logo', upload.single('logo'), (req, res) => {
+  const { id } = req.params;
+  if (!req.file) {
+    return res.status(400).send('No file uploaded');
+  }
+
+  const tempPath = req.file.path;
+  const uploadsDir = path.resolve(process.cwd(), 'uploads');
+  const targetPath = path.join(uploadsDir, `sector-logo-${id}.png`);
+
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir);
+  }
+
+  try {
+    fs.copyFileSync(tempPath, targetPath);
+    fs.unlinkSync(tempPath); // Remove temp file
+
+    const logoUrl = `/api/market-sectors/${id}/logo-image?t=${Date.now()}`;
+    const stmt = db.prepare('UPDATE market_sectors SET logo = ? WHERE id = ?');
+    stmt.run(logoUrl, id);
+
+    res.json({ success: true, logo: logoUrl });
+  } catch (error) {
+    console.error('Error uploading sector logo:', error);
+    res.status(500).send('Failed to upload sector logo');
+  }
+});
+
+// Serve Market Sector Logo
+router.get('/market-sectors/:id/logo-image', (req, res) => {
+  const { id } = req.params;
+  const logoPath = path.resolve(process.cwd(), 'uploads', `sector-logo-${id}.png`);
+  if (fs.existsSync(logoPath)) {
+    res.sendFile(logoPath);
+  } else {
+    res.status(404).send('Sector logo not found');
+  }
 });
 
 // --- Company Types API ---

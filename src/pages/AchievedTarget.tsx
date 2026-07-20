@@ -364,6 +364,10 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
     return { quarters, totalAchieved, totalDeficiency, totalAchievedPercent, totalDeficiencyPercent, sectorData, disciplineData, chartData };
   }, [data]);
 
+  const todayData = useMemo(() => {
+    return metrics.chartData.find(d => d.name === 'Today');
+  }, [metrics.chartData]);
+
   // Load saved zoom domain when year changes
   useEffect(() => {
     if (isReportView) {
@@ -795,20 +799,44 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
         </div>
 
         {/* Cumulative Achievement Chart */}
-        <div className="mb-8 p-4 bg-[var(--bg-tertiary)]/10 rounded-lg border border-[var(--border)]" ref={chartRef}>
+        <div className="mb-8 p-4 bg-[var(--bg-tertiary)]/10 rounded-lg border border-[var(--border)] relative" ref={chartRef}>
           <h3 className="text-sm font-medium text-[var(--text-primary)] mb-4 flex items-center gap-2">
             <LineChartIcon size={16} />
             Cumulative Achievement Trend
           </h3>
-          <div 
-            className={cn("h-64 w-full select-none", isPanning ? "cursor-grabbing" : "cursor-grab")}
-            ref={chartContainerRef}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-          >
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="relative">
+            {todayData && (
+              <div className="absolute top-2 right-4 bg-neutral-950/95 border border-neutral-800 p-3 rounded-xl shadow-2xl z-20 backdrop-blur-sm text-left max-w-[220px] pointer-events-none">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                  <span className="text-white text-[10px] font-bold uppercase tracking-wider">Today's Status</span>
+                  <span className="text-[9px] text-[var(--text-secondary)] font-mono ml-auto">{todayData.fullDate}</span>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex justify-between gap-6 text-[10px]">
+                    <span className="text-amber-400 font-bold uppercase">Target:</span>
+                    <span className="text-white font-mono font-bold">{(todayData.linearTarget || 0).toLocaleString()} {currency}</span>
+                  </div>
+                  <div className="flex justify-between gap-6 text-[10px]">
+                    <span className="text-emerald-400 font-bold uppercase">Achieved:</span>
+                    <span className="text-white font-mono font-bold">{(todayData.cumulative !== null ? todayData.cumulative : 0).toLocaleString()} {currency}</span>
+                  </div>
+                  <div className="flex justify-between gap-6 pt-1 border-t border-neutral-800 text-[10px]">
+                    <span className="text-rose-400 font-bold uppercase">Deficiency:</span>
+                    <span className="text-rose-400 font-mono font-bold">{Math.max(0, (todayData.linearTarget || 0) - (todayData.cumulative !== null ? todayData.cumulative : 0)).toLocaleString()} {currency}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div 
+              className={cn("h-64 w-full select-none", isPanning ? "cursor-grabbing" : "cursor-grab")}
+              ref={chartContainerRef}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+            >
+              <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={metrics.chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorAchieved" x1="0" y1="0" x2="0" y2="1">
@@ -866,6 +894,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
                 />
               </ComposedChart>
             </ResponsiveContainer>
+          </div>
           </div>
         </div>
 

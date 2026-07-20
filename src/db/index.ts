@@ -280,4 +280,11 @@ try {
   // Column likely already exists, ignore
 }
 
+// Migration: Add logo column to market_sectors if it doesn't exist
+try {
+  db.exec("ALTER TABLE market_sectors ADD COLUMN logo TEXT");
+} catch (error) {
+  // Column likely already exists, ignore
+}
+
 export default db;

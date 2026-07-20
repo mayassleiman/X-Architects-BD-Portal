@@ -8,6 +8,7 @@ interface MarketSector {
   id: number;
   name: string;
   color: string;
+  logo?: string;
 }
 
 interface CompanyType {
@@ -777,12 +778,51 @@ export function Settings() {
                 ) : (
                   <>
                     <div className="flex items-center gap-3">
-                      <div className="w-4 h-4 rounded-full" style={{ backgroundColor: sector.color }}></div>
+                      {sector.logo ? (
+                        <div className="w-6 h-6 rounded-md overflow-hidden bg-neutral-900 border border-[var(--border)] shrink-0 flex items-center justify-center">
+                          <img 
+                            src={sector.logo} 
+                            alt="" 
+                            className="w-full h-full object-cover" 
+                            referrerPolicy="no-referrer"
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-4 h-4 rounded-full" style={{ backgroundColor: sector.color }}></div>
+                      )}
                       <span className="text-sm font-medium text-[var(--text-primary)]">{sector.name}</span>
                     </div>
                     <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => startEditingSector(sector)} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]"><Edit2 size={14} /></button>
-                      <button onClick={() => handleDeleteSector(sector.id)} className="text-[var(--text-secondary)] hover:text-rose-500"><Trash2 size={14} /></button>
+                      <label className="cursor-pointer text-[var(--text-secondary)] hover:text-emerald-400 p-1" title="Upload Sector Logo">
+                        <Upload size={14} />
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          className="hidden" 
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const formData = new FormData();
+                            formData.append("logo", file);
+                            try {
+                              const res = await fetch(`/api/market-sectors/${sector.id}/logo`, {
+                                method: "POST",
+                                body: formData,
+                              });
+                              if (res.ok) {
+                                fetchSectors();
+                              } else {
+                                alert("Failed to upload sector logo");
+                              }
+                            } catch (error) {
+                              console.error("Error uploading sector logo:", error);
+                              alert("Error uploading sector logo");
+                            }
+                          }}
+                        />
+                      </label>
+                      <button onClick={() => startEditingSector(sector)} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1"><Edit2 size={14} /></button>
+                      <button onClick={() => handleDeleteSector(sector.id)} className="text-[var(--text-secondary)] hover:text-rose-500 p-1"><Trash2 size={14} /></button>
                     </div>
                   </>
                 )}
