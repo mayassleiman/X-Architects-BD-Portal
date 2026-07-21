@@ -369,6 +369,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
   }, [metrics.chartData]);
 
   const [statusBoxPos, setStatusBoxPos] = useState({ x: 0, y: 0 });
+  const [showTodayStatusBox, setShowTodayStatusBox] = useState(true);
   const [isDraggingStatusBox, setIsDraggingStatusBox] = useState(false);
   const dragStartRef = useRef({ x: 0, y: 0 });
   const boxStartRef = useRef({ x: 0, y: 0 });
@@ -860,42 +861,65 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
 
         {/* Cumulative Achievement Chart */}
         <div className="mb-8 p-4 bg-[var(--bg-tertiary)]/10 rounded-lg border border-[var(--border)] relative" ref={chartRef}>
-          <h3 className="text-sm font-medium text-[var(--text-primary)] mb-4 flex items-center gap-2">
-            <LineChartIcon size={16} />
-            Cumulative Achievement Trend
-          </h3>
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-sm font-medium text-[var(--text-primary)] flex items-center gap-2">
+              <LineChartIcon size={16} />
+              Cumulative Achievement Trend
+            </h3>
+            {todayData && !showTodayStatusBox && (
+              <button 
+                onClick={() => setShowTodayStatusBox(true)}
+                className="text-[10px] font-mono uppercase text-[var(--text-secondary)] hover:text-[var(--text-primary)] px-2 py-0.5 bg-[var(--bg-tertiary)]/30 hover:bg-[var(--bg-tertiary)]/60 rounded border border-[var(--border)] transition-all flex items-center gap-1 print:hidden"
+              >
+                Show Today's Status
+              </button>
+            )}
+          </div>
           <div className="relative">
-            {todayData && (
+            {todayData && showTodayStatusBox && (
               <div 
                 onMouseDown={handleStatusBoxMouseDown}
                 onTouchStart={handleStatusBoxTouchStart}
                 style={{
-                  transform: `translate(${statusBoxPos.x}px, ${statusBoxPos.y}px)`,
+                  top: `${8 + statusBoxPos.y}px`,
+                  right: `${16 - statusBoxPos.x}px`,
                 }}
                 className={cn(
-                  "absolute top-2 right-4 border p-3 rounded-xl shadow-2xl z-20 backdrop-blur-md text-left max-w-[220px] select-none cursor-grab active:cursor-grabbing transition-all duration-75",
+                  "absolute border p-3 rounded-xl shadow-2xl z-20 backdrop-blur-md text-left w-[220px] select-none cursor-grab active:cursor-grabbing transition-all duration-75",
                   isDraggingStatusBox 
-                    ? "bg-neutral-950/70 border-neutral-700 shadow-emerald-500/5 scale-[1.02]" 
-                    : "bg-neutral-950/45 border-neutral-800/80"
+                    ? "bg-[var(--card-bg)]/80 border-[var(--text-primary)]/40 shadow-emerald-500/10 scale-[1.02]" 
+                    : "bg-[var(--card-bg)]/50 border-[var(--border)] hover:bg-[var(--card-bg)]/60"
                 )}
               >
-                <div className="flex items-center gap-1.5 mb-1.5 pointer-events-none">
-                  <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                  <span className="text-white text-[10px] font-bold uppercase tracking-wider">Today's Status</span>
-                  <span className="text-[9px] text-[var(--text-secondary)] font-mono ml-auto">{todayData.fullDate}</span>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse pointer-events-none" />
+                  <span className="text-[var(--text-primary)] text-[10px] font-bold uppercase tracking-wider pointer-events-none">Today's Status</span>
+                  <span className="text-[9px] text-[var(--text-secondary)] font-mono ml-auto pointer-events-none">{todayData.fullDate}</span>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowTodayStatusBox(false);
+                    }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
+                    className="p-1 text-[var(--text-secondary)] hover:text-rose-500 rounded hover:bg-rose-500/10 transition-colors ml-1 print:hidden"
+                    title="Hide status box"
+                  >
+                    <X size={10} />
+                  </button>
                 </div>
                 <div className="space-y-1 pointer-events-none">
                   <div className="flex justify-between gap-6 text-[10px]">
-                    <span className="text-amber-400 font-bold uppercase">Target:</span>
-                    <span className="text-white font-mono font-bold">{(todayData.linearTarget || 0).toLocaleString()} {currency}</span>
+                    <span className="text-amber-500 font-bold uppercase">Target:</span>
+                    <span className="text-[var(--text-primary)] font-mono font-bold">{(todayData.linearTarget || 0).toLocaleString()} {currency}</span>
                   </div>
                   <div className="flex justify-between gap-6 text-[10px]">
-                    <span className="text-emerald-400 font-bold uppercase">Achieved:</span>
-                    <span className="text-white font-mono font-bold">{(todayData.cumulative !== null ? todayData.cumulative : 0).toLocaleString()} {currency}</span>
+                    <span className="text-emerald-500 font-bold uppercase">Achieved:</span>
+                    <span className="text-[var(--text-primary)] font-mono font-bold">{(todayData.cumulative !== null ? todayData.cumulative : 0).toLocaleString()} {currency}</span>
                   </div>
-                  <div className="flex justify-between gap-6 pt-1 border-t border-neutral-800 text-[10px]">
-                    <span className="text-rose-400 font-bold uppercase">Deficiency:</span>
-                    <span className="text-rose-400 font-mono font-bold">{Math.max(0, (todayData.linearTarget || 0) - (todayData.cumulative !== null ? todayData.cumulative : 0)).toLocaleString()} {currency}</span>
+                  <div className="flex justify-between gap-6 pt-1 border-t border-[var(--border)] text-[10px]">
+                    <span className="text-rose-500 font-bold uppercase">Deficiency:</span>
+                    <span className="text-rose-500 font-mono font-bold">{Math.max(0, (todayData.linearTarget || 0) - (todayData.cumulative !== null ? todayData.cumulative : 0)).toLocaleString()} {currency}</span>
                   </div>
                 </div>
               </div>
