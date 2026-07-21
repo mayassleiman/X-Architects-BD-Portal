@@ -702,20 +702,39 @@ Below are my contact details for your convenient:
         <div className="flex-1 overflow-y-auto p-2 space-y-2">
           {Object.entries(groupedContacts).map(([org, orgContacts]: [string, Contact[]]) => {
             const category = orgContacts[0]?.category; 
+            const categoryColor = getCategoryColor(category) || '#6b7280';
+            const hexColor = categoryColor.startsWith('#') ? categoryColor : '#6b7280';
+            const highlightBg = `${hexColor}0f`; // ~9% opacity for a soft, premium highlight
+            const highlightBorder = `${hexColor}25`; // ~15% opacity border
             return (
               <div 
                 key={org} 
-                className="border border-[var(--border)] rounded overflow-hidden"
-                style={{ borderLeft: `4px solid ${getCategoryColor(category)}` }}
+                className="border rounded overflow-hidden transition-all duration-200"
+                style={{ 
+                  borderLeft: `4px solid ${hexColor}`,
+                  borderColor: highlightBorder,
+                  backgroundColor: highlightBg
+                }}
               >
-                <div className="flex items-center justify-between p-3 bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] transition-colors group/org">
+                <div className="flex items-center justify-between p-3 hover:bg-neutral-500/5 transition-colors group/org">
                   <button 
                     onClick={() => toggleOrg(org)}
                     className="flex items-center gap-3 flex-1 text-left"
                   >
-                    <Building2 size={16} className="text-[var(--text-secondary)]" />
+                    <Building2 size={16} style={{ color: hexColor }} />
                     <span className="font-bold text-sm text-[var(--text-primary)] uppercase tracking-wide">{org}</span>
-                    {category && <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-secondary)]">{category}</span>}
+                    {category && (
+                      <span 
+                        className="text-[9px] px-2 py-0.5 rounded-full border font-mono font-bold"
+                        style={{ 
+                          borderColor: `${hexColor}40`,
+                          color: hexColor,
+                          backgroundColor: `${hexColor}0a`
+                        }}
+                      >
+                        {category}
+                      </span>
+                    )}
                   </button>
                   <div className="flex items-center gap-2">
                     <button
@@ -725,25 +744,24 @@ Below are my contact details for your convenient:
                     >
                       <MapPin size={14} />
                     </button>
-                    <span className="text-xs text-[var(--text-secondary)]">{orgContacts.length}</span>
-                    <button onClick={() => toggleOrg(org)}>
+                    <span className="text-xs text-[var(--text-secondary)] font-mono font-semibold">{orgContacts.length}</span>
+                    <button onClick={() => toggleOrg(org)} style={{ color: hexColor }}>
                       {expandedOrgs.includes(org) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                     </button>
                   </div>
                 </div>
                 
                 {expandedOrgs.includes(org) && (
-                  <div className="divide-y divide-[var(--border)]">
+                  <div className="divide-y divide-[var(--border)]/30 bg-white dark:bg-[#151515] border-t border-[var(--border)]/20">
                     {orgContacts.map(contact => (
                       <div 
                         key={contact.id}
                         onClick={() => { setSelectedContact(contact); setViewMode('details'); }}
                         className={cn(
-                          "p-3 cursor-pointer hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-between group",
-                          selectedContact?.id === contact.id && viewMode === 'details' ? "bg-[var(--bg-tertiary)] border-l-2 border-[var(--text-primary)]" : "pl-3"
+                          "p-3 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/40 transition-colors flex items-center justify-between group bg-white dark:bg-[#151515]",
+                          selectedContact?.id === contact.id && viewMode === 'details' ? "bg-neutral-50/70 dark:bg-neutral-800/20 border-l-2 border-[var(--text-primary)]" : "pl-3"
                         )}
                       >
-                        {/* ... contact item content ... */}
                         <div>
                           <div className="flex items-center gap-2">
                             <User size={14} className="text-[var(--text-tertiary)]" />

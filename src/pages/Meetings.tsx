@@ -24,7 +24,7 @@ const LEVELS = [
 
 export function Meetings({ 
   isReportView = false, 
-  defaultViewMode = 'list', 
+  defaultViewMode = 'calendar', 
   startDate, 
   endDate,
   controlledDate,
@@ -41,6 +41,132 @@ export function Meetings({
 }) {
   const { searchQuery } = useSearch();
   const [meetings, setMeetings] = React.useState<Meeting[]>([]);
+  const [swipedItemId, setSwipedItemId] = React.useState<number | null>(null);
+  const [isSwipingActive, setIsSwipingActive] = React.useState(false);
+  const swipeStart = React.useRef<{ x: number; y: number } | null>(null);
+
+  const trendData = React.useMemo(() => {
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const currentYear = new Date().getFullYear();
+    
+    // Get last 6 months
+    const data = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const mIdx = d.getMonth();
+      const yr = d.getFullYear();
+      
+      const count = meetings.filter(m => {
+        const mDate = new Date(m.date);
+        return mDate.getMonth() === mIdx && mDate.getFullYear() === yr;
+      }).length;
+      
+      data.push({
+        month: months[mIdx],
+        quantity: count
+      });
+    }
+    return data;
+  }, [meetings]);
+
+  const handleSwipeStart = (e: React.MouseEvent | React.TouchEvent, itemId: number) => {
+    if (isReportView) return;
+    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+    swipeStart.current = { x: clientX, y: clientY };
+    setIsSwipingActive(true);
+  };
+
+  const handleSwipeMove = (e: React.MouseEvent | React.TouchEvent, itemId: number, maxOffset: number) => {
+    if (!swipeStart.current || !isSwipingActive) return;
+    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+    
+    const dx = clientX - swipeStart.current.x;
+    const dy = clientY - swipeStart.current.y;
+    
+    if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 10) {
+      swipeStart.current = null;
+      setIsSwipingActive(false);
+      return;
+    }
+    
+    if (Math.abs(dx) > 10) {
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+      const isCurrentlyOpen = swipedItemId === itemId;
+      const baseOffset = isCurrentlyOpen ? -maxOffset : 0;
+      let newOffset = baseOffset + dx;
+      
+      newOffset = Math.max(-maxOffset - 30, Math.min(15, newOffset));
+      
+      const el = document.getElementById(`meeting-content-${itemId}`);
+      if (el) {
+        el.style.transform = `translateX(${newOffset}px)`;
+        el.style.transition = "none";
+      }
+    }
+  };
+
+  const handleSwipeEnd = (itemId: number, maxOffset: number) => {
+    if (!swipeStart.current) return;
+    setIsSwipingActive(false);
+    swipeStart.current = null;
+    
+    const el = document.getElementById(`meeting-content-${itemId}`);
+    if (el) {
+      el.style.transition = "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)";
+      
+      const style = window.getComputedStyle(el);
+      let currentTranslateX = 0;
+      if (style.transform && style.transform !== "none") {
+        const parts = style.transform.split(/[()]/)[1]?.split(",");
+        if (parts) {
+          currentTranslateX = parseFloat(parts[4] || parts[12] || "0");
+        }
+      }
+      
+      const isCurrentlyOpen = swipedItemId === itemId;
+      const targetOffset = isCurrentlyOpen ? -maxOffset : 0;
+      
+      // If the user tapped on an open item without dragging, close it
+      if (isCurrentlyOpen && Math.abs(currentTranslateX - targetOffset) < 5) {
+        el.style.transform = "translateX(0px)";
+        setSwipedItemId(null);
+        return;
+      }
+      
+      if (currentTranslateX < -40) {
+        el.style.transform = `translateX(-${maxOffset}px)`;
+        setSwipedItemId(itemId);
+      } else {
+        el.style.transform = "translateX(0px)";
+        if (swipedItemId === itemId) {
+          setSwipedItemId(null);
+        }
+      }
+    }
+  };
+
+  React.useEffect(() => {
+    meetings.forEach(item => {
+      if (item.id !== swipedItemId) {
+        const el = document.getElementById(`meeting-content-${item.id}`);
+        if (el) {
+          el.style.transition = "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)";
+          el.style.transform = "translateX(0px)";
+        }
+      } else {
+        const el = document.getElementById(`meeting-content-${item.id}`);
+        if (el) {
+          el.style.transition = "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)";
+          el.style.transform = `translateX(-150px)`;
+        }
+      }
+    });
+  }, [swipedItemId, meetings]);
   const [viewMode, setViewMode] = React.useState<'list' | 'calendar' | 'stats'>(defaultViewMode);
   const [currentDate, setCurrentDate] = React.useState(controlledDate || new Date());
   const [selectedMonth, setSelectedMonth] = React.useState(new Date());
@@ -468,6 +594,58 @@ export function Meetings({
         )}
       </div>
 
+      {/* Meetings Trend Dashboard */}
+      {!isReportView && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-[var(--card-bg)] border border-[var(--border)] p-4 rounded-xl shadow-sm no-print">
+          <div className="p-3 bg-neutral-500/5 rounded-lg flex flex-col justify-between">
+            <div>
+              <span className="text-[10px] font-mono uppercase text-slate-400 font-bold tracking-wider">Total Scheduled</span>
+              <h2 className="text-3xl font-light text-[var(--text-primary)] mt-1">{meetings.length}</h2>
+            </div>
+            <p className="text-[10px] text-emerald-500 flex items-center gap-1 mt-2 font-mono">
+              <span>↑ Active Pipeline Meetings</span>
+            </p>
+          </div>
+
+          <div className="p-3 bg-neutral-500/5 rounded-lg flex flex-col justify-between">
+            <div>
+              <span className="text-[10px] font-mono uppercase text-slate-400 font-bold tracking-wider">This Month</span>
+              <h2 className="text-3xl font-light text-[var(--text-primary)] mt-1">
+                {meetings.filter(m => {
+                  const d = new Date(m.date);
+                  const now = new Date();
+                  return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+                }).length}
+              </h2>
+            </div>
+            <p className="text-[10px] text-blue-400 flex items-center gap-1 mt-2 font-mono">
+              <span>Coordination Frequency stable</span>
+            </p>
+          </div>
+
+          <div className="bg-neutral-500/5 rounded-lg p-3 flex flex-col justify-between min-h-[100px]">
+            <div className="flex justify-between items-center mb-1">
+              <span className="text-[10px] font-mono uppercase text-slate-400 font-bold tracking-wider">6-Month Trend</span>
+              <span className="text-[9px] font-mono text-emerald-500">Improving Quantities</span>
+            </div>
+            <div className="h-12 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={trendData}>
+                  <Bar dataKey="quantity" fill="#10b981" radius={[2, 2, 0, 0]} barSize={14} />
+                  <XAxis dataKey="month" hide />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#111', border: '1px solid #333', fontSize: '9px', padding: '2px 6px' }} 
+                    labelStyle={{ display: 'none' }}
+                    itemStyle={{ color: '#fff', padding: 0 }}
+                    cursor={false}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      )}
+
       {!isReportView && viewMode !== 'stats' && (
         <div className="flex flex-wrap gap-4 items-center bg-[var(--card-bg)] p-4 rounded-xl border border-[var(--border)]">
           <div className="flex items-center gap-2">
@@ -723,71 +901,122 @@ export function Meetings({
           </div>
         </div>
       ) : viewMode === 'list' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="flex flex-col gap-3">
           {filteredMeetings.length === 0 ? (
-            <div className="col-span-full p-12 text-center border border-dashed border-[var(--border)] rounded-lg">
+            <div className="p-12 text-center border border-dashed border-[var(--border)] rounded-lg">
               <p className="text-[var(--text-secondary)]">No meetings found.</p>
             </div>
           ) : (
             filteredMeetings.map((meeting) => {
               const levelInfo = LEVELS.find(l => l.id === meeting.level) || LEVELS[0];
+              const borderLeftColor = 
+                meeting.level === 1 ? "#6b7280" : // Lead - slate
+                meeting.level === 2 ? "#3b82f6" : // Prospect - blue
+                meeting.level === 3 ? "#f59e0b" : // Proposal - amber
+                "#10b981"; // Negotiation - emerald
+
               return (
-                <div key={meeting.id} className="bg-[var(--card-bg)] border border-[var(--border)] p-4 group hover:border-[var(--border-hover)] transition-colors relative flex flex-col break-inside-avoid shadow-sm hover:shadow-md">
+                <div key={meeting.id} className="relative overflow-hidden bg-[var(--card-bg)] border border-[var(--border)]/40 rounded-lg shadow-sm">
+                  {/* Sliding buttons behind */}
                   {!isReportView && (
-                    <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity no-print">
+                    <div className={cn(
+                      "absolute right-0 top-0 bottom-0 flex items-center z-0 transition-opacity duration-200",
+                      swipedItemId === meeting.id ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
+                    )}>
                       <button 
-                        onClick={() => handleEdit(meeting)}
-                        className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                        onClick={() => {
+                          handleEdit(meeting);
+                          setSwipedItemId(null);
+                        }}
+                        className="w-[75px] h-full bg-neutral-800 hover:bg-neutral-700 text-slate-300 flex flex-col items-center justify-center gap-1 transition-colors border-l border-neutral-700/50 outline-none cursor-pointer"
+                        title="Edit"
                       >
                         <Edit2 size={14} />
+                        <span className="text-[9px] font-bold uppercase tracking-wider">Edit</span>
                       </button>
                       <button 
-                        onClick={() => handleDelete(meeting.id)}
-                        className="text-[var(--text-secondary)] hover:text-red-400 transition-colors"
+                        onClick={() => {
+                          handleDelete(meeting.id);
+                          setSwipedItemId(null);
+                        }}
+                        className="w-[75px] h-full bg-rose-600 hover:bg-rose-700 text-white flex flex-col items-center justify-center gap-1 transition-colors border-l border-neutral-700/50 outline-none cursor-pointer"
+                        title="Delete"
                       >
                         <Trash2 size={14} />
+                        <span className="text-[9px] font-bold uppercase tracking-wider">Delete</span>
                       </button>
                     </div>
                   )}
-                  
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className={cn("text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded border", levelInfo.tagClass)}>
-                      {levelInfo.label}
-                    </span>
-                  </div>
 
-                  <h3 className="text-base font-medium text-[var(--text-primary)] mb-3 pr-12">{meeting.title}</h3>
-                  
-                  <div className="space-y-2 mt-auto">
-                    <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-                      <CalendarIcon size={12} />
-                      <span>{meeting.date}</span>
-                      <Clock size={12} className="ml-2" />
-                      <span>{meeting.time}</span>
-                      {meeting.location && (
-                        <>
-                          <span className="mx-1">•</span>
-                          <span className="font-medium text-[var(--text-primary)]">{meeting.location}</span>
-                        </>
+                  {/* Foreground card */}
+                  <div
+                    id={`meeting-content-${meeting.id}`}
+                    onMouseDown={(e) => handleSwipeStart(e, meeting.id)}
+                    onMouseMove={(e) => handleSwipeMove(e, meeting.id, 150)}
+                    onMouseUp={() => handleSwipeEnd(meeting.id, 150)}
+                    onMouseLeave={() => handleSwipeEnd(meeting.id, 150)}
+                    onTouchStart={(e) => handleSwipeStart(e, meeting.id)}
+                    onTouchMove={(e) => handleSwipeMove(e, meeting.id, 150)}
+                    onTouchEnd={() => handleSwipeEnd(meeting.id, 150)}
+                    style={{ 
+                      transform: swipedItemId === meeting.id ? 'translateX(-150px)' : 'translateX(0px)', 
+                      transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)' 
+                    }}
+                    className="p-3 px-4 flex flex-wrap md:flex-nowrap items-center justify-between gap-4 bg-[var(--card-bg)] hover:bg-[var(--bg-tertiary)] transition-colors relative z-10 w-full select-none"
+                  >
+                    {/* Left slim highlight bar */}
+                    <div className="absolute left-0 top-0 bottom-0 w-1.5" style={{ backgroundColor: borderLeftColor }} />
+
+                    {/* Strong right-edge highlighting gradient */}
+                    <div 
+                      className={cn(
+                        "absolute right-0 top-0 bottom-0 w-1/3 pointer-events-none bg-gradient-to-l to-transparent z-0 opacity-100",
+                        meeting.level === 1 && "from-slate-500/15 via-slate-500/3",
+                        meeting.level === 2 && "from-blue-500/15 via-blue-500/3",
+                        meeting.level === 3 && "from-amber-500/15 via-amber-500/3",
+                        meeting.level === 4 && "from-emerald-500/15 via-emerald-500/3"
                       )}
-                    </div>
-                    {meeting.attendees && meeting.attendees.length > 0 && (
-                      <div className="flex items-start gap-2 text-xs text-[var(--text-secondary)] pt-2 border-t border-[var(--border)]">
-                        <User size={12} className="mt-0.5" />
-                        <div className="flex flex-wrap gap-1">
+                    />
+
+                    <div className="flex items-center gap-4 flex-1 min-w-0 pl-1 relative z-10">
+                      <div className="min-w-[150px] md:min-w-[200px] truncate">
+                        <h3 className="text-sm font-semibold text-[var(--text-primary)] truncate">{meeting.title}</h3>
+                        {meeting.location && (
+                          <p className="text-[10px] text-[var(--text-secondary)] mt-0.5 font-mono truncate">{meeting.location}</p>
+                        )}
+                      </div>
+
+                      <div className="shrink-0">
+                        <span className={cn(
+                          "text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full border font-bold",
+                          meeting.level === 1 ? "border-slate-500/40 text-slate-500 dark:text-slate-400 bg-slate-500/10" :
+                          meeting.level === 2 ? "border-blue-500/40 text-blue-500 dark:text-blue-400 bg-blue-500/10" :
+                          meeting.level === 3 ? "border-amber-500/40 text-amber-500 dark:text-amber-400 bg-amber-500/10" :
+                          "border-emerald-500/40 text-emerald-500 dark:text-emerald-400 bg-emerald-500/10"
+                        )}>
+                          {levelInfo.label}
+                        </span>
+                      </div>
+
+                      {meeting.attendees && meeting.attendees.length > 0 && (
+                        <div className="flex flex-wrap gap-1 shrink-0">
                           {meeting.attendees.map((att, i) => (
-                            <span key={i} className="bg-[var(--bg-tertiary)] px-1.5 py-0.5 rounded text-[10px]">{att}</span>
+                            <span key={i} className="bg-neutral-100 dark:bg-neutral-800/40 border border-neutral-200/50 dark:border-neutral-700/20 px-2 py-0.5 rounded text-[9px] font-medium text-[var(--text-secondary)]">{att}</span>
                           ))}
                         </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-4 text-xs text-[var(--text-secondary)] font-mono shrink-0 relative z-10">
+                      <div className="flex items-center gap-1">
+                        <CalendarIcon size={12} />
+                        <span>{meeting.date}</span>
                       </div>
-                    )}
-                    {meeting.minutes && (
-                      <div className="pt-2 mt-2 border-t border-[var(--border)]">
-                        <p className="text-xs text-[var(--text-secondary)] line-clamp-3 italic">
-                          "{meeting.minutes}"
-                        </p>
+                      <div className="flex items-center gap-1 border-l border-[var(--border)]/40 pl-3">
+                        <Clock size={12} />
+                        <span className="text-[var(--text-primary)] font-semibold">{meeting.time}</span>
                       </div>
-                    )}
+                    </div>
                   </div>
                 </div>
               );
@@ -795,48 +1024,126 @@ export function Meetings({
           )}
         </div>
       ) : (
-        <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6 overflow-x-auto">
-          <div className="grid grid-cols-7 gap-4 min-w-[800px]">
+        <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6 overflow-x-auto rounded-xl">
+          <div className="grid grid-cols-7 gap-4 min-w-[1000px]">
             {days.map((day, i) => (
               <div key={day} className="text-center border-b border-[var(--border)] pb-2 mb-2">
-                <span className="text-xs font-mono uppercase text-[var(--text-secondary)] block">{day}</span>
-                <span className="text-sm font-bold text-[var(--text-primary)]">{weekDates[i].split('-')[2]}</span>
+                <span className="text-xs font-mono uppercase text-[var(--text-secondary)] block font-semibold">{day}</span>
+                <span className="text-lg font-bold text-[var(--text-primary)]">{weekDates[i].split('-')[2]}</span>
               </div>
             ))}
-            {weekDates.map((date) => (
-              <div 
-                key={date} 
-                className={cn(
-                  "min-h-[200px] border-r border-[var(--border)] last:border-r-0 p-2 space-y-2 transition-colors",
-                  dragOverDate === date ? "bg-[var(--bg-tertiary)]" : "hover:bg-[var(--bg-tertiary)]"
-                )}
-                onDragOver={(e) => handleDragOver(e, date)}
-                onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDrop(e, date)}
-              >
-                {meetingsByDate[date]?.map((meeting) => {
-                  const levelInfo = LEVELS.find(l => l.id === meeting.level) || LEVELS[0];
-                  return (
-                    <div 
-                      key={meeting.id} 
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, meeting.id)}
-                      onClick={() => handleEdit(meeting)}
-                      className={cn("p-1.5 rounded-r text-[10px] mb-1.5 cursor-pointer hover:brightness-110 shadow-sm transition-all", levelInfo.cardClass)}
-                    >
-                      <div className="flex justify-between items-center mb-0.5">
-                        <span className="font-bold">{meeting.time}</span>
-                        <span className="text-[8px] opacity-75 uppercase tracking-wider">{levelInfo.label}</span>
-                      </div>
-                      <div className="font-medium leading-tight line-clamp-2">{meeting.title}</div>
-                      {meeting.location && (
-                        <div className="text-[8px] mt-0.5 opacity-80 truncate">{meeting.location}</div>
-                      )}
+            {weekDates.map((date) => {
+              const dayMeetings = meetingsByDate[date] || [];
+              const morningMeetings = dayMeetings.filter(m => {
+                const hr = parseInt(m.time?.split(':')[0] || "0");
+                return hr < 12;
+              });
+              const afternoonMeetings = dayMeetings.filter(m => {
+                const hr = parseInt(m.time?.split(':')[0] || "0");
+                return hr >= 12 && hr < 16;
+              });
+              const eveningMeetings = dayMeetings.filter(m => {
+                const hr = parseInt(m.time?.split(':')[0] || "0");
+                return hr >= 16;
+              });
+
+              return (
+                <div 
+                  key={date} 
+                  className={cn(
+                    "min-h-[350px] border-r border-[var(--border)]/60 last:border-r-0 p-1.5 flex flex-col gap-3 transition-colors pb-4",
+                    dragOverDate === date ? "bg-[var(--bg-tertiary)]/50" : "hover:bg-[var(--bg-tertiary)]/10"
+                  )}
+                  onDragOver={(e) => handleDragOver(e, date)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, date)}
+                >
+                  {/* Morning Slot (08:00 - 12:00) */}
+                  <div className="flex-1 min-h-[90px] bg-neutral-500/5 hover:bg-neutral-500/10 transition-colors p-1.5 rounded-lg border border-dashed border-neutral-700/10 flex flex-col gap-1.5">
+                    <div className="flex items-center gap-1 text-[8px] font-mono uppercase text-[var(--text-secondary)] font-bold tracking-wider mb-1 px-1 pb-0.5 border-b border-[var(--border)]/30">
+                      <Clock size={8} /> Morning
                     </div>
-                  );
-                })}
-              </div>
-            ))}
+                    {morningMeetings.map((meeting) => {
+                      const levelInfo = LEVELS.find(l => l.id === meeting.level) || LEVELS[0];
+                      return (
+                        <div 
+                          key={meeting.id} 
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, meeting.id)}
+                          onClick={() => handleEdit(meeting)}
+                          className={cn("p-1.5 rounded text-[10px] cursor-pointer hover:brightness-110 shadow-sm transition-all select-none border border-neutral-200/40 dark:border-neutral-700/20", levelInfo.cardClass)}
+                        >
+                          <div className="flex justify-between items-center mb-0.5">
+                            <span className="font-bold">{meeting.time}</span>
+                            <span className="text-[7px] opacity-75 uppercase tracking-wider">{levelInfo.label}</span>
+                          </div>
+                          <div className="font-medium leading-tight line-clamp-2">{meeting.title}</div>
+                          {meeting.location && (
+                            <div className="text-[8px] mt-0.5 opacity-80 truncate">{meeting.location}</div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Afternoon Slot (12:00 - 16:00) */}
+                  <div className="flex-1 min-h-[90px] bg-neutral-500/5 hover:bg-neutral-500/10 transition-colors p-1.5 rounded-lg border border-dashed border-neutral-700/10 flex flex-col gap-1.5">
+                    <div className="flex items-center gap-1 text-[8px] font-mono uppercase text-[var(--text-secondary)] font-bold tracking-wider mb-1 px-1 pb-0.5 border-b border-[var(--border)]/30">
+                      <Clock size={8} /> Afternoon
+                    </div>
+                    {afternoonMeetings.map((meeting) => {
+                      const levelInfo = LEVELS.find(l => l.id === meeting.level) || LEVELS[0];
+                      return (
+                        <div 
+                          key={meeting.id} 
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, meeting.id)}
+                          onClick={() => handleEdit(meeting)}
+                          className={cn("p-1.5 rounded text-[10px] cursor-pointer hover:brightness-110 shadow-sm transition-all select-none border border-neutral-200/40 dark:border-neutral-700/20", levelInfo.cardClass)}
+                        >
+                          <div className="flex justify-between items-center mb-0.5">
+                            <span className="font-bold">{meeting.time}</span>
+                            <span className="text-[7px] opacity-75 uppercase tracking-wider">{levelInfo.label}</span>
+                          </div>
+                          <div className="font-medium leading-tight line-clamp-2">{meeting.title}</div>
+                          {meeting.location && (
+                            <div className="text-[8px] mt-0.5 opacity-80 truncate">{meeting.location}</div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Evening Slot (16:00 - 20:00) */}
+                  <div className="flex-1 min-h-[90px] bg-neutral-500/5 hover:bg-neutral-500/10 transition-colors p-1.5 rounded-lg border border-dashed border-neutral-700/10 flex flex-col gap-1.5">
+                    <div className="flex items-center gap-1 text-[8px] font-mono uppercase text-[var(--text-secondary)] font-bold tracking-wider mb-1 px-1 pb-0.5 border-b border-[var(--border)]/30">
+                      <Clock size={8} /> Evening
+                    </div>
+                    {eveningMeetings.map((meeting) => {
+                      const levelInfo = LEVELS.find(l => l.id === meeting.level) || LEVELS[0];
+                      return (
+                        <div 
+                          key={meeting.id} 
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, meeting.id)}
+                          onClick={() => handleEdit(meeting)}
+                          className={cn("p-1.5 rounded text-[10px] cursor-pointer hover:brightness-110 shadow-sm transition-all select-none border border-neutral-200/40 dark:border-neutral-700/20", levelInfo.cardClass)}
+                        >
+                          <div className="flex justify-between items-center mb-0.5">
+                            <span className="font-bold">{meeting.time}</span>
+                            <span className="text-[7px] opacity-75 uppercase tracking-wider">{levelInfo.label}</span>
+                          </div>
+                          <div className="font-medium leading-tight line-clamp-2">{meeting.title}</div>
+                          {meeting.location && (
+                            <div className="text-[8px] mt-0.5 opacity-80 truncate">{meeting.location}</div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
