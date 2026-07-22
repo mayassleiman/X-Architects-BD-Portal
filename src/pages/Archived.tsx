@@ -159,6 +159,7 @@ export function Archived() {
 
   const [allItems, setAllItems] = useState<PipelineItem[]>([]);
   const [sectors, setSectors] = useState<MarketSector[]>([]);
+  const [achievedTargetItems, setAchievedTargetItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Filters
@@ -191,6 +192,21 @@ export function Archived() {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    fetchAchievedTargets();
+  }, [selectedYear]);
+
+  const fetchAchievedTargets = async () => {
+    try {
+      const yr = selectedYear === "ALL" ? new Date().getFullYear() : selectedYear;
+      const res = await fetch(`/api/achieved-targets?year=${yr}&_t=${Date.now()}`);
+      const json = await res.json();
+      setAchievedTargetItems(json.items || []);
+    } catch (err) {
+      console.error("Failed to load achieved targets count:", err);
+    }
+  };
+
   const fetchData = async () => {
     setIsLoading(true);
     try {
@@ -202,6 +218,7 @@ export function Archived() {
       const sectData = await sectRes.json();
       setAllItems(pipeData);
       setSectors(sectData);
+      fetchAchievedTargets();
     } catch (err) {
       console.error("Failed to load archive data:", err);
     } finally {
@@ -268,7 +285,6 @@ export function Archived() {
   // Active RFPs vs Achieved RFPs vs Archived RFPs for selected year
   const yearStats = useMemo(() => {
     const archived = itemsForYear.filter(i => i.isArchived === 1 || i.status === "Archived" || i.status === "Lost");
-    const achieved = itemsForYear.filter(i => i.isArchived !== 1 && (i.status === "Achieved" || i.status === "Won"));
     const active = itemsForYear.filter(i => i.isArchived !== 1 && i.status !== "Achieved" && i.status !== "Won" && i.status !== "Archived" && i.status !== "Lost");
 
     // Total RFPs received in this period (active + achieved + archived)
@@ -278,8 +294,9 @@ export function Archived() {
     const archivedCount = archived.length;
     const archivedValue = archived.reduce((sum, i) => sum + getItemValue(i), 0);
 
-    const achievedCount = achieved.length;
-    const achievedValue = achieved.reduce((sum, i) => sum + getItemValue(i), 0);
+    // Achieved count and value directly from the records recorded in the Yearly Target table
+    const achievedCount = achievedTargetItems.length;
+    const achievedValue = achievedTargetItems.reduce((sum, i) => sum + getItemValue(i), 0);
 
     const activeCount = active.length;
     const activeValue = active.reduce((sum, i) => sum + getItemValue(i), 0);
@@ -301,7 +318,7 @@ export function Archived() {
       winRateByValue,
       archivedList: archived
     };
-  }, [itemsForYear]);
+  }, [itemsForYear, achievedTargetItems]);
 
   // Available Sector & Region & Reason Filter Options for the archived list
   const availableRegions = useMemo(() => {
@@ -723,18 +740,9 @@ export function Archived() {
         </div>
       </div>
 
-      {/* Hidden SVG defs for 3D Drop Shadow */}
-      <svg className="w-0 h-0 absolute hidden" aria-hidden="true">
-        <defs>
-          <filter id="pie3dShadow" x="-30%" y="-30%" width="160%" height="160%">
-            <feDropShadow dx="1" dy="3" stdDeviation="2.5" floodColor="#000000" floodOpacity="0.85" />
-          </filter>
-        </defs>
-      </svg>
-
       {/* Compressed Visual Analytics Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Sectors with Thinner Donut Wheel & 3D Effect */}
+        {/* Sectors with Donut Wheel */}
         <div className="bg-[var(--card-bg-inner)] border border-[var(--border)] rounded-xl p-3.5 flex flex-col">
           <div className="flex items-center justify-between pb-2 border-b border-[var(--border)] mb-2">
             <h3 className="text-xs font-mono uppercase tracking-wider text-[var(--text-primary)] flex items-center gap-1.5 font-bold">
@@ -760,14 +768,19 @@ export function Archived() {
             <div className="h-36 w-full mb-2 relative">
               <ResponsiveContainer width="100%" height="100%">
                 <RechartsPieChart>
+                  <defs>
+                    <filter id="pie3dShadow" x="-30%" y="-30%" width="160%" height="160%">
+                      <feDropShadow dx="1" dy="2" stdDeviation="2" floodColor="#000000" floodOpacity="0.75" />
+                    </filter>
+                  </defs>
                   <Pie
                     data={sectorBreakdown}
-                    dataKey="value"
+                    dataKey={sectorBreakdown.some(s => s.value > 0) ? "value" : "count"}
                     nameKey="name"
                     cx="50%"
                     cy="50%"
                     outerRadius={48}
-                    innerRadius={34}
+                    innerRadius={32}
                     paddingAngle={4}
                     stroke="#0f0f0f"
                     strokeWidth={2}
@@ -778,7 +791,7 @@ export function Archived() {
                       return (
                         <Cell 
                           key={`cell-${index}`} 
-                          fill={entry.color} 
+                          fill={entry.color || "#8884d8"} 
                           stroke={isSelected ? "#fbbf24" : "#0f0f0f"} 
                           strokeWidth={isSelected ? 3 : 1.5}
                           className="cursor-pointer transition-all hover:opacity-80"
@@ -793,11 +806,6 @@ export function Archived() {
                   />
                 </RechartsPieChart>
               </ResponsiveContainer>
-              <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                <span className="text-[9px] font-mono text-[var(--text-secondary)]/80 font-semibold uppercase tracking-wider">
-                  Click Wheel
-                </span>
-              </div>
             </div>
           )}
 
