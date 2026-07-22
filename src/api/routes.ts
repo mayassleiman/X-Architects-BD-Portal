@@ -241,7 +241,11 @@ router.get('/pipeline', (req, res) => {
       rfpNumber: i.rfp_number,
       achievedDate: i.achieved_date,
       sortOrder: i.sort_order,
-      region: i.region
+      region: i.region,
+      isArchived: i.is_archived ? 1 : 0,
+      archiveReason: i.archive_reason || "",
+      archivedAt: i.archived_at || "",
+      archiveYear: i.archive_year || (i.archived_at ? new Date(i.archived_at).getFullYear() : (i.submission_date ? new Date(i.submission_date).getFullYear() : new Date().getFullYear()))
     };
   });
   res.json(parsedItems);
@@ -249,18 +253,55 @@ router.get('/pipeline', (req, res) => {
 
 // Create Pipeline Item
 router.post('/pipeline', (req, res) => {
-  const { name, client, type, sector, disciplines, values, status, submissionDate, probability, rfpNumber, achievedDate, sortOrder, region } = req.body;
-  const stmt = db.prepare('INSERT INTO pipeline_items (name, client, type, sector, disciplines, item_values, status, submission_date, probability, rfp_number, achieved_date, sort_order, region) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-  const info = stmt.run(name, client, type, sector, JSON.stringify(disciplines || []), JSON.stringify(values || {}), status || 'Pending', submissionDate, probability, rfpNumber, achievedDate, sortOrder || 0, region);
+  const { name, client, type, sector, disciplines, values, status, submissionDate, probability, rfpNumber, achievedDate, sortOrder, region, isArchived, archiveReason, archivedAt, archiveYear } = req.body;
+  const stmt = db.prepare('INSERT INTO pipeline_items (name, client, type, sector, disciplines, item_values, status, submission_date, probability, rfp_number, achieved_date, sort_order, region, is_archived, archive_reason, archived_at, archive_year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+  const info = stmt.run(
+    name, 
+    client, 
+    type, 
+    sector, 
+    JSON.stringify(disciplines || []), 
+    JSON.stringify(values || {}), 
+    status || 'Pending', 
+    submissionDate, 
+    probability, 
+    rfpNumber, 
+    achievedDate, 
+    sortOrder || 0, 
+    region,
+    isArchived ? 1 : 0,
+    archiveReason || "",
+    archivedAt || "",
+    archiveYear || (archivedAt ? new Date(archivedAt).getFullYear() : (submissionDate ? new Date(submissionDate).getFullYear() : new Date().getFullYear()))
+  );
   res.json({ id: String(info.lastInsertRowid) });
 });
 
 // Update Pipeline Item
 router.put('/pipeline/:id', (req, res) => {
   const { id } = req.params;
-  const { name, client, type, sector, disciplines, values, status, submissionDate, probability, rfpNumber, achievedDate, sortOrder, region } = req.body;
-  const stmt = db.prepare('UPDATE pipeline_items SET name = ?, client = ?, type = ?, sector = ?, disciplines = ?, item_values = ?, status = ?, submission_date = ?, probability = ?, rfp_number = ?, achieved_date = ?, sort_order = ?, region = ? WHERE id = ?');
-  stmt.run(name, client, type, sector, JSON.stringify(disciplines || []), JSON.stringify(values || {}), status, submissionDate, probability, rfpNumber, achievedDate, sortOrder || 0, region, id);
+  const { name, client, type, sector, disciplines, values, status, submissionDate, probability, rfpNumber, achievedDate, sortOrder, region, isArchived, archiveReason, archivedAt, archiveYear } = req.body;
+  const stmt = db.prepare('UPDATE pipeline_items SET name = ?, client = ?, type = ?, sector = ?, disciplines = ?, item_values = ?, status = ?, submission_date = ?, probability = ?, rfp_number = ?, achieved_date = ?, sort_order = ?, region = ?, is_archived = ?, archive_reason = ?, archived_at = ?, archive_year = ? WHERE id = ?');
+  stmt.run(
+    name, 
+    client, 
+    type, 
+    sector, 
+    JSON.stringify(disciplines || []), 
+    JSON.stringify(values || {}), 
+    status, 
+    submissionDate, 
+    probability, 
+    rfpNumber, 
+    achievedDate, 
+    sortOrder || 0, 
+    region,
+    isArchived ? 1 : 0,
+    archiveReason || "",
+    archivedAt || "",
+    archiveYear || (archivedAt ? new Date(archivedAt).getFullYear() : (submissionDate ? new Date(submissionDate).getFullYear() : new Date().getFullYear())),
+    id
+  );
   res.json({ success: true });
 });
 

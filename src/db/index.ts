@@ -287,4 +287,26 @@ try {
   // Column likely already exists, ignore
 }
 
+// Migration: Add archive columns to pipeline_items
+try {
+  db.exec("ALTER TABLE pipeline_items ADD COLUMN is_archived INTEGER DEFAULT 0");
+} catch (error) {
+  // Column likely already exists, ignore
+}
+try {
+  db.exec("ALTER TABLE pipeline_items ADD COLUMN archive_reason TEXT");
+} catch (error) {
+  // Column likely already exists, ignore
+}
+try {
+  db.exec("ALTER TABLE pipeline_items ADD COLUMN archived_at TEXT");
+} catch (error) {
+  // Column likely already exists, ignore
+}
+try {
+  db.exec("ALTER TABLE pipeline_items ADD COLUMN archive_year INTEGER");
+} catch (error) {
+  // Column likely already exists, ignore
+}
+
 export default db;

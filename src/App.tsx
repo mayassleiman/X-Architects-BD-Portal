@@ -9,11 +9,10 @@ import { Settings } from "./pages/Settings";
 import { Profile } from "./pages/Profile";
 import { FullReport } from "./pages/FullReport";
 
-import { Tasks } from "./pages/Tasks";
-
 import { Meetings } from "./pages/Meetings";
 import { AchievedTarget } from "./pages/AchievedTarget";
 import { Pipeline } from "./pages/Pipeline";
+import { Archived } from "./pages/Archived";
 import { MasterDirectory } from "./pages/MasterDirectory";
 import { EmailGun } from "./pages/EmailGun";
 import { FollowUpReminder } from "./components/features/FollowUpReminder";
@@ -60,7 +59,7 @@ function AppRoutes() {
                   <Route path="/registrations" element={<Registrations />} />
                   <Route path="/meetings" element={<Meetings />} />
                   <Route path="/pipeline" element={<Pipeline />} />
-                  <Route path="/tasks" element={<Tasks />} />
+                  <Route path="/archived" element={<Archived />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/report" element={<FullReport />} />

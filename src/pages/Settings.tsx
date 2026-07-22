@@ -1,8 +1,84 @@
 import React, { useState, useEffect } from "react";
-import { Database, Download, FileSpreadsheet, Upload, Image as ImageIcon, Plus, Trash2, Save, X, Check, Edit2, Palette } from "lucide-react";
+import { 
+  Database, Download, FileSpreadsheet, Upload, Image as ImageIcon, Plus, Trash2, Save, X, Check, Edit2, Palette,
+  Home, Building2, Hotel, HeartPulse, Milestone, Factory, GraduationCap, Library, Trophy, Building, HelpCircle,
+  LayoutGrid
+} from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
 import { useCurrency } from "../context/CurrencyContext";
 import * as XLSX from 'xlsx';
+
+const MosqueIcon = ({ size = 24, className, style, ...props }: any) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="1.75" 
+    strokeLinecap="round" 
+    strokeLinejoin="round"
+    className={className}
+    style={style}
+    {...props}
+  >
+    <path d="M2 21h20" />
+    <path d="M4 21V10l1.5-2.5L7 10v11" />
+    <path d="M17 21V10l1.5-2.5L20 10v11" />
+    <path d="M7 21v-6a5 5 0 0 1 10 0v6" />
+    <path d="M12 10V6" />
+    <path d="M12 4a1.2 1.2 0 1 0 0-2.4 1.2 1.2 0 0 0 0 2.4z" />
+    <path d="M10 21v-3a2 2 0 0 1 4 0v3" />
+  </svg>
+);
+
+const FerrisWheelIcon = ({ size = 24, className, style, ...props }: any) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="1.75" 
+    strokeLinecap="round" 
+    strokeLinejoin="round"
+    className={className}
+    style={style}
+    {...props}
+  >
+    <circle cx="12" cy="10" r="7.5" />
+    <circle cx="12" cy="10" r="1.5" />
+    <path d="M12 2.5v15" />
+    <path d="M4.5 10h15" />
+    <path d="M6.7 4.7l10.6 10.6" />
+    <path d="M6.7 15.3l10.6-10.6" />
+    <circle cx="12" cy="2.5" r="1" fill="currentColor" />
+    <circle cx="19.5" cy="10" r="1" fill="currentColor" />
+    <circle cx="12" cy="17.5" r="1" fill="currentColor" />
+    <circle cx="4.5" cy="10" r="1" fill="currentColor" />
+    <path d="M8 21.5l4-11.5 4 11.5" />
+    <path d="M6 21.5h12" />
+  </svg>
+);
+
+const getSectorIcon = (sectorName: string) => {
+  const name = (sectorName || "").toLowerCase();
+  if (name.includes("religious") || name.includes("mosque") || name.includes("worship") || name.includes("islamic")) return MosqueIcon;
+  if (name.includes("master") || name.includes("plan") || name.includes("grid") || name.includes("urban")) return LayoutGrid;
+  if (name.includes("entertainment") || name.includes("wheel") || name.includes("fun") || name.includes("amusement") || name.includes("leisure") || name.includes("park")) return FerrisWheelIcon;
+  
+  if (name.includes("residential") || name.includes("housing") || name.includes("villa") || name.includes("home")) return Home;
+  if (name.includes("commercial") || name.includes("office") || name.includes("retail") || name.includes("corporate")) return Building2;
+  if (name.includes("hospitality") || name.includes("hotel") || name.includes("resort") || name.includes("tourism")) return Hotel;
+  if (name.includes("healthcare") || name.includes("hospital") || name.includes("medical") || name.includes("clinic")) return HeartPulse;
+  if (name.includes("infrastructure") || name.includes("road") || name.includes("bridge") || name.includes("utilities") || name.includes("public realm")) return Milestone;
+  if (name.includes("industrial") || name.includes("factory") || name.includes("warehouse")) return Factory;
+  if (name.includes("educational") || name.includes("school") || name.includes("university") || name.includes("education")) return GraduationCap;
+  if (name.includes("cultural") || name.includes("museum") || name.includes("art") || name.includes("library")) return Library;
+  if (name.includes("sports") || name.includes("stadium") || name.includes("gym")) return Trophy;
+  if (name.includes("mixed") || name.includes("complex")) return Building;
+  return HelpCircle;
+};
 
 interface MarketSector {
   id: number;
@@ -52,7 +128,6 @@ export function Settings() {
     { id: 'pipeline', name: 'Pipeline', endpoint: '/api/pipeline' },
     { id: 'actions', name: 'Action Plan', endpoint: '/api/actions' },
     { id: 'registrations', name: 'Registration', endpoint: '/api/registrations' },
-    { id: 'tasks', name: 'Tasks', endpoint: '/api/tasks' },
     { id: 'meetings', name: 'Meetings', endpoint: '/api/meetings' },
     { id: 'targets', name: 'Yearly Target', endpoint: '/api/targets' },
   ];
@@ -450,7 +525,6 @@ export function Settings() {
         actionsRes, 
         registrationsRes, 
         pipelineRes,
-        tasksRes,
         meetingsRes
       ] = await Promise.all([
         fetch('/api/contacts'),
@@ -458,7 +532,6 @@ export function Settings() {
         fetch('/api/actions'),
         fetch('/api/registrations'),
         fetch('/api/pipeline'),
-        fetch('/api/tasks'),
         fetch('/api/meetings')
       ]);
 
@@ -467,7 +540,6 @@ export function Settings() {
       const actions = await actionsRes.json();
       const registrations = await registrationsRes.json();
       const pipeline = await pipelineRes.json();
-      const tasks = await tasksRes.json();
       const meetings = await meetingsRes.json();
 
       // Format Pipeline data for Excel
@@ -493,7 +565,6 @@ export function Settings() {
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(actions), "Actions");
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(registrations), "Registrations");
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(formattedPipeline), "Pipeline");
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(tasks), "Tasks");
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(meetings), "Meetings");
 
       XLSX.writeFile(wb, "BD_Portal_Full_Export.xlsx");
@@ -778,51 +849,19 @@ export function Settings() {
                 ) : (
                   <>
                     <div className="flex items-center gap-3">
-                      {sector.logo ? (
-                        <div className="w-6 h-6 rounded-md overflow-hidden bg-neutral-900 border border-[var(--border)] shrink-0 flex items-center justify-center">
-                          <img 
-                            src={sector.logo} 
-                            alt="" 
-                            className="w-full h-full object-cover" 
-                            referrerPolicy="no-referrer"
-                          />
-                        </div>
-                      ) : (
-                        <div className="w-4 h-4 rounded-full" style={{ backgroundColor: sector.color }}></div>
-                      )}
+                      {(() => {
+                        const IconComp = getSectorIcon(sector.name);
+                        return (
+                          <div className="p-2 bg-[var(--bg-tertiary)] rounded-lg shrink-0 border border-[var(--border)] flex items-center justify-center shadow-sm" style={{ color: sector.color }}>
+                            <IconComp size={28} />
+                          </div>
+                        );
+                      })()}
                       <span className="text-sm font-medium text-[var(--text-primary)]">{sector.name}</span>
                     </div>
                     <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <label className="cursor-pointer text-[var(--text-secondary)] hover:text-emerald-400 p-1" title="Upload Sector Logo">
-                        <Upload size={14} />
-                        <input 
-                          type="file" 
-                          accept="image/*" 
-                          className="hidden" 
-                          onChange={async (e) => {
-                            const file = e.target.files?.[0];
-                            if (!file) return;
-                            const formData = new FormData();
-                            formData.append("logo", file);
-                            try {
-                              const res = await fetch(`/api/market-sectors/${sector.id}/logo`, {
-                                method: "POST",
-                                body: formData,
-                              });
-                              if (res.ok) {
-                                fetchSectors();
-                              } else {
-                                alert("Failed to upload sector logo");
-                              }
-                            } catch (error) {
-                              console.error("Error uploading sector logo:", error);
-                              alert("Error uploading sector logo");
-                            }
-                          }}
-                        />
-                      </label>
-                      <button onClick={() => startEditingSector(sector)} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1"><Edit2 size={14} /></button>
-                      <button onClick={() => handleDeleteSector(sector.id)} className="text-[var(--text-secondary)] hover:text-rose-500 p-1"><Trash2 size={14} /></button>
+                      <button onClick={() => startEditingSector(sector)} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1" title="Edit Sector"><Edit2 size={14} /></button>
+                      <button onClick={() => handleDeleteSector(sector.id)} className="text-[var(--text-secondary)] hover:text-rose-500 p-1" title="Delete Sector"><Trash2 size={14} /></button>
                     </div>
                   </>
                 )}

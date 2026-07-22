@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
 import { 
   Plus, 
   Briefcase, 
@@ -23,7 +24,10 @@ import {
   Building,
   HelpCircle,
   MapPin,
-  GripVertical
+  GripVertical,
+  LayoutGrid,
+  Archive,
+  AlertTriangle
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, ResponsiveContainer, Tooltip, Legend, LabelList } from "recharts";
@@ -47,13 +51,17 @@ interface PipelineItem {
     cs?: number;
     vo?: number; // For VO type
   };
-  status: "Pending" | "Submitted" | "Won" | "Lost" | "Achieved" | "Approved";
+  status: "Pending" | "Submitted" | "Won" | "Lost" | "Achieved" | "Approved" | "Archived";
   submissionDate?: string;
   probability?: "High" | "Medium" | "Low";
   rfpNumber?: string;
   achievedDate?: string;
   sortOrder?: number;
   region?: string;
+  isArchived?: number;
+  archiveReason?: string;
+  archivedAt?: string;
+  archiveYear?: number;
 }
 
 interface MarketSector {
@@ -75,8 +83,65 @@ type TabType = "Submitted Proposals" | "Proposals to be Submitted" | "Potential 
 
 import { ReportLayout } from "../components/layout/ReportLayout";
 
+const MosqueIcon = ({ size = 24, className, style, ...props }: any) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="1.75" 
+    strokeLinecap="round" 
+    strokeLinejoin="round"
+    className={className}
+    style={style}
+    {...props}
+  >
+    <path d="M2 21h20" />
+    <path d="M4 21V10l1.5-2.5L7 10v11" />
+    <path d="M17 21V10l1.5-2.5L20 10v11" />
+    <path d="M7 21v-6a5 5 0 0 1 10 0v6" />
+    <path d="M12 10V6" />
+    <path d="M12 4a1.2 1.2 0 1 0 0-2.4 1.2 1.2 0 0 0 0 2.4z" />
+    <path d="M10 21v-3a2 2 0 0 1 4 0v3" />
+  </svg>
+);
+
+const FerrisWheelIcon = ({ size = 24, className, style, ...props }: any) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="1.75" 
+    strokeLinecap="round" 
+    strokeLinejoin="round"
+    className={className}
+    style={style}
+    {...props}
+  >
+    <circle cx="12" cy="10" r="7.5" />
+    <circle cx="12" cy="10" r="1.5" />
+    <path d="M12 2.5v15" />
+    <path d="M4.5 10h15" />
+    <path d="M6.7 4.7l10.6 10.6" />
+    <path d="M6.7 15.3l10.6-10.6" />
+    <circle cx="12" cy="2.5" r="1" fill="currentColor" />
+    <circle cx="19.5" cy="10" r="1" fill="currentColor" />
+    <circle cx="12" cy="17.5" r="1" fill="currentColor" />
+    <circle cx="4.5" cy="10" r="1" fill="currentColor" />
+    <path d="M8 21.5l4-11.5 4 11.5" />
+    <path d="M6 21.5h12" />
+  </svg>
+);
+
 const getSectorIcon = (sectorName: string) => {
   const name = (sectorName || "").toLowerCase();
+  if (name.includes("religious") || name.includes("mosque") || name.includes("worship") || name.includes("islamic")) return MosqueIcon;
+  if (name.includes("master") || name.includes("plan") || name.includes("grid") || name.includes("urban")) return LayoutGrid;
+  if (name.includes("entertainment") || name.includes("wheel") || name.includes("fun") || name.includes("amusement") || name.includes("leisure") || name.includes("park")) return FerrisWheelIcon;
+  
   if (name.includes("residential") || name.includes("housing") || name.includes("villa") || name.includes("home")) return Home;
   if (name.includes("commercial") || name.includes("office") || name.includes("retail") || name.includes("corporate")) return Building2;
   if (name.includes("hospitality") || name.includes("hotel") || name.includes("resort") || name.includes("tourism")) return Hotel;
@@ -145,10 +210,14 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
   const [isSwipingActive, setIsSwipingActive] = useState(false);
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
 
+  const [archivingItem, setArchivingItem] = useState<PipelineItem | null>(null);
+  const [archiveReasonChoice, setArchiveReasonChoice] = useState<string>("Price too High / Commercial Uncompetitive");
+  const [customArchiveReasonChoice, setCustomArchiveReasonChoice] = useState<string>("");
+
   const getButtonsWidth = (item: PipelineItem) => {
     let count = 2; // Edit and Delete are always present
     if (item.type === "RFP" && item.status === "Pending") count = 3;
-    if (item.type === "RFP" && item.status === "Submitted") count = 3;
+    if (item.type === "RFP" && item.status === "Submitted") count = 4; // Achieve, Archive, Edit, Delete
     if (item.type === "VO" && (item.status === "Pending" || item.status === "Submitted")) count = 3;
     return count * 75;
   };
@@ -715,6 +784,42 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
     }
   };
 
+  const handleStartArchiving = (item: PipelineItem) => {
+    setArchivingItem(item);
+    setArchiveReasonChoice("Price too High / Commercial Uncompetitive");
+    setCustomArchiveReasonChoice("");
+    setSwipedItemId(null);
+  };
+
+  const handleConfirmArchive = async () => {
+    if (!archivingItem) return;
+    const finalReason = archiveReasonChoice === "Other" ? (customArchiveReasonChoice || "Other") : archiveReasonChoice;
+    const nowIso = new Date().toISOString().split('T')[0];
+    const yearNum = new Date().getFullYear();
+
+    const updatedItem: PipelineItem = {
+      ...archivingItem,
+      status: "Archived",
+      isArchived: 1,
+      archiveReason: finalReason,
+      archivedAt: nowIso,
+      archiveYear: yearNum
+    };
+
+    try {
+      await fetch(`/api/pipeline/${archivingItem.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedItem)
+      });
+      setItems(items.map(i => i.id === archivingItem.id ? updatedItem : i));
+      setArchivingItem(null);
+    } catch (err) {
+      console.error('Failed to archive item:', err);
+      alert('Failed to archive item. Please try again.');
+    }
+  };
+
   const handleQuickStatusToggle = async (item: PipelineItem, newStatus: PipelineItem["status"]) => {
     if (newStatus === "Achieved" || newStatus === "Approved") {
        setAchievingItem({ item, status: newStatus });
@@ -1005,18 +1110,31 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                             </button>
                           )}
                           {item.type === "RFP" && item.status === "Submitted" && (
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleQuickStatusToggle(item, "Achieved");
-                                setSwipedItemId(null);
-                              }}
-                              className="w-[75px] h-full bg-emerald-600 hover:bg-emerald-700 text-white flex flex-col items-center justify-center gap-1 transition-colors outline-none"
-                              title="Mark as Achieved"
-                            >
-                              <Check size={16} />
-                              <span className="text-[9px] font-bold uppercase tracking-wider text-center px-1">Achieve</span>
-                            </button>
+                            <>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleQuickStatusToggle(item, "Achieved");
+                                  setSwipedItemId(null);
+                                }}
+                                className="w-[75px] h-full bg-emerald-600 hover:bg-emerald-700 text-white flex flex-col items-center justify-center gap-1 transition-colors outline-none"
+                                title="Mark as Achieved"
+                              >
+                                <Check size={16} />
+                                <span className="text-[9px] font-bold uppercase tracking-wider text-center px-1">Achieve</span>
+                              </button>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleStartArchiving(item);
+                                }}
+                                className="w-[75px] h-full bg-amber-600 hover:bg-amber-700 text-white flex flex-col items-center justify-center gap-1 transition-colors border-l border-neutral-800/50 outline-none"
+                                title="Archive RFP"
+                              >
+                                <Archive size={16} />
+                                <span className="text-[9px] font-bold uppercase tracking-wider text-center px-1">Archive</span>
+                              </button>
+                            </>
                           )}
                           
                           {/* Edit Button */}
@@ -1081,26 +1199,12 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                           <div className="flex gap-3 items-start min-w-0 flex-1">
                             {/* Sector icon */}
                             {(() => {
-                              const sectorObj = sectors.find(s => s.name === item.sector);
-                              if (sectorObj?.logo) {
-                                return (
-                                  <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-[var(--border)] bg-neutral-900/60 flex items-center justify-center">
-                                    <img 
-                                      src={sectorObj.logo} 
-                                      alt={item.sector} 
-                                      className="w-full h-full object-cover"
-                                      referrerPolicy="no-referrer"
-                                    />
-                                  </div>
-                                );
-                              } else {
-                                const IconComp = getSectorIcon(item.sector);
-                                return (
-                                  <div className="p-1.5 bg-[var(--bg-tertiary)] rounded-lg text-[var(--text-primary)] shrink-0 border border-[var(--border)]" style={{ color: sectorColor }}>
-                                    <IconComp size={16} />
-                                  </div>
-                                );
-                              }
+                              const IconComp = getSectorIcon(item.sector);
+                              return (
+                                <div className="p-2 bg-[var(--bg-tertiary)] rounded-lg shrink-0 border border-[var(--border)] flex items-center justify-center shadow-sm" style={{ color: sectorColor }}>
+                                  <IconComp size={32} />
+                                </div>
+                              );
                             })()}
                             <div className="min-w-0 flex-1">
                               <h5 
@@ -1294,18 +1398,31 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                                               </button>
                                             )}
                                             {item.type === "RFP" && item.status === "Submitted" && (
-                                              <button 
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  handleQuickStatusToggle(item, "Achieved");
-                                                  setSwipedItemId(null);
-                                                }}
-                                                className="w-[75px] h-full bg-emerald-600 hover:bg-emerald-700 text-white flex flex-col items-center justify-center gap-1 transition-colors outline-none"
-                                                title="Mark as Achieved"
-                                              >
-                                                <Check size={16} />
-                                                <span className="text-[9px] font-bold uppercase tracking-wider text-center px-1">Achieve</span>
-                                              </button>
+                                              <>
+                                                <button 
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleQuickStatusToggle(item, "Achieved");
+                                                    setSwipedItemId(null);
+                                                  }}
+                                                  className="w-[75px] h-full bg-emerald-600 hover:bg-emerald-700 text-white flex flex-col items-center justify-center gap-1 transition-colors outline-none"
+                                                  title="Mark as Achieved"
+                                                >
+                                                  <Check size={16} />
+                                                  <span className="text-[9px] font-bold uppercase tracking-wider text-center px-1">Achieve</span>
+                                                </button>
+                                                <button 
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleStartArchiving(item);
+                                                  }}
+                                                  className="w-[75px] h-full bg-amber-600 hover:bg-amber-700 text-white flex flex-col items-center justify-center gap-1 transition-colors border-l border-neutral-800/50 outline-none"
+                                                  title="Archive RFP"
+                                                >
+                                                  <Archive size={16} />
+                                                  <span className="text-[9px] font-bold uppercase tracking-wider text-center px-1">Archive</span>
+                                                </button>
+                                              </>
                                             )}
                                             
                                             {/* Edit Button */}
@@ -1381,26 +1498,12 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
 
                                               {/* Sector icon */}
                                               {(() => {
-                                                const sectorObj = sectors.find(s => s.name === item.sector);
-                                                if (sectorObj?.logo) {
-                                                  return (
-                                                    <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-[var(--border)] bg-neutral-900/60 flex items-center justify-center">
-                                                      <img 
-                                                        src={sectorObj.logo} 
-                                                        alt={item.sector} 
-                                                        className="w-full h-full object-cover"
-                                                        referrerPolicy="no-referrer"
-                                                      />
-                                                    </div>
-                                                  );
-                                                } else {
-                                                  const IconComp = getSectorIcon(item.sector);
-                                                  return (
-                                                    <div className="p-1.5 bg-[var(--bg-tertiary)] rounded-lg text-[var(--text-primary)] shrink-0 border border-[var(--border)]" style={{ color: sectorColor }}>
-                                                      <IconComp size={16} />
-                                                    </div>
-                                                  );
-                                                }
+                                                const IconComp = getSectorIcon(item.sector);
+                                                return (
+                                                  <div className="p-2 bg-[var(--bg-tertiary)] rounded-lg shrink-0 border border-[var(--border)] flex items-center justify-center shadow-sm" style={{ color: sectorColor }}>
+                                                    <IconComp size={32} />
+                                                  </div>
+                                                );
                                               })()}
                                               <div className="min-w-0 flex-1">
                                                 <h5 
@@ -1518,6 +1621,12 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                 </div>
               </div>
               <>
+                <Link
+                  to="/archived"
+                  className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 text-xs font-bold uppercase tracking-wider transition-all border border-amber-500/30"
+                >
+                  <Archive size={16} /> Archived RFPs
+                </Link>
                 <button 
                   onClick={() => window.print()}
                   className="flex items-center gap-2 px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--border)] transition-colors border border-[var(--border)]"
@@ -2312,6 +2421,78 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                   {editingId ? "Save Changes" : "Add Entry"}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Archiving Modal */}
+      {archivingItem && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex justify-between items-start">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-amber-500/10 text-amber-400 rounded-lg border border-amber-500/20">
+                  <Archive size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-medium text-white">Archive RFP</h3>
+                  <p className="text-xs text-neutral-400">Move un-won or canceled RFP to Archived section</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setArchivingItem(null)} 
+                className="text-neutral-400 hover:text-white p-1 rounded-lg transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-3 bg-neutral-950/80 rounded-lg border border-neutral-800 text-xs text-neutral-300 space-y-1">
+              <p className="font-semibold text-white">{archivingItem.name}</p>
+              <p className="text-neutral-400">Client: {archivingItem.client || 'N/A'}</p>
+              <p className="text-neutral-400">Sector: {archivingItem.sector}</p>
+            </div>
+
+            <div className="space-y-3">
+              <label className="block text-xs font-mono uppercase text-neutral-400">Reason for Archiving / Not Winning</label>
+              <select
+                value={archiveReasonChoice}
+                onChange={(e) => setArchiveReasonChoice(e.target.value)}
+                className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-amber-500/50"
+              >
+                <option value="Price too High / Commercial Uncompetitive">Price too High / Commercial Uncompetitive</option>
+                <option value="Client Postponed / Canceled Project">Client Postponed / Canceled Project</option>
+                <option value="Scope Change / Re-tendering">Scope Change / Re-tendering</option>
+                <option value="Technical Qualification / Evaluation">Technical Qualification / Evaluation</option>
+                <option value="Competitor Selected">Competitor Selected</option>
+                <option value="Other">Other Reason...</option>
+              </select>
+
+              {archiveReasonChoice === "Other" && (
+                <input
+                  type="text"
+                  value={customArchiveReasonChoice}
+                  onChange={(e) => setCustomArchiveReasonChoice(e.target.value)}
+                  placeholder="Specify custom reason..."
+                  className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-amber-500/50"
+                />
+              )}
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setArchivingItem(null)}
+                className="flex-1 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmArchive}
+                className="flex-1 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-black font-bold rounded-lg text-xs uppercase tracking-wider transition-colors shadow-lg shadow-amber-500/20"
+              >
+                Confirm Archive
+              </button>
             </div>
           </div>
         </div>

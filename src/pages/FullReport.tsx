@@ -6,7 +6,6 @@ import { Meetings, MeetingsWrapperForStats } from "./Meetings";
 import { AchievedTarget } from "./AchievedTarget";
 import { RecentEngagements } from "./RecentEngagements";
 import { Pipeline } from "./Pipeline";
-import { Tasks } from "./Tasks";
 import { Registrations } from "./Registrations";
 import { Logo } from "../components/ui/Logo";
 
@@ -21,7 +20,6 @@ export function FullReport() {
     pipeline: true,
     meetingsSchedule: true,
     meetingsAnalytics: true,
-    tasks: true,
     registrations: true,
     engagements: true
   });
@@ -235,20 +233,6 @@ export function FullReport() {
                     onWeekSelect={(date) => setReportMeetingDate(date)}
                     controlledDate={reportMeetingDate}
                   />
-                </section>
-              </td>
-            </tr>
-          )}
-          {sections.tasks && (
-            <tr>
-              <td className="pb-8">
-                {/* Tasks Section */}
-                <section className="break-inside-avoid">
-                  <div className="mb-6 border-l-2 border-[var(--text-primary)] pl-4">
-                    <h2 className="text-2xl font-light tracking-tight text-[var(--text-primary)]">TASKS</h2>
-                    <p className="text-[var(--text-secondary)] font-mono text-xs uppercase tracking-wider mt-1">Business Development Pipeline</p>
-                  </div>
-                  <Tasks isReportView={true} />
                 </section>
               </td>
             </tr>

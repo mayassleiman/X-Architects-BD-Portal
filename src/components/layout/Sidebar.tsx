@@ -16,6 +16,7 @@ import {
   Mail,
   TrendingUp,
   Calculator,
+  Archive,
 } from "lucide-react";
 import { Logo } from "../ui/Logo";
 import { cn } from "../../lib/utils";
@@ -29,7 +30,7 @@ const navItems = [
   { icon: FileText, label: "Registrations", href: "/registrations" },
   { icon: Calendar, label: "Meetings", href: "/meetings" },
   { icon: BarChart3, label: "Pipeline", href: "/pipeline" },
-  { icon: Briefcase, label: "Tasks", href: "/tasks" },
+  { icon: Archive, label: "Archived RFPs", href: "/archived" },
   { icon: Calculator, label: "Top Down Calc", href: "/top-down-calc" },
 ];
 
