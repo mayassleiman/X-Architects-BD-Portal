@@ -209,6 +209,25 @@ export function Archived() {
     }
   };
 
+  // Filter helper functions (Multi-select)
+  const toggleSectorFilter = (sectorName: string) => {
+    setSelectedSectorFilter(prev => 
+      prev.includes(sectorName) ? prev.filter(s => s !== sectorName) : [...prev, sectorName]
+    );
+  };
+
+  const toggleRegionFilter = (regionName: string) => {
+    setSelectedRegionFilter(prev => 
+      prev.includes(regionName) ? prev.filter(r => r !== regionName) : [...prev, regionName]
+    );
+  };
+
+  const toggleReasonFilter = (reasonText: string) => {
+    setSelectedReasonFilter(prev => 
+      prev.includes(reasonText) ? prev.filter(r => r !== reasonText) : [...prev, reasonText]
+    );
+  };
+
   // Helper for item total value
   const getItemValue = (item: PipelineItem) => {
     if (item.type === "VO") return item.values.vo || 0;
@@ -265,10 +284,9 @@ export function Archived() {
     const activeCount = active.length;
     const activeValue = active.reduce((sum, i) => sum + getItemValue(i), 0);
 
-    // Win Rate = Achieved / (Achieved + Archived)
-    const decidedCount = achievedCount + archivedCount;
-    const winRate = decidedCount > 0 ? (achievedCount / decidedCount) * 100 : 0;
-    const winRateByValue = (achievedValue + archivedValue) > 0 ? (achievedValue / (achievedValue + archivedValue)) * 100 : 0;
+    // Win Rate = Percentage of wins recorded in Yearly Target table (achievedCount) out of total RFPs received (totalReceivedCount)
+    const winRate = totalReceivedCount > 0 ? (achievedCount / totalReceivedCount) * 100 : 0;
+    const winRateByValue = totalReceivedValue > 0 ? (achievedValue / totalReceivedValue) * 100 : 0;
 
     return {
       totalReceivedCount,
@@ -362,12 +380,13 @@ export function Archived() {
       map[r].value += getItemValue(i);
     });
 
-    const totalVal = yearStats.archivedValue || 1;
+    // Calculate percentage based on count of archived RFPs
+    const totalArchivedCount = yearStats.archivedCount || 1;
     return Object.entries(map).map(([reason, data]) => ({
       reason,
       count: data.count,
       value: data.value,
-      percentage: (data.value / totalVal) * 100
+      percentage: (data.count / totalArchivedCount) * 100
     })).sort((a, b) => b.count - a.count);
   }, [yearStats]);
 
@@ -676,9 +695,12 @@ export function Archived() {
           <div className="text-xl font-bold font-mono text-emerald-400">
             {yearStats.winRate.toFixed(1)}%
           </div>
+          <div className="text-[10px] font-mono text-emerald-300/80 font-semibold mt-0.5">
+            Won: {yearStats.achievedCount} of {yearStats.totalReceivedCount} RFPs
+          </div>
           <div className="w-full bg-[var(--bg-tertiary)] rounded-full h-1 mt-1 overflow-hidden">
             <div 
-              className="bg-emerald-500 h-full" 
+              className="bg-emerald-500 h-full transition-all duration-500" 
               style={{ width: `${Math.min(100, yearStats.winRate)}%` }}
             />
           </div>
@@ -701,21 +723,41 @@ export function Archived() {
         </div>
       </div>
 
+      {/* Hidden SVG defs for 3D Drop Shadow */}
+      <svg className="w-0 h-0 absolute hidden" aria-hidden="true">
+        <defs>
+          <filter id="pie3dShadow" x="-30%" y="-30%" width="160%" height="160%">
+            <feDropShadow dx="1" dy="3" stdDeviation="2.5" floodColor="#000000" floodOpacity="0.85" />
+          </filter>
+        </defs>
+      </svg>
+
       {/* Compressed Visual Analytics Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Sectors with Pie Chart */}
+        {/* Sectors with Thinner Donut Wheel & 3D Effect */}
         <div className="bg-[var(--card-bg-inner)] border border-[var(--border)] rounded-xl p-3.5 flex flex-col">
           <div className="flex items-center justify-between pb-2 border-b border-[var(--border)] mb-2">
             <h3 className="text-xs font-mono uppercase tracking-wider text-[var(--text-primary)] flex items-center gap-1.5 font-bold">
               <PieChart size={14} className="text-amber-400" /> Sectors
             </h3>
-            <span className="text-[10px] font-mono text-[var(--text-secondary)]">
-              {sectorBreakdown.length} Sectors
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-mono text-[var(--text-secondary)]">
+                {sectorBreakdown.length} Sectors
+              </span>
+              {selectedSectorFilter.length > 0 && (
+                <button
+                  onClick={() => setSelectedSectorFilter([])}
+                  className="text-[9px] font-mono bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 px-1.5 py-0.5 rounded font-bold transition-colors"
+                  title="Clear Sector Filter"
+                >
+                  Clear ({selectedSectorFilter.length})
+                </button>
+              )}
+            </div>
           </div>
 
           {sectorBreakdown.length > 0 && (
-            <div className="h-36 w-full mb-2">
+            <div className="h-36 w-full mb-2 relative">
               <ResponsiveContainer width="100%" height="100%">
                 <RechartsPieChart>
                   <Pie
@@ -724,13 +766,26 @@ export function Archived() {
                     nameKey="name"
                     cx="50%"
                     cy="50%"
-                    outerRadius={50}
-                    innerRadius={22}
-                    paddingAngle={3}
+                    outerRadius={48}
+                    innerRadius={34}
+                    paddingAngle={4}
+                    stroke="#0f0f0f"
+                    strokeWidth={2}
+                    filter="url(#pie3dShadow)"
                   >
-                    {sectorBreakdown.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} stroke="#171717" strokeWidth={1.5} />
-                    ))}
+                    {sectorBreakdown.map((entry, index) => {
+                      const isSelected = selectedSectorFilter.includes(entry.name);
+                      return (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={entry.color} 
+                          stroke={isSelected ? "#fbbf24" : "#0f0f0f"} 
+                          strokeWidth={isSelected ? 3 : 1.5}
+                          className="cursor-pointer transition-all hover:opacity-80"
+                          onClick={() => toggleSectorFilter(entry.name)}
+                        />
+                      );
+                    })}
                   </Pie>
                   <RechartsTooltip 
                     formatter={(val: any) => [`${Number(val).toLocaleString()} ${currency}`, 'Value']}
@@ -738,10 +793,15 @@ export function Archived() {
                   />
                 </RechartsPieChart>
               </ResponsiveContainer>
+              <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                <span className="text-[9px] font-mono text-[var(--text-secondary)]/80 font-semibold uppercase tracking-wider">
+                  Click Wheel
+                </span>
+              </div>
             </div>
           )}
 
-          <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
+          <div className="space-y-1 max-h-[160px] overflow-y-auto pr-1">
             {sectorBreakdown.length === 0 ? (
               <div className="text-center py-6 text-xs font-mono text-[var(--text-secondary)]">
                 No sector data
@@ -749,18 +809,29 @@ export function Archived() {
             ) : (
               sectorBreakdown.map(sec => {
                 const IconComp = getSectorIcon(sec.name);
+                const isSelected = selectedSectorFilter.includes(sec.name);
                 return (
-                  <div key={sec.name} className="space-y-0.5">
+                  <div 
+                    key={sec.name} 
+                    onClick={() => toggleSectorFilter(sec.name)}
+                    className={cn(
+                      "p-1.5 rounded-lg cursor-pointer transition-all border",
+                      isSelected 
+                        ? "bg-amber-500/15 border-amber-400/80 shadow-sm" 
+                        : "border-transparent hover:bg-white/5"
+                    )}
+                  >
                     <div className="flex justify-between items-center text-[11px]">
                       <span className="flex items-center gap-1.5 font-medium truncate max-w-[170px]" style={{ color: sec.color }}>
                         <IconComp size={13} className="shrink-0" />
                         <span className="truncate">{sec.name} ({sec.count})</span>
+                        {isSelected && <Check size={11} className="text-amber-400 shrink-0 ml-0.5" />}
                       </span>
                       <span className="font-mono text-[var(--text-primary)] font-bold">
                         {sec.value.toLocaleString()} {currency}
                       </span>
                     </div>
-                    <div className="w-full bg-[var(--bg-tertiary)] h-1.5 rounded-full overflow-hidden">
+                    <div className="w-full bg-[var(--bg-tertiary)] h-1.5 rounded-full overflow-hidden mt-1">
                       <div 
                         className="h-full rounded-full transition-all duration-500" 
                         style={{ width: `${Math.max(4, sec.percentage)}%`, backgroundColor: sec.color }}
@@ -773,87 +844,135 @@ export function Archived() {
           </div>
         </div>
 
-        {/* Reasons */}
+        {/* Reasons (Without Grey Boxes) */}
         <div className="bg-[var(--card-bg-inner)] border border-[var(--border)] rounded-xl p-3.5 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-2 border-b border-[var(--border)] mb-2">
               <h3 className="text-xs font-mono uppercase tracking-wider text-[var(--text-primary)] flex items-center gap-1.5 font-bold">
                 <AlertTriangle size={14} className="text-rose-400" /> Reasons
               </h3>
-              <span className="text-[10px] font-mono text-[var(--text-secondary)]">
-                {reasonBreakdown.length} Reasons
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-mono text-[var(--text-secondary)]">
+                  {reasonBreakdown.length} Reasons
+                </span>
+                {selectedReasonFilter.length > 0 && (
+                  <button
+                    onClick={() => setSelectedReasonFilter([])}
+                    className="text-[9px] font-mono bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 px-1.5 py-0.5 rounded font-bold transition-colors"
+                    title="Clear Reason Filter"
+                  >
+                    Clear ({selectedReasonFilter.length})
+                  </button>
+                )}
+              </div>
             </div>
 
-            <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
+            <div className="space-y-1 max-h-[260px] overflow-y-auto pr-1">
               {reasonBreakdown.length === 0 ? (
                 <div className="text-center py-8 text-xs font-mono text-[var(--text-secondary)]">
                   No reasons recorded
                 </div>
               ) : (
-                reasonBreakdown.map(rb => (
-                  <div key={rb.reason} className="p-2 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--border)]">
-                    <div className="flex justify-between items-center text-[11px] mb-0.5">
-                      <span className="font-medium text-amber-300 truncate max-w-[180px]" title={rb.reason}>
-                        {rb.reason}
-                      </span>
-                      <span className="font-mono font-bold text-[var(--text-primary)]">
-                        {rb.count} RFP{rb.count > 1 ? 's' : ''}
-                      </span>
+                reasonBreakdown.map(rb => {
+                  const isSelected = selectedReasonFilter.includes(rb.reason);
+                  return (
+                    <div 
+                      key={rb.reason} 
+                      onClick={() => toggleReasonFilter(rb.reason)}
+                      className={cn(
+                        "p-2 rounded-lg cursor-pointer transition-all border-l-4 border-b border-[var(--border)]/30",
+                        isSelected 
+                          ? "bg-amber-500/15 border-l-amber-400 shadow-sm" 
+                          : "border-l-transparent hover:bg-white/5"
+                      )}
+                    >
+                      <div className="flex justify-between items-center text-[11px] mb-0.5">
+                        <span className="font-medium text-amber-300 truncate max-w-[180px]" title={rb.reason}>
+                          {rb.reason}
+                        </span>
+                        <span className="font-mono font-bold text-[var(--text-primary)] flex items-center gap-1">
+                          {rb.count} RFP{rb.count > 1 ? 's' : ''}
+                          {isSelected && <Check size={12} className="text-amber-400" />}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-[10px] font-mono text-[var(--text-secondary)]">
+                        <span>Value: {rb.value.toLocaleString()} {currency}</span>
+                        <span className="font-semibold text-amber-200/90">{rb.percentage.toFixed(1)}% of archived</span>
+                      </div>
                     </div>
-                    <div className="flex justify-between items-center text-[10px] font-mono text-[var(--text-secondary)]">
-                      <span>Value: {rb.value.toLocaleString()} {currency}</span>
-                      <span>{rb.percentage.toFixed(1)}%</span>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
         </div>
 
-        {/* Location Brkdwn */}
+        {/* Location Brkdwn (Without Dull Grey Boxes) */}
         <div className="bg-[var(--card-bg-inner)] border border-[var(--border)] rounded-xl p-3.5 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-2 border-b border-[var(--border)] mb-2">
               <h3 className="text-xs font-mono uppercase tracking-wider text-[var(--text-primary)] flex items-center gap-1.5 font-bold">
                 <MapPin size={14} className="text-cyan-400" /> Location Brkdwn
               </h3>
-              <span className="text-[10px] font-mono text-[var(--text-secondary)]">
-                {regionBreakdown.length} Regions
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-mono text-[var(--text-secondary)]">
+                  {regionBreakdown.length} Regions
+                </span>
+                {selectedRegionFilter.length > 0 && (
+                  <button
+                    onClick={() => setSelectedRegionFilter([])}
+                    className="text-[9px] font-mono bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 px-1.5 py-0.5 rounded font-bold transition-colors"
+                    title="Clear Region Filter"
+                  >
+                    Clear ({selectedRegionFilter.length})
+                  </button>
+                )}
+              </div>
             </div>
 
-            <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
+            <div className="space-y-1 max-h-[260px] overflow-y-auto pr-1">
               {regionBreakdown.length === 0 ? (
                 <div className="text-center py-8 text-xs font-mono text-[var(--text-secondary)]">
                   No region data
                 </div>
               ) : (
-                regionBreakdown.map(reg => (
-                  <div key={reg.region} className="flex justify-between items-center p-2 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--border)]">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <MapPin size={12} className="text-cyan-400 shrink-0" />
-                      <span className="text-[11px] font-medium text-[var(--text-primary)] truncate">{reg.region}</span>
+                regionBreakdown.map(reg => {
+                  const isSelected = selectedRegionFilter.includes(reg.region);
+                  return (
+                    <div 
+                      key={reg.region} 
+                      onClick={() => toggleRegionFilter(reg.region)}
+                      className={cn(
+                        "flex justify-between items-center p-2 rounded-lg cursor-pointer transition-all border-l-4 border-b border-[var(--border)]/30",
+                        isSelected 
+                          ? "bg-cyan-500/15 border-l-cyan-400 shadow-sm" 
+                          : "border-l-transparent hover:bg-white/5"
+                      )}
+                    >
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <MapPin size={13} className={isSelected ? "text-cyan-300 shrink-0" : "text-cyan-400/80 shrink-0"} />
+                        <span className="text-[11px] font-medium text-[var(--text-primary)] truncate">{reg.region}</span>
+                        {isSelected && <Check size={12} className="text-cyan-400 shrink-0 ml-0.5" />}
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="text-[11px] font-mono font-bold text-[var(--text-primary)] block">
+                          {reg.value.toLocaleString()} {currency}
+                        </span>
+                        <span className="text-[9px] font-mono text-[var(--text-secondary)]">
+                          {reg.count} Proposal{reg.count > 1 ? 's' : ''}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <span className="text-[11px] font-mono font-bold text-[var(--text-primary)] block">
-                        {reg.value.toLocaleString()} {currency}
-                      </span>
-                      <span className="text-[9px] font-mono text-[var(--text-secondary)]">
-                        {reg.count} Proposal{reg.count > 1 ? 's' : ''}
-                      </span>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Advanced Highlighted Filter Toolbar */}
-      <div className="bg-[var(--card-bg-inner)] border-2 border-amber-500/30 rounded-2xl p-3.5 space-y-3 shadow-md">
+      {/* Search & Sort Bar + Active Chart Filter Badges */}
+      <div className="bg-[var(--card-bg-inner)] border border-[var(--border)] rounded-2xl p-3.5 space-y-2.5 shadow-md">
         <div className="flex flex-col md:flex-row items-center justify-between gap-3">
           {/* Search Box */}
           <div className="relative w-full md:w-80">
@@ -863,7 +982,7 @@ export function Archived() {
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
               placeholder="Search RFP number, name, client, reason..."
-              className="w-full bg-[var(--bg-tertiary)] border-2 border-amber-500/40 rounded-xl pl-9 pr-8 py-1.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:border-amber-400 font-mono transition-colors shadow-inner"
+              className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] focus:border-amber-400/80 rounded-xl pl-9 pr-8 py-1.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none font-mono transition-colors shadow-inner"
             />
             {searchFilter && (
               <button 
@@ -888,7 +1007,7 @@ export function Archived() {
                 key={s.id}
                 onClick={() => setSortBy(s.id as any)}
                 className={cn(
-                  "px-3 py-1 rounded-xl text-xs font-mono font-bold whitespace-nowrap transition-all border-2",
+                  "px-3 py-1 rounded-xl text-xs font-mono font-bold whitespace-nowrap transition-all border",
                   sortBy === s.id
                     ? "bg-amber-500 text-black border-amber-400 shadow-md"
                     : "bg-[var(--bg-tertiary)] text-[var(--text-primary)] border-[var(--border)] hover:border-amber-500/50"
@@ -900,77 +1019,49 @@ export function Archived() {
           </div>
         </div>
 
-        {/* Highlighted Sector & Region Filter Pills */}
-        <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-[var(--border)]">
-          <span className="text-xs font-mono text-amber-400 font-bold flex items-center gap-1">
-            <Filter size={12} /> Filters:
-          </span>
+        {/* Active Multi-Select Chart Filters Summary */}
+        {(selectedSectorFilter.length > 0 || selectedRegionFilter.length > 0 || selectedReasonFilter.length > 0) && (
+          <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-[var(--border)]/50">
+            <span className="text-xs font-mono text-amber-400 font-bold flex items-center gap-1">
+              <Filter size={12} /> Active Chart Filters:
+            </span>
 
-          {/* Sector Pill Toggles */}
-          {sectors.map(sec => {
-            const isSelected = selectedSectorFilter.includes(sec.name);
-            return (
-              <button
-                key={sec.name}
-                onClick={() => {
-                  setSelectedSectorFilter(prev => 
-                    prev.includes(sec.name) ? prev.filter(x => x !== sec.name) : [...prev, sec.name]
-                  );
-                }}
-                className={cn(
-                  "px-2.5 py-1 rounded-lg text-[11px] font-mono transition-all border-2 flex items-center gap-1.5",
-                  isSelected
-                    ? "bg-neutral-900 font-bold shadow-md ring-1 ring-amber-500/50"
-                    : "bg-[var(--bg-tertiary)] text-[var(--text-secondary)] border-[var(--border)] hover:text-[var(--text-primary)]"
-                )}
-                style={{
-                  borderColor: isSelected ? sec.color : undefined,
-                  color: isSelected ? sec.color : undefined
-                }}
-              >
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sec.color }} />
-                {sec.name}
-              </button>
-            );
-          })}
+            {/* Selected Sector Badges */}
+            {selectedSectorFilter.map(sec => (
+              <span key={sec} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-mono bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                Sector: {sec}
+                <button onClick={() => toggleSectorFilter(sec)} className="hover:text-amber-100 p-0.5"><X size={10} /></button>
+              </span>
+            ))}
 
-          {/* Region Pill Toggles */}
-          {availableRegions.map(reg => {
-            const isSelected = selectedRegionFilter.includes(reg);
-            return (
-              <button
-                key={reg}
-                onClick={() => {
-                  setSelectedRegionFilter(prev => 
-                    prev.includes(reg) ? prev.filter(x => x !== reg) : [...prev, reg]
-                  );
-                }}
-                className={cn(
-                  "px-2.5 py-1 rounded-lg text-[11px] font-mono transition-all border-2 flex items-center gap-1",
-                  isSelected
-                    ? "bg-cyan-500/20 text-cyan-300 border-cyan-400 font-bold shadow-md"
-                    : "bg-[var(--bg-tertiary)] text-[var(--text-secondary)] border-[var(--border)] hover:text-[var(--text-primary)]"
-                )}
-              >
-                <MapPin size={10} />
-                {reg}
-              </button>
-            );
-          })}
+            {/* Selected Reason Badges */}
+            {selectedReasonFilter.map(r => (
+              <span key={r} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-mono bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                Reason: {r}
+                <button onClick={() => toggleReasonFilter(r)} className="hover:text-rose-100 p-0.5"><X size={10} /></button>
+              </span>
+            ))}
 
-          {(selectedSectorFilter.length > 0 || selectedRegionFilter.length > 0 || selectedReasonFilter.length > 0) && (
+            {/* Selected Region Badges */}
+            {selectedRegionFilter.map(reg => (
+              <span key={reg} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-mono bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                Region: {reg}
+                <button onClick={() => toggleRegionFilter(reg)} className="hover:text-cyan-100 p-0.5"><X size={10} /></button>
+              </span>
+            ))}
+
             <button
               onClick={() => {
                 setSelectedSectorFilter([]);
                 setSelectedRegionFilter([]);
                 setSelectedReasonFilter([]);
               }}
-              className="px-2.5 py-1 rounded-lg text-[11px] font-mono text-rose-400 hover:bg-rose-500/10 font-bold transition-colors underline"
+              className="px-2 py-0.5 rounded-lg text-[10px] font-mono text-rose-400 hover:bg-rose-500/10 font-bold transition-colors underline ml-auto"
             >
               Clear All Filters
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Item List */}
