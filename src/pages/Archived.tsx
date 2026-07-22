@@ -30,12 +30,14 @@ import {
   Check,
   Calendar,
   Layers,
-  AlertTriangle
+  AlertTriangle,
+  DollarSign
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { useSearch } from "../context/SearchContext";
 import { useCurrency } from "../context/CurrencyContext";
 import * as XLSX from "xlsx";
+import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
 
 interface PipelineItem {
   id: string;
@@ -174,6 +176,14 @@ export function Archived() {
 
   // Edit / Archive Modal state
   const [editingItem, setEditingItem] = useState<PipelineItem | null>(null);
+  const [editName, setEditName] = useState<string>("");
+  const [editClient, setEditClient] = useState<string>("");
+  const [editSector, setEditSector] = useState<string>("");
+  const [editRegion, setEditRegion] = useState<string>("");
+  const [editValArch, setEditValArch] = useState<string>("");
+  const [editValInt, setEditValInt] = useState<string>("");
+  const [editValCs, setEditValCs] = useState<string>("");
+  const [editValVo, setEditValVo] = useState<string>("");
   const [editReason, setEditReason] = useState<string>("");
   const [editCustomReason, setEditCustomReason] = useState<string>("");
 
@@ -476,9 +486,18 @@ export function Archived() {
     }
   };
 
-  // Open edit modal for archive reason
+  // Open edit modal for archive item details & reason
   const handleOpenEditModal = (item: PipelineItem) => {
     setEditingItem(item);
+    setEditName(item.name || "");
+    setEditClient(item.client || "");
+    setEditSector(item.sector || "");
+    setEditRegion(item.region || "");
+    setEditValArch(item.values?.architecture !== undefined ? item.values.architecture.toString() : "");
+    setEditValInt(item.values?.interior !== undefined ? item.values.interior.toString() : "");
+    setEditValCs(item.values?.cs !== undefined ? item.values.cs.toString() : "");
+    setEditValVo(item.values?.vo !== undefined ? item.values.vo.toString() : "");
+
     const existingReason = item.archiveReason || "";
     if (COMMON_REASONS.includes(existingReason)) {
       setEditReason(existingReason);
@@ -499,19 +518,31 @@ export function Archived() {
     const finalReason = editReason === "Other" ? (editCustomReason || "Other") : editReason;
 
     try {
-      const updated = {
+      const updatedItem: PipelineItem = {
         ...editingItem,
+        name: editName,
+        client: editClient,
+        sector: editSector,
+        region: editRegion,
+        values: {
+          ...editingItem.values,
+          architecture: editValArch !== "" ? Number(editValArch) : undefined,
+          interior: editValInt !== "" ? Number(editValInt) : undefined,
+          cs: editValCs !== "" ? Number(editValCs) : undefined,
+          vo: editValVo !== "" ? Number(editValVo) : undefined,
+        },
         archiveReason: finalReason
       };
+
       await fetch(`/api/pipeline/${editingItem.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updated)
+        body: JSON.stringify(updatedItem)
       });
-      setAllItems(allItems.map(i => i.id === editingItem.id ? updated : i));
+      setAllItems(allItems.map(i => i.id === editingItem.id ? updatedItem : i));
       setEditingItem(null);
     } catch (err) {
-      alert("Failed to update reason.");
+      alert("Failed to update proposal details.");
     }
   };
 
@@ -539,37 +570,30 @@ export function Archived() {
   };
 
   return (
-    <div className="space-y-8 pb-16">
+    <div className="space-y-6 pb-16">
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--border)] pb-5">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-amber-500/10 text-amber-500 rounded-xl border border-amber-500/20">
-              <Archive size={26} />
-            </div>
-            <div>
-              <h1 className="text-2xl md:text-3xl font-light tracking-tight text-[var(--text-primary)]">
-                ARCHIVED PROPOSALS & ANALYTICS
-              </h1>
-              <p className="text-xs text-[var(--text-secondary)] font-mono uppercase tracking-wider mt-0.5">
-                Archived RFPs Dashboard, Historical Win Rates & Loss Analysis
-              </p>
-            </div>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-[var(--border)] pb-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-amber-500/10 text-amber-400 rounded-xl border border-amber-500/20">
+            <Archive size={22} />
           </div>
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-[var(--text-primary)]">
+            Archived RFPs
+          </h1>
         </div>
 
         {/* Year Filter Pill Selector & Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center bg-[var(--bg-tertiary)] p-1 rounded-xl border border-[var(--border)]">
-            <span className="text-xs font-mono text-[var(--text-secondary)] px-2.5 flex items-center gap-1.5">
+          <div className="flex items-center bg-[var(--bg-tertiary)] p-1 rounded-xl border-2 border-amber-500/40 shadow-sm">
+            <span className="text-xs font-mono text-[var(--text-secondary)] px-2 flex items-center gap-1 font-semibold">
               <Calendar size={13} /> Year:
             </span>
             <button
               onClick={() => setSelectedYear("ALL")}
               className={cn(
-                "px-3 py-1 rounded-lg text-xs font-mono transition-all",
+                "px-2.5 py-1 rounded-lg text-xs font-mono transition-all",
                 selectedYear === "ALL" 
-                  ? "bg-[var(--text-primary)] text-[var(--bg-primary)] font-bold shadow-sm" 
+                  ? "bg-amber-500 text-black font-bold shadow-md" 
                   : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
               )}
             >
@@ -580,9 +604,9 @@ export function Archived() {
                 key={yr}
                 onClick={() => setSelectedYear(yr.toString())}
                 className={cn(
-                  "px-3 py-1 rounded-lg text-xs font-mono transition-all",
+                  "px-2.5 py-1 rounded-lg text-xs font-mono transition-all",
                   selectedYear === yr.toString()
-                    ? "bg-amber-500 text-black font-bold shadow-sm"
+                    ? "bg-amber-500 text-black font-bold shadow-md"
                     : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                 )}
               >
@@ -593,189 +617,193 @@ export function Archived() {
 
           <button
             onClick={handleExportExcel}
-            className="flex items-center gap-2 px-3.5 py-1.5 bg-emerald-600/15 hover:bg-emerald-600/25 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-mono tracking-wider transition-all"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border-2 border-emerald-500/40 rounded-xl text-xs font-mono font-bold tracking-wider transition-all shadow-sm"
           >
-            <Download size={14} /> Export Excel
+            <Download size={13} /> Export Excel
           </button>
           
           <button
             onClick={() => window.print()}
-            className="flex items-center gap-2 px-3.5 py-1.5 bg-[var(--bg-tertiary)] hover:bg-[var(--border)] text-[var(--text-primary)] border border-[var(--border)] rounded-xl text-xs font-mono tracking-wider transition-all"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg-tertiary)] hover:bg-[var(--border)] text-[var(--text-primary)] border-2 border-[var(--border)] rounded-xl text-xs font-mono font-bold tracking-wider transition-all"
           >
-            <Printer size={14} /> Print
+            <Printer size={13} /> Print
           </button>
         </div>
       </div>
 
-      {/* KPI Dashboard Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total RFPs Received */}
-        <div className="bg-[var(--card-bg-inner)] border border-[var(--border)] rounded-2xl p-5 relative overflow-hidden group">
-          <div className="flex justify-between items-start mb-3">
-            <span className="text-xs font-mono uppercase tracking-widest text-[var(--text-secondary)]">
-              Total Received ({selectedYear})
+      {/* Compressed KPI Dashboard Row */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* Total RFPs */}
+        <div className="bg-[var(--card-bg-inner)] border border-blue-500/30 rounded-xl p-3 relative overflow-hidden">
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-blue-400 font-bold">
+              Total RFPs
             </span>
-            <div className="p-2 bg-blue-500/10 text-blue-400 rounded-xl border border-blue-500/20">
-              <Layers size={18} />
-            </div>
+            <Layers size={15} className="text-blue-400" />
           </div>
-          <div className="text-2xl md:text-3xl font-bold font-mono text-[var(--text-primary)] mb-1">
+          <div className="text-xl font-bold font-mono text-[var(--text-primary)]">
             {yearStats.totalReceivedCount} <span className="text-xs font-normal text-[var(--text-secondary)]">RFPs</span>
           </div>
-          <div className="text-xs font-mono text-blue-400">
+          <div className="text-[11px] font-mono text-blue-400 font-semibold mt-0.5">
             {yearStats.totalReceivedValue.toLocaleString()} {currency}
           </div>
-          <p className="text-[10px] text-[var(--text-secondary)] mt-2">
-            Includes active pipeline + won + archived
-          </p>
         </div>
 
-        {/* Total Archived / Lost RFPs */}
-        <div className="bg-[var(--card-bg-inner)] border border-amber-500/30 rounded-2xl p-5 relative overflow-hidden group">
-          <div className="flex justify-between items-start mb-3">
-            <span className="text-xs font-mono uppercase tracking-widest text-amber-400">
-              Archived / Lost ({selectedYear})
+        {/* Lost */}
+        <div className="bg-[var(--card-bg-inner)] border border-amber-500/40 rounded-xl p-3 relative overflow-hidden">
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-amber-400 font-bold">
+              Lost
             </span>
-            <div className="p-2 bg-amber-500/10 text-amber-400 rounded-xl border border-amber-500/20">
-              <Archive size={18} />
-            </div>
+            <Archive size={15} className="text-amber-400" />
           </div>
-          <div className="text-2xl md:text-3xl font-bold font-mono text-amber-400 mb-1">
+          <div className="text-xl font-bold font-mono text-amber-400">
             {yearStats.archivedCount} <span className="text-xs font-normal text-amber-400/70">RFPs</span>
           </div>
-          <div className="text-xs font-mono text-amber-300">
+          <div className="text-[11px] font-mono text-amber-300 font-semibold mt-0.5">
             {yearStats.archivedValue.toLocaleString()} {currency}
           </div>
-          <p className="text-[10px] text-[var(--text-secondary)] mt-2">
-            Archived and un-won RFPs
-          </p>
         </div>
 
         {/* Win Rate */}
-        <div className="bg-[var(--card-bg-inner)] border border-emerald-500/30 rounded-2xl p-5 relative overflow-hidden group">
-          <div className="flex justify-between items-start mb-3">
-            <span className="text-xs font-mono uppercase tracking-widest text-emerald-400">
-              Proposal Win Rate
+        <div className="bg-[var(--card-bg-inner)] border border-emerald-500/40 rounded-xl p-3 relative overflow-hidden">
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-emerald-400 font-bold">
+              Win Rate
             </span>
-            <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20">
-              <TrendingUp size={18} />
-            </div>
+            <TrendingUp size={15} className="text-emerald-400" />
           </div>
-          <div className="text-2xl md:text-3xl font-bold font-mono text-emerald-400 mb-1">
+          <div className="text-xl font-bold font-mono text-emerald-400">
             {yearStats.winRate.toFixed(1)}%
           </div>
-          <div className="w-full bg-[var(--bg-tertiary)] rounded-full h-1.5 mt-2 overflow-hidden border border-[var(--border)]">
+          <div className="w-full bg-[var(--bg-tertiary)] rounded-full h-1 mt-1 overflow-hidden">
             <div 
-              className="bg-emerald-500 h-full transition-all duration-500" 
+              className="bg-emerald-500 h-full" 
               style={{ width: `${Math.min(100, yearStats.winRate)}%` }}
             />
           </div>
-          <p className="text-[10px] text-[var(--text-secondary)] mt-2 flex justify-between">
-            <span>Won: {yearStats.achievedCount}</span>
-            <span>Lost/Archived: {yearStats.archivedCount}</span>
-          </p>
         </div>
 
-        {/* Active RFPs in Pipeline */}
-        <div className="bg-[var(--card-bg-inner)] border border-[var(--border)] rounded-2xl p-5 relative overflow-hidden group">
-          <div className="flex justify-between items-start mb-3">
-            <span className="text-xs font-mono uppercase tracking-widest text-[var(--text-secondary)]">
-              Active in Pipeline
+        {/* Active */}
+        <div className="bg-[var(--card-bg-inner)] border border-cyan-500/30 rounded-xl p-3 relative overflow-hidden">
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-cyan-400 font-bold">
+              Active
             </span>
-            <div className="p-2 bg-cyan-500/10 text-cyan-400 rounded-xl border border-cyan-500/20">
-              <BarChart2 size={18} />
-            </div>
+            <BarChart2 size={15} className="text-cyan-400" />
           </div>
-          <div className="text-2xl md:text-3xl font-bold font-mono text-[var(--text-primary)] mb-1">
+          <div className="text-xl font-bold font-mono text-[var(--text-primary)]">
             {yearStats.activeCount} <span className="text-xs font-normal text-[var(--text-secondary)]">RFPs</span>
           </div>
-          <div className="text-xs font-mono text-cyan-400">
+          <div className="text-[11px] font-mono text-cyan-400 font-semibold mt-0.5">
             {yearStats.activeValue.toLocaleString()} {currency}
           </div>
-          <p className="text-[10px] text-[var(--text-secondary)] mt-2">
-            Currently active proposals & VOs
-          </p>
         </div>
       </div>
 
-      {/* Visual Analytics Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Sector Distribution */}
-        <div className="bg-[var(--card-bg-inner)] border border-[var(--border)] rounded-2xl p-5 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between pb-3 border-b border-[var(--border)] mb-4">
-              <h3 className="text-sm font-mono uppercase tracking-wider text-[var(--text-primary)] flex items-center gap-2">
-                <PieChart size={16} className="text-amber-400" /> Sector Distribution
-              </h3>
-              <span className="text-xs font-mono text-[var(--text-secondary)]">
-                {sectorBreakdown.length} Sectors
-              </span>
-            </div>
+      {/* Compressed Visual Analytics Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Sectors with Pie Chart */}
+        <div className="bg-[var(--card-bg-inner)] border border-[var(--border)] rounded-xl p-3.5 flex flex-col">
+          <div className="flex items-center justify-between pb-2 border-b border-[var(--border)] mb-2">
+            <h3 className="text-xs font-mono uppercase tracking-wider text-[var(--text-primary)] flex items-center gap-1.5 font-bold">
+              <PieChart size={14} className="text-amber-400" /> Sectors
+            </h3>
+            <span className="text-[10px] font-mono text-[var(--text-secondary)]">
+              {sectorBreakdown.length} Sectors
+            </span>
+          </div>
 
-            <div className="space-y-3 max-h-[260px] overflow-y-auto pr-1">
-              {sectorBreakdown.length === 0 ? (
-                <div className="text-center py-8 text-xs font-mono text-[var(--text-secondary)]">
-                  No sector data for this period
-                </div>
-              ) : (
-                sectorBreakdown.map(sec => {
-                  const IconComp = getSectorIcon(sec.name);
-                  return (
-                    <div key={sec.name} className="space-y-1">
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="flex items-center gap-2 font-medium" style={{ color: sec.color }}>
-                          <IconComp size={16} />
-                          {sec.name} ({sec.count})
-                        </span>
-                        <span className="font-mono text-[var(--text-primary)] font-bold">
-                          {sec.value.toLocaleString()} {currency}
-                        </span>
-                      </div>
-                      <div className="w-full bg-[var(--bg-tertiary)] h-2 rounded-full overflow-hidden border border-[var(--border)]/50">
-                        <div 
-                          className="h-full rounded-full transition-all duration-500" 
-                          style={{ width: `${Math.max(3, sec.percentage)}%`, backgroundColor: sec.color }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })
-              )}
+          {sectorBreakdown.length > 0 && (
+            <div className="h-36 w-full mb-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <RechartsPieChart>
+                  <Pie
+                    data={sectorBreakdown}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={50}
+                    innerRadius={22}
+                    paddingAngle={3}
+                  >
+                    {sectorBreakdown.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} stroke="#171717" strokeWidth={1.5} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip 
+                    formatter={(val: any) => [`${Number(val).toLocaleString()} ${currency}`, 'Value']}
+                    contentStyle={{ backgroundColor: '#0a0a0a', borderColor: '#262626', borderRadius: '8px', fontSize: '11px', color: '#fff' }}
+                  />
+                </RechartsPieChart>
+              </ResponsiveContainer>
             </div>
+          )}
+
+          <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
+            {sectorBreakdown.length === 0 ? (
+              <div className="text-center py-6 text-xs font-mono text-[var(--text-secondary)]">
+                No sector data
+              </div>
+            ) : (
+              sectorBreakdown.map(sec => {
+                const IconComp = getSectorIcon(sec.name);
+                return (
+                  <div key={sec.name} className="space-y-0.5">
+                    <div className="flex justify-between items-center text-[11px]">
+                      <span className="flex items-center gap-1.5 font-medium truncate max-w-[170px]" style={{ color: sec.color }}>
+                        <IconComp size={13} className="shrink-0" />
+                        <span className="truncate">{sec.name} ({sec.count})</span>
+                      </span>
+                      <span className="font-mono text-[var(--text-primary)] font-bold">
+                        {sec.value.toLocaleString()} {currency}
+                      </span>
+                    </div>
+                    <div className="w-full bg-[var(--bg-tertiary)] h-1.5 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full rounded-full transition-all duration-500" 
+                        style={{ width: `${Math.max(4, sec.percentage)}%`, backgroundColor: sec.color }}
+                      />
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
 
-        {/* Reason for Loss / Archive Breakdown */}
-        <div className="bg-[var(--card-bg-inner)] border border-[var(--border)] rounded-2xl p-5 flex flex-col justify-between">
+        {/* Reasons */}
+        <div className="bg-[var(--card-bg-inner)] border border-[var(--border)] rounded-xl p-3.5 flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between pb-3 border-b border-[var(--border)] mb-4">
-              <h3 className="text-sm font-mono uppercase tracking-wider text-[var(--text-primary)] flex items-center gap-2">
-                <AlertTriangle size={16} className="text-rose-400" /> Reasons for Loss / Archiving
+            <div className="flex items-center justify-between pb-2 border-b border-[var(--border)] mb-2">
+              <h3 className="text-xs font-mono uppercase tracking-wider text-[var(--text-primary)] flex items-center gap-1.5 font-bold">
+                <AlertTriangle size={14} className="text-rose-400" /> Reasons
               </h3>
-              <span className="text-xs font-mono text-[var(--text-secondary)]">
+              <span className="text-[10px] font-mono text-[var(--text-secondary)]">
                 {reasonBreakdown.length} Reasons
               </span>
             </div>
 
-            <div className="space-y-3 max-h-[260px] overflow-y-auto pr-1">
+            <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
               {reasonBreakdown.length === 0 ? (
                 <div className="text-center py-8 text-xs font-mono text-[var(--text-secondary)]">
-                  No archive reasons recorded
+                  No reasons recorded
                 </div>
               ) : (
                 reasonBreakdown.map(rb => (
-                  <div key={rb.reason} className="p-2.5 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border)]/70">
-                    <div className="flex justify-between items-center text-xs mb-1">
-                      <span className="font-medium text-amber-300 truncate max-w-[200px]" title={rb.reason}>
+                  <div key={rb.reason} className="p-2 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--border)]">
+                    <div className="flex justify-between items-center text-[11px] mb-0.5">
+                      <span className="font-medium text-amber-300 truncate max-w-[180px]" title={rb.reason}>
                         {rb.reason}
                       </span>
                       <span className="font-mono font-bold text-[var(--text-primary)]">
                         {rb.count} RFP{rb.count > 1 ? 's' : ''}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center text-[10px] font-mono text-[var(--text-secondary)] mt-1">
+                    <div className="flex justify-between items-center text-[10px] font-mono text-[var(--text-secondary)]">
                       <span>Value: {rb.value.toLocaleString()} {currency}</span>
-                      <span>{rb.percentage.toFixed(1)}% of total lost value</span>
+                      <span>{rb.percentage.toFixed(1)}%</span>
                     </div>
                   </div>
                 ))
@@ -784,35 +812,35 @@ export function Archived() {
           </div>
         </div>
 
-        {/* Geographic Distribution */}
-        <div className="bg-[var(--card-bg-inner)] border border-[var(--border)] rounded-2xl p-5 flex flex-col justify-between">
+        {/* Location Brkdwn */}
+        <div className="bg-[var(--card-bg-inner)] border border-[var(--border)] rounded-xl p-3.5 flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between pb-3 border-b border-[var(--border)] mb-4">
-              <h3 className="text-sm font-mono uppercase tracking-wider text-[var(--text-primary)] flex items-center gap-2">
-                <MapPin size={16} className="text-cyan-400" /> Geographic Breakdown
+            <div className="flex items-center justify-between pb-2 border-b border-[var(--border)] mb-2">
+              <h3 className="text-xs font-mono uppercase tracking-wider text-[var(--text-primary)] flex items-center gap-1.5 font-bold">
+                <MapPin size={14} className="text-cyan-400" /> Location Brkdwn
               </h3>
-              <span className="text-xs font-mono text-[var(--text-secondary)]">
+              <span className="text-[10px] font-mono text-[var(--text-secondary)]">
                 {regionBreakdown.length} Regions
               </span>
             </div>
 
-            <div className="space-y-2.5 max-h-[260px] overflow-y-auto pr-1">
+            <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
               {regionBreakdown.length === 0 ? (
                 <div className="text-center py-8 text-xs font-mono text-[var(--text-secondary)]">
-                  No region data for this period
+                  No region data
                 </div>
               ) : (
                 regionBreakdown.map(reg => (
-                  <div key={reg.region} className="flex justify-between items-center p-2.5 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border)]/70">
-                    <div className="flex items-center gap-2">
-                      <MapPin size={14} className="text-cyan-400 shrink-0" />
-                      <span className="text-xs font-medium text-[var(--text-primary)]">{reg.region}</span>
+                  <div key={reg.region} className="flex justify-between items-center p-2 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--border)]">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <MapPin size={12} className="text-cyan-400 shrink-0" />
+                      <span className="text-[11px] font-medium text-[var(--text-primary)] truncate">{reg.region}</span>
                     </div>
-                    <div className="text-right">
-                      <span className="text-xs font-mono font-bold text-[var(--text-primary)] block">
+                    <div className="text-right shrink-0">
+                      <span className="text-[11px] font-mono font-bold text-[var(--text-primary)] block">
                         {reg.value.toLocaleString()} {currency}
                       </span>
-                      <span className="text-[10px] font-mono text-[var(--text-secondary)]">
+                      <span className="text-[9px] font-mono text-[var(--text-secondary)]">
                         {reg.count} Proposal{reg.count > 1 ? 's' : ''}
                       </span>
                     </div>
@@ -824,32 +852,32 @@ export function Archived() {
         </div>
       </div>
 
-      {/* Advanced Filter Toolbar */}
-      <div className="bg-[var(--card-bg-inner)] border border-[var(--border)] rounded-2xl p-4 space-y-4">
+      {/* Advanced Highlighted Filter Toolbar */}
+      <div className="bg-[var(--card-bg-inner)] border-2 border-amber-500/30 rounded-2xl p-3.5 space-y-3 shadow-md">
         <div className="flex flex-col md:flex-row items-center justify-between gap-3">
           {/* Search Box */}
           <div className="relative w-full md:w-80">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]" />
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-400" />
             <input 
               type="text"
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
               placeholder="Search RFP number, name, client, reason..."
-              className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-xl pl-9 pr-3 py-2 text-xs text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:border-amber-500 transition-colors"
+              className="w-full bg-[var(--bg-tertiary)] border-2 border-amber-500/40 rounded-xl pl-9 pr-8 py-1.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:border-amber-400 font-mono transition-colors shadow-inner"
             />
             {searchFilter && (
               <button 
                 onClick={() => setSearchFilter("")} 
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-0.5"
               >
                 <X size={14} />
               </button>
             )}
           </div>
 
-          {/* Sort Selector */}
-          <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto">
-            <span className="text-xs font-mono text-[var(--text-secondary)] whitespace-nowrap">Sort By:</span>
+          {/* Highlighted Sort Selector */}
+          <div className="flex items-center gap-1.5 w-full md:w-auto overflow-x-auto">
+            <span className="text-xs font-mono text-[var(--text-secondary)] font-bold whitespace-nowrap">Sort By:</span>
             {[
               { id: "date", label: "Date" },
               { id: "value", label: "Value" },
@@ -860,10 +888,10 @@ export function Archived() {
                 key={s.id}
                 onClick={() => setSortBy(s.id as any)}
                 className={cn(
-                  "px-3 py-1.5 rounded-xl text-xs font-mono whitespace-nowrap transition-all border",
+                  "px-3 py-1 rounded-xl text-xs font-mono font-bold whitespace-nowrap transition-all border-2",
                   sortBy === s.id
-                    ? "bg-amber-500/20 text-amber-400 border-amber-500/40 font-bold"
-                    : "bg-[var(--bg-tertiary)] text-[var(--text-secondary)] border-[var(--border)] hover:text-[var(--text-primary)]"
+                    ? "bg-amber-500 text-black border-amber-400 shadow-md"
+                    : "bg-[var(--bg-tertiary)] text-[var(--text-primary)] border-[var(--border)] hover:border-amber-500/50"
                 )}
               >
                 {s.label}
@@ -872,9 +900,9 @@ export function Archived() {
           </div>
         </div>
 
-        {/* Sector & Region Filter Pills */}
-        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[var(--border)]/50">
-          <span className="text-xs font-mono text-[var(--text-secondary)] flex items-center gap-1">
+        {/* Highlighted Sector & Region Filter Pills */}
+        <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-[var(--border)]">
+          <span className="text-xs font-mono text-amber-400 font-bold flex items-center gap-1">
             <Filter size={12} /> Filters:
           </span>
 
@@ -890,10 +918,10 @@ export function Archived() {
                   );
                 }}
                 className={cn(
-                  "px-2.5 py-1 rounded-lg text-[11px] font-mono transition-all border flex items-center gap-1.5",
+                  "px-2.5 py-1 rounded-lg text-[11px] font-mono transition-all border-2 flex items-center gap-1.5",
                   isSelected
-                    ? "bg-[var(--bg-tertiary)] font-bold shadow-sm"
-                    : "bg-[var(--bg-tertiary)]/50 text-[var(--text-secondary)] border-[var(--border)]/60 opacity-70 hover:opacity-100"
+                    ? "bg-neutral-900 font-bold shadow-md ring-1 ring-amber-500/50"
+                    : "bg-[var(--bg-tertiary)] text-[var(--text-secondary)] border-[var(--border)] hover:text-[var(--text-primary)]"
                 )}
                 style={{
                   borderColor: isSelected ? sec.color : undefined,
@@ -918,10 +946,10 @@ export function Archived() {
                   );
                 }}
                 className={cn(
-                  "px-2.5 py-1 rounded-lg text-[11px] font-mono transition-all border flex items-center gap-1",
+                  "px-2.5 py-1 rounded-lg text-[11px] font-mono transition-all border-2 flex items-center gap-1",
                   isSelected
-                    ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/40 font-bold"
-                    : "bg-[var(--bg-tertiary)]/50 text-[var(--text-secondary)] border-[var(--border)]/60 opacity-70 hover:opacity-100"
+                    ? "bg-cyan-500/20 text-cyan-300 border-cyan-400 font-bold shadow-md"
+                    : "bg-[var(--bg-tertiary)] text-[var(--text-secondary)] border-[var(--border)] hover:text-[var(--text-primary)]"
                 )}
               >
                 <MapPin size={10} />
@@ -937,7 +965,7 @@ export function Archived() {
                 setSelectedRegionFilter([]);
                 setSelectedReasonFilter([]);
               }}
-              className="px-2.5 py-1 rounded-lg text-[11px] font-mono text-rose-400 hover:bg-rose-500/10 transition-colors underline"
+              className="px-2.5 py-1 rounded-lg text-[11px] font-mono text-rose-400 hover:bg-rose-500/10 font-bold transition-colors underline"
             >
               Clear All Filters
             </button>
@@ -945,17 +973,16 @@ export function Archived() {
         </div>
       </div>
 
-      {/* List Header & Item Cards with iPhone Slide Effect */}
-      <div className="space-y-3">
+      {/* Item List */}
+      <div className="space-y-2">
         <div className="flex justify-between items-center text-xs font-mono uppercase tracking-wider text-[var(--text-secondary)] px-1">
-          <span>Archived RFPs ({filteredArchivedList.length})</span>
-          <span className="hidden sm:inline">Swipe card left to Restore, Edit Reason, or Delete</span>
+          <span className="font-bold text-[var(--text-primary)]">Archived RFPs ({filteredArchivedList.length})</span>
         </div>
 
         {filteredArchivedList.length === 0 ? (
-          <div className="text-center py-16 bg-[var(--card-bg-inner)] border border-[var(--border)] rounded-2xl p-8 space-y-3">
-            <Archive size={40} className="mx-auto text-amber-500/40" />
-            <h4 className="text-base font-medium text-[var(--text-primary)]">No Archived RFPs Found</h4>
+          <div className="text-center py-12 bg-[var(--card-bg-inner)] border border-[var(--border)] rounded-xl p-6 space-y-2">
+            <Archive size={36} className="mx-auto text-amber-500/40" />
+            <h4 className="text-sm font-medium text-[var(--text-primary)]">No Archived RFPs Found</h4>
             <p className="text-xs text-[var(--text-secondary)] max-w-md mx-auto">
               There are no archived proposals matching your filter selection for year {selectedYear}. Un-won RFPs moved from the Pipeline page will appear here.
             </p>
@@ -970,11 +997,14 @@ export function Archived() {
             return (
               <div 
                 key={item.id}
-                className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card-bg-inner)] transition-all shadow-sm group"
+                className="relative overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card-bg-inner)] transition-all shadow-sm group"
               >
-                {/* Background Swipe Action Buttons (iPhone Slide Effect) */}
+                {/* Background Swipe Action Buttons (iPhone Slide Effect - Only Visible When Swiped) */}
                 <div 
-                  className="absolute right-0 top-0 bottom-0 flex h-full z-0 overflow-hidden"
+                  className={cn(
+                    "absolute right-0 top-0 bottom-0 flex h-full z-0 overflow-hidden transition-opacity duration-150",
+                    swipedItemId === item.id ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+                  )}
                   style={{ width: `${buttonsWidth}px` }}
                 >
                   {/* Restore Button */}
@@ -986,21 +1016,21 @@ export function Archived() {
                     className="w-[75px] h-full bg-blue-600 hover:bg-blue-700 text-white flex flex-col items-center justify-center gap-1 transition-colors outline-none cursor-pointer"
                     title="Restore to Active Pipeline"
                   >
-                    <RotateCcw size={16} />
+                    <RotateCcw size={15} />
                     <span className="text-[9px] font-bold uppercase tracking-wider text-center px-1">Restore</span>
                   </button>
 
-                  {/* Edit Reason Button */}
+                  {/* Edit RFP & Reason Button */}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleOpenEditModal(item);
                     }}
                     className="w-[75px] h-full bg-amber-600 hover:bg-amber-700 text-white flex flex-col items-center justify-center gap-1 transition-colors border-l border-neutral-800/40 outline-none cursor-pointer"
-                    title="Edit Archive Reason"
+                    title="Edit Details & Value"
                   >
-                    <Edit2 size={16} />
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-center px-1">Reason</span>
+                    <Edit2 size={15} />
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-center px-1">Edit</span>
                   </button>
 
                   {/* Delete Permanently Button */}
@@ -1012,12 +1042,12 @@ export function Archived() {
                     className="w-[75px] h-full bg-rose-600 hover:bg-rose-700 text-white flex flex-col items-center justify-center gap-1 transition-colors border-l border-neutral-800/40 outline-none cursor-pointer"
                     title="Delete Permanently"
                   >
-                    <Trash2 size={16} />
+                    <Trash2 size={15} />
                     <span className="text-[9px] font-bold uppercase tracking-wider text-center px-1">Delete</span>
                   </button>
                 </div>
 
-                {/* Foreground Card Content */}
+                {/* Foreground Slim Card Content (Matching Pipeline Card Slimness) */}
                 <div
                   id={`archive-card-${item.id}`}
                   onMouseDown={(e) => handleSwipeStart(e, item.id)}
@@ -1031,80 +1061,68 @@ export function Archived() {
                     transform: swipedItemId === item.id ? `translateX(-${buttonsWidth}px)` : 'translateX(0px)', 
                     transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)' 
                   }}
-                  className="bg-[var(--card-bg-inner)] p-4 pl-5 relative z-10 w-full h-full select-none cursor-grab active:cursor-grabbing"
+                  className="bg-[var(--card-bg-inner)] py-2.5 px-3.5 pl-4 relative z-10 w-full select-none cursor-grab active:cursor-grabbing border-b border-[var(--border)]/50 hover:bg-[var(--bg-tertiary)] transition-colors"
                 >
                   {/* Left Sector Color Bar */}
                   <div className="absolute left-0 top-0 bottom-0 w-1.5" style={{ backgroundColor: sectorColor }} />
 
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                    <div className="flex items-start gap-3.5 min-w-0 flex-1">
+                  <div className="flex justify-between items-center gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       {/* Sector Icon Box */}
-                      <div className="p-2.5 bg-[var(--bg-tertiary)] rounded-xl shrink-0 border border-[var(--border)] flex items-center justify-center shadow-sm" style={{ color: sectorColor }}>
-                        <IconComp size={28} />
+                      <div className="p-1.5 bg-[var(--bg-tertiary)] rounded-lg shrink-0 border border-[var(--border)] flex items-center justify-center shadow-sm" style={{ color: sectorColor }}>
+                        <IconComp size={18} />
                       </div>
 
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-2 truncate">
                           {item.rfpNumber && (
-                            <span className="px-2 py-0.5 rounded-md bg-[var(--bg-tertiary)] border border-[var(--border)] font-mono text-[11px] text-[var(--text-secondary)] font-bold">
+                            <span className="px-1.5 py-0.5 rounded bg-[var(--bg-tertiary)] border border-[var(--border)] font-mono text-[10px] text-[var(--text-secondary)] font-bold shrink-0">
                               {item.rfpNumber}
                             </span>
                           )}
-                          <h4 className="text-base font-medium text-[var(--text-primary)] truncate" title={item.name}>
+                          <h4 className="text-sm font-medium text-[var(--text-primary)] truncate" title={item.name}>
                             {item.name}
                           </h4>
+                          {item.client && (
+                            <span className="text-xs text-[var(--text-secondary)] truncate hidden md:inline">
+                              — {item.client}
+                            </span>
+                          )}
                         </div>
 
-                        {item.client && (
-                          <p className="text-xs text-[var(--text-secondary)] mt-0.5 truncate">
-                            Client: <span className="text-[var(--text-primary)]">{item.client}</span>
-                          </p>
-                        )}
-
-                        {/* Metadata row */}
-                        <div className="flex flex-wrap items-center gap-3 mt-2 text-[10px] text-[var(--text-secondary)] font-mono uppercase tracking-wider">
+                        {/* Compact Metadata row */}
+                        <div className="flex flex-wrap items-center gap-2 mt-1 text-[10px] text-[var(--text-secondary)] font-mono">
                           <span style={{ color: sectorColor }} className="font-bold">
                             {item.sector}
                           </span>
-                          {item.region && <span>Region: {item.region}</span>}
-                          {item.submissionDate && <span>Submitted: {item.submissionDate}</span>}
-                          {item.archivedAt && <span>Archived: {item.archivedAt}</span>}
-                        </div>
-
-                        {/* Reason Pill Highlight */}
-                        <div className="mt-2.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs font-mono">
-                          <AlertTriangle size={13} className="shrink-0 text-amber-400" />
-                          <span>Reason: <strong className="font-sans font-medium">{item.archiveReason || "Not Specified"}</strong></span>
+                          {item.region && <span>| {item.region}</span>}
+                          {item.submissionDate && <span className="hidden sm:inline">| Sub: {item.submissionDate}</span>}
+                          {item.archivedAt && (
+                            <span className="text-amber-400/90 font-bold">
+                              | Archived: {item.archivedAt}
+                            </span>
+                          )}
+                          <span className="inline-flex items-center gap-1 text-amber-400 font-sans">
+                            <AlertTriangle size={11} className="shrink-0 text-amber-400" />
+                            <strong className="font-medium">{item.archiveReason || "Not Specified"}</strong>
+                          </span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Right Value & Actions */}
-                    <div className="text-right flex flex-col items-end gap-2 shrink-0 self-end sm:self-center">
-                      <div>
-                        <span className="text-lg font-mono font-bold text-[var(--text-primary)] block">
-                          {totalVal.toLocaleString()} {currency}
+                    {/* Right Value - Slim & Bold */}
+                    <div className="text-right shrink-0">
+                      <span className="text-sm font-mono font-bold text-[var(--text-primary)] block">
+                        {totalVal.toLocaleString()} {currency}
+                      </span>
+                      <span className="text-[9px] font-mono text-[var(--text-secondary)] uppercase block">
+                        {item.type}
+                      </span>
+                      {item.archivedAt && (
+                        <span className="text-[9px] font-mono text-amber-400/80 block font-semibold">
+                          {item.archivedAt}
                         </span>
-                        <span className="text-[10px] font-mono text-[var(--text-secondary)] uppercase">
-                          Archived Proposal
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleRestoreItem(item)}
-                          className="px-2.5 py-1 rounded-lg bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 border border-blue-500/30 text-[10px] font-mono transition-colors flex items-center gap-1"
-                          title="Restore to Active Pipeline"
-                        >
-                          <RotateCcw size={12} /> Restore
-                        </button>
-                        <button
-                          onClick={() => handleOpenEditModal(item)}
-                          className="px-2.5 py-1 rounded-lg bg-[var(--bg-tertiary)] text-[var(--text-primary)] hover:bg-[var(--border)] border border-[var(--border)] text-[10px] font-mono transition-colors flex items-center gap-1"
-                        >
-                          <Edit2 size={12} /> Edit Reason
-                        </button>
-                      </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1114,10 +1132,10 @@ export function Archived() {
         )}
       </div>
 
-      {/* Edit Reason Modal */}
+      {/* Comprehensive Edit Modal (Allows Modifying Value, Name, Client, Sector, Region & Reason) */}
       {editingItem && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[var(--card-bg-inner)] border border-[var(--border)] rounded-2xl w-full max-w-lg p-6 space-y-5 shadow-2xl relative">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[var(--card-bg-inner)] border-2 border-amber-500/40 rounded-2xl w-full max-w-lg p-5 space-y-4 shadow-2xl relative max-h-[90vh] overflow-y-auto">
             <button 
               onClick={() => setEditingItem(null)}
               className="absolute right-4 top-4 text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1 rounded-lg"
@@ -1125,62 +1143,168 @@ export function Archived() {
               <X size={18} />
             </button>
 
-            <div className="flex items-center gap-3 border-b border-[var(--border)] pb-4">
-              <div className="p-2.5 bg-amber-500/10 text-amber-500 rounded-xl border border-amber-500/20">
-                <AlertTriangle size={22} />
+            <div className="flex items-center gap-2.5 border-b border-[var(--border)] pb-3">
+              <div className="p-2 bg-amber-500/10 text-amber-400 rounded-xl border border-amber-500/20">
+                <Edit2 size={18} />
               </div>
               <div>
-                <h3 className="text-lg font-medium text-[var(--text-primary)]">
-                  Reason for Archiving / Loss
+                <h3 className="text-base font-bold text-[var(--text-primary)]">
+                  Edit Archived RFP Details
                 </h3>
-                <p className="text-xs text-[var(--text-secondary)] font-mono truncate max-w-xs">
-                  {editingItem.name}
+                <p className="text-xs text-[var(--text-secondary)] font-mono">
+                  Modify values, proposal name, client, or archive reason
                 </p>
               </div>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-mono uppercase tracking-wider text-[var(--text-secondary)] mb-2">
-                  Select Reason:
-                </label>
-                <div className="space-y-2">
-                  {COMMON_REASONS.map((r) => (
-                    <label 
-                      key={r}
-                      className={cn(
-                        "flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer text-xs transition-all",
-                        editReason === r
-                          ? "bg-amber-500/15 border-amber-500/50 text-amber-300 font-medium"
-                          : "bg-[var(--bg-tertiary)] border-[var(--border)] text-[var(--text-primary)] hover:border-amber-500/30"
-                      )}
-                    >
-                      <input 
-                        type="radio" 
-                        name="archive_reason_radio" 
-                        checked={editReason === r} 
-                        onChange={() => setEditReason(r)}
-                        className="accent-amber-500"
-                      />
-                      <span>{r}</span>
-                    </label>
-                  ))}
+            <div className="space-y-3.5 text-xs">
+              {/* Proposal Name & Client */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-mono uppercase tracking-wider text-[var(--text-secondary)] mb-1 font-bold">
+                    Proposal Name:
+                  </label>
+                  <input 
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-xl p-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-mono uppercase tracking-wider text-[var(--text-secondary)] mb-1 font-bold">
+                    Client Name:
+                  </label>
+                  <input 
+                    type="text"
+                    value={editClient}
+                    onChange={(e) => setEditClient(e.target.value)}
+                    className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-xl p-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-amber-500"
+                  />
                 </div>
               </div>
 
-              {editReason === "Other" && (
+              {/* Sector & Region */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-mono uppercase tracking-wider text-[var(--text-secondary)] mb-1">
-                    Custom Reason / Specific Details:
+                  <label className="block text-[10px] font-mono uppercase tracking-wider text-[var(--text-secondary)] mb-1 font-bold">
+                    Market Sector:
                   </label>
+                  <select
+                    value={editSector}
+                    onChange={(e) => setEditSector(e.target.value)}
+                    className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-xl p-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-amber-500"
+                  >
+                    {sectors.map(s => (
+                      <option key={s.name} value={s.name}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-mono uppercase tracking-wider text-[var(--text-secondary)] mb-1 font-bold">
+                    Region:
+                  </label>
+                  <input 
+                    type="text"
+                    value={editRegion}
+                    onChange={(e) => setEditRegion(e.target.value)}
+                    className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-xl p-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+
+              {/* Modify Values Box */}
+              <div className="p-3 bg-[var(--bg-tertiary)] rounded-xl border border-[var(--border)] space-y-2">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold flex items-center gap-1">
+                    <DollarSign size={12} /> Financial Values ({currency})
+                  </span>
+                  <span className="text-xs font-mono font-bold text-emerald-400">
+                    Total: {(
+                      (Number(editValArch) || 0) + 
+                      (Number(editValInt) || 0) + 
+                      (Number(editValCs) || 0) + 
+                      (Number(editValVo) || 0)
+                    ).toLocaleString()} {currency}
+                  </span>
+                </div>
+
+                {editingItem.type === "VO" ? (
+                  <div>
+                    <label className="block text-[10px] font-mono text-[var(--text-secondary)] mb-1">
+                      VO Value:
+                    </label>
+                    <input 
+                      type="number"
+                      value={editValVo}
+                      onChange={(e) => setEditValVo(e.target.value)}
+                      className="w-full bg-[var(--card-bg-inner)] border border-[var(--border)] rounded-lg p-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-amber-500 font-mono"
+                    />
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-mono text-[var(--text-secondary)] mb-1">
+                        Architecture:
+                      </label>
+                      <input 
+                        type="number"
+                        value={editValArch}
+                        onChange={(e) => setEditValArch(e.target.value)}
+                        className="w-full bg-[var(--card-bg-inner)] border border-[var(--border)] rounded-lg p-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-amber-500 font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-mono text-[var(--text-secondary)] mb-1">
+                        Interior:
+                      </label>
+                      <input 
+                        type="number"
+                        value={editValInt}
+                        onChange={(e) => setEditValInt(e.target.value)}
+                        className="w-full bg-[var(--card-bg-inner)] border border-[var(--border)] rounded-lg p-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-amber-500 font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-mono text-[var(--text-secondary)] mb-1">
+                        CS / Lead:
+                      </label>
+                      <input 
+                        type="number"
+                        value={editValCs}
+                        onChange={(e) => setEditValCs(e.target.value)}
+                        className="w-full bg-[var(--card-bg-inner)] border border-[var(--border)] rounded-lg p-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-amber-500 font-mono"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Reason for Archiving */}
+              <div>
+                <label className="block text-[10px] font-mono uppercase tracking-wider text-[var(--text-secondary)] mb-1.5 font-bold">
+                  Reason for Archiving / Loss:
+                </label>
+                <select
+                  value={editReason}
+                  onChange={(e) => setEditReason(e.target.value)}
+                  className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-xl p-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-amber-500"
+                >
+                  {COMMON_REASONS.map(r => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                  <option value="Other">Other Reason...</option>
+                </select>
+
+                {editReason === "Other" && (
                   <textarea 
                     value={editCustomReason}
                     onChange={(e) => setEditCustomReason(e.target.value)}
-                    placeholder="Enter details on why this proposal was archived or not won..."
-                    className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-xl p-3 text-xs text-[var(--text-primary)] focus:outline-none focus:border-amber-500 min-h-[80px]"
+                    placeholder="Enter details on why this proposal was archived..."
+                    className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-xl p-2.5 text-xs text-[var(--text-primary)] focus:outline-none focus:border-amber-500 min-h-[60px] mt-2"
                   />
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             <div className="flex justify-end gap-2 pt-3 border-t border-[var(--border)]">
@@ -1194,7 +1318,7 @@ export function Archived() {
                 onClick={handleSaveEditReason}
                 className="px-5 py-2 rounded-xl text-xs font-mono font-bold bg-amber-500 hover:bg-amber-600 text-black shadow-md transition-colors flex items-center gap-1.5"
               >
-                <Check size={14} /> Save Reason
+                <Check size={14} /> Save Changes
               </button>
             </div>
           </div>

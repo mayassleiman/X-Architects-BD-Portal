@@ -94,6 +94,74 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState<{ x: number, domainMin: number, domainMax: number } | null>(null);
 
+  // Swipe Action Handler (iPhone Style)
+  const [swipedItemId, setSwipedItemId] = useState<string | null>(null);
+  const [isSwipingActive, setIsSwipingActive] = useState(false);
+  const swipeStart = useRef<{ x: number; y: number } | null>(null);
+  const buttonsWidth = 150; // 2 buttons x 75px
+
+  const handleSwipeStart = (e: React.MouseEvent | React.TouchEvent, itemId: string) => {
+    if (isReportView) return;
+    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+    swipeStart.current = { x: clientX, y: clientY };
+    setIsSwipingActive(true);
+  };
+
+  const handleSwipeMove = (e: React.MouseEvent | React.TouchEvent, itemId: string) => {
+    if (isReportView || !swipeStart.current || !isSwipingActive) return;
+    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+    
+    const dx = clientX - swipeStart.current.x;
+    const dy = clientY - swipeStart.current.y;
+
+    if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 10) {
+      swipeStart.current = null;
+      setIsSwipingActive(false);
+      return;
+    }
+
+    if (Math.abs(dx) > 10) {
+      if (e.cancelable) e.preventDefault();
+      const isCurrentlyOpen = swipedItemId === itemId;
+      const baseOffset = isCurrentlyOpen ? -buttonsWidth : 0;
+      let newOffset = baseOffset + dx;
+      newOffset = Math.max(-buttonsWidth - 20, Math.min(10, newOffset));
+
+      const el = document.getElementById(`achieved-row-${itemId}`);
+      if (el) {
+        el.style.transform = `translateX(${newOffset}px)`;
+        el.style.transition = "none";
+      }
+    }
+  };
+
+  const handleSwipeEnd = (itemId: string) => {
+    if (isReportView || !swipeStart.current) return;
+    setIsSwipingActive(false);
+    swipeStart.current = null;
+
+    const el = document.getElementById(`achieved-row-${itemId}`);
+    if (el) {
+      el.style.transition = "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)";
+      const style = window.getComputedStyle(el);
+      let currentTranslateX = 0;
+      if (style.transform && style.transform !== "none") {
+        const parts = style.transform.split(/[()]/)[1]?.split(",");
+        if (parts) currentTranslateX = parseFloat(parts[4] || parts[12] || "0");
+      }
+
+      if (currentTranslateX < -40) {
+        el.style.transform = `translateX(-${buttonsWidth}px)`;
+        setSwipedItemId(itemId);
+      } else {
+        el.style.transform = "translateX(0px)";
+        if (swipedItemId === itemId) setSwipedItemId(null);
+      }
+    }
+  };
+
   useEffect(() => {
     fetchData();
     fetchSectors();
@@ -1044,7 +1112,22 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
                     const totalValue = (Number(vals.architecture) || 0) + (Number(vals.interior) || 0) + (Number(vals.cs) || 0) + (Number(vals.vo) || 0);
                     
                     return (
-                      <tr key={item.id} className="bg-[var(--card-bg)] hover:bg-[var(--bg-tertiary)]/20 transition-colors border-b border-[var(--border)] border-dashed">
+                      <tr 
+                        key={item.id} 
+                        id={`achieved-row-${item.id}`}
+                        onMouseDown={(e) => handleSwipeStart(e, item.id)}
+                        onMouseMove={(e) => handleSwipeMove(e, item.id)}
+                        onMouseUp={() => handleSwipeEnd(item.id)}
+                        onMouseLeave={() => handleSwipeEnd(item.id)}
+                        onTouchStart={(e) => handleSwipeStart(e, item.id)}
+                        onTouchMove={(e) => handleSwipeMove(e, item.id)}
+                        onTouchEnd={() => handleSwipeEnd(item.id)}
+                        style={{ 
+                          transform: swipedItemId === item.id ? `translateX(-${buttonsWidth}px)` : 'translateX(0px)', 
+                          transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)' 
+                        }}
+                        className="relative bg-[var(--card-bg)] hover:bg-[var(--bg-tertiary)]/20 transition-colors border-b border-[var(--border)] border-dashed select-none cursor-grab active:cursor-grabbing"
+                      >
                         <td className="px-4 py-2 pl-10">
                           <div className="flex items-center justify-between">
                             <div>
@@ -1144,38 +1227,56 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
                         <td className="px-4 py-2 text-right text-[var(--text-tertiary)]">-</td>
                         <td className="px-4 py-2 text-right text-[var(--text-tertiary)]">-</td>
                         <td className="px-4 py-2 text-right text-[var(--text-tertiary)]">-</td>
-                        <td className="px-4 py-2 text-center">
+                        <td className="px-4 py-2 text-center relative">
                           {!isReportView && (
-                            <div className="flex items-center justify-center gap-1">
+                            <>
                               {editingItem?.id === item.id ? (
-                                <>
-                                  <button onClick={handleUpdateItem} className="text-emerald-500 hover:text-emerald-400 p-1"><Check size={14} /></button>
-                                  <button onClick={() => setEditingItem(null)} className="text-rose-500 hover:text-rose-400 p-1"><X size={14} /></button>
-                                </>
+                                <div className="flex items-center justify-center gap-1">
+                                  <button onClick={handleUpdateItem} className="text-emerald-500 hover:text-emerald-400 p-1" title="Save"><Check size={14} /></button>
+                                  <button onClick={() => setEditingItem(null)} className="text-rose-500 hover:text-rose-400 p-1" title="Cancel"><X size={14} /></button>
+                                </div>
                               ) : (
-                                <>
-                                  <button 
-                                    onClick={() => setEditingItem({ 
-                                      id: item.id, 
-                                      number: item.rfpNumber || "", 
-                                      date: formatDateForInput(item.achievedDate || item.submissionDate),
-                                      values: item.values || {}
-                                    })}
-                                    className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors p-1"
+                                /* Background Action Buttons - Revealed Upon Swiping Left */
+                                <div 
+                                  className={cn(
+                                    "absolute right-0 top-0 bottom-0 flex h-full z-20 overflow-hidden transition-opacity duration-150",
+                                    swipedItemId === item.id ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+                                  )}
+                                  style={{ width: `${buttonsWidth}px` }}
+                                >
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingItem({ 
+                                        id: item.id, 
+                                        number: item.rfpNumber || "", 
+                                        date: formatDateForInput(item.achievedDate || item.submissionDate),
+                                        values: item.values || {}
+                                      });
+                                      setSwipedItemId(null);
+                                    }}
+                                    className="w-[75px] h-full bg-amber-600 hover:bg-amber-700 text-white flex flex-col items-center justify-center gap-1 transition-colors outline-none cursor-pointer"
                                     title="Edit Item"
                                   >
                                     <Edit2 size={14} />
+                                    <span className="text-[9px] font-bold uppercase tracking-wider text-center px-1">Edit</span>
                                   </button>
-                                  <button 
-                                    onClick={() => setItemToDelete(item)}
-                                    className="text-[var(--text-secondary)] hover:text-rose-400 transition-colors p-1"
+
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setItemToDelete(item);
+                                      setSwipedItemId(null);
+                                    }}
+                                    className="w-[75px] h-full bg-rose-600 hover:bg-rose-700 text-white flex flex-col items-center justify-center gap-1 transition-colors border-l border-neutral-800/40 outline-none cursor-pointer"
                                     title="Remove from Achieved"
                                   >
                                     <Trash2 size={14} />
+                                    <span className="text-[9px] font-bold uppercase tracking-wider text-center px-1">Delete</span>
                                   </button>
-                                </>
+                                </div>
                               )}
-                            </div>
+                            </>
                           )}
                         </td>
                       </tr>
