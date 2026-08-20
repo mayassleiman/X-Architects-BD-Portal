@@ -49,13 +49,6 @@ interface Phase {
   weight: number; // percentage (e.g. 15 for 15%)
 }
 
-export type AssetScopeMode = "full" | "architecture" | "interior" | "custom_split";
-export type PhaseScopeType = "none" | "full" | "review";
-
-export interface AssetPhaseDisciplineScope {
-  [phaseId: string]: PhaseScopeType;
-}
-
 export interface Asset {
   id: string;
   name: string;
@@ -63,11 +56,6 @@ export interface Asset {
   gfa: number; // SqM per unit
   constructionRate: number; // rate per SqM
   activePhaseIds: string[]; // which phases apply to this building
-  scopeMode?: AssetScopeMode;
-  archPhaseScope?: AssetPhaseDisciplineScope; // e.g. SD: "full", DD: "review", TD: "review", IFC: "review"
-  idPhaseScope?: AssetPhaseDisciplineScope;   // e.g. SD: "full", DD: "full", TD: "full", IFC: "full"
-  otherPhaseScope?: AssetPhaseDisciplineScope; // other allied disciplines (Structural, MEP, etc.)
-  reviewFeeFactor?: number; // review fee factor percentage, e.g. 25 (means 25% of that phase fee)
 }
 
 interface Discipline {
@@ -501,9 +489,6 @@ export function TopDownCalc() {
     return parseFloat(phases.reduce((sum, p) => sum + p.weight, 0).toFixed(2));
   }, [phases]);
 
-  // State for Scope Configurator Modal
-  const [editingScopeAssetId, setEditingScopeAssetId] = useState<string | null>(null);
-
   // Asset Handlers (Section 2)
   const addAssetRow = () => {
     if (!newAssetName.trim()) {
@@ -517,8 +502,6 @@ export function TopDownCalc() {
       gfa: Number(newAssetGfa) || 0,
       constructionRate: Number(newAssetRate) || 0,
       activePhaseIds: phases.map((p) => p.id), // all active by default
-      scopeMode: "full",
-      reviewFeeFactor: 25
     };
 
     setAssets([...assets, newAsset]);
@@ -538,8 +521,6 @@ export function TopDownCalc() {
       gfa: 5000,
       constructionRate: 3500,
       activePhaseIds: phases.map((p) => p.id), // all active by default
-      scopeMode: "full",
-      reviewFeeFactor: 25
     };
 
     setAssets([...assets, newAsset]);
@@ -579,8 +560,6 @@ export function TopDownCalc() {
       gfa: Math.round(calculatedGfa),
       constructionRate: 4500, // standard default rate
       activePhaseIds: phases.map((p) => p.id),
-      scopeMode: "full",
-      reviewFeeFactor: 25
     };
 
     setAssets([...assets, newAsset]);
@@ -598,183 +577,19 @@ export function TopDownCalc() {
     );
   };
 
-  const setAssetScopeMode = (assetId: string, mode: AssetScopeMode) => {
-    setAssets(
-      assets.map((asset) => {
-        if (asset.id !== assetId) return asset;
-        
-        let archPhaseScope = asset.archPhaseScope;
-        let idPhaseScope = asset.idPhaseScope;
-        let otherPhaseScope = asset.otherPhaseScope;
-
-        if (mode === "custom_split" && (!archPhaseScope || !idPhaseScope)) {
-          archPhaseScope = {};
-          idPhaseScope = {};
-          otherPhaseScope = {};
-          phases.forEach((p) => {
-            const isActive = asset.activePhaseIds.includes(p.id);
-            const pIdLower = p.id.toLowerCase();
-            const pNameLower = p.name.toLowerCase();
-            const isEarly = pIdLower === "sa" || pIdLower === "pc" || pIdLower === "cd" || pIdLower === "sd" || pNameLower.includes("concept") || pNameLower.includes("schematic");
-            
-            archPhaseScope![p.id] = isActive ? (isEarly ? "full" : "review") : "none";
-            idPhaseScope![p.id] = isActive ? "full" : "none";
-            otherPhaseScope![p.id] = isActive ? (isEarly ? "full" : "review") : "none";
-          });
-        }
-
-        return {
-          ...asset,
-          scopeMode: mode,
-          archPhaseScope,
-          idPhaseScope,
-          otherPhaseScope,
-          reviewFeeFactor: asset.reviewFeeFactor || 25
-        };
-      })
-    );
-  };
-
   const toggleAssetPhaseScope = (assetId: string, phaseId: string) => {
     setAssets(
       assets.map((asset) => {
         if (asset.id !== assetId) return asset;
         const exists = asset.activePhaseIds.includes(phaseId);
-        const newActive = exists
-          ? asset.activePhaseIds.filter((id) => id !== phaseId)
-          : [...asset.activePhaseIds, phaseId];
-
-        // Also sync custom split phase status if present
-        let archPhaseScope = asset.archPhaseScope;
-        let idPhaseScope = asset.idPhaseScope;
-        let otherPhaseScope = asset.otherPhaseScope;
-
-        if (asset.scopeMode === "custom_split" && archPhaseScope && idPhaseScope) {
-          if (!exists) {
-            // Activating
-            archPhaseScope = { ...archPhaseScope, [phaseId]: archPhaseScope[phaseId] === "none" ? "full" : archPhaseScope[phaseId] || "full" };
-            idPhaseScope = { ...idPhaseScope, [phaseId]: idPhaseScope[phaseId] === "none" ? "full" : idPhaseScope[phaseId] || "full" };
-          } else {
-            // Deactivating
-            archPhaseScope = { ...archPhaseScope, [phaseId]: "none" };
-            idPhaseScope = { ...idPhaseScope, [phaseId]: "none" };
-          }
-        }
-
         return {
           ...asset,
-          activePhaseIds: newActive,
-          archPhaseScope,
-          idPhaseScope,
-          otherPhaseScope
+          activePhaseIds: exists
+            ? asset.activePhaseIds.filter((id) => id !== phaseId)
+            : [...asset.activePhaseIds, phaseId]
         };
       })
     );
-  };
-
-  const updateAssetDisciplinePhaseScope = (
-    assetId: string, 
-    disciplineKey: "arch" | "id" | "other", 
-    phaseId: string, 
-    scopeType: PhaseScopeType
-  ) => {
-    setAssets(
-      assets.map((asset) => {
-        if (asset.id !== assetId) return asset;
-        const currentArch = asset.archPhaseScope || {};
-        const currentId = asset.idPhaseScope || {};
-        const currentOther = asset.otherPhaseScope || {};
-
-        const newArch = { ...currentArch };
-        const newId = { ...currentId };
-        const newOther = { ...currentOther };
-
-        if (disciplineKey === "arch") newArch[phaseId] = scopeType;
-        if (disciplineKey === "id") newId[phaseId] = scopeType;
-        if (disciplineKey === "other") newOther[phaseId] = scopeType;
-
-        const isActive = (newArch[phaseId] && newArch[phaseId] !== "none") || 
-                         (newId[phaseId] && newId[phaseId] !== "none") || 
-                         (newOther[phaseId] && newOther[phaseId] !== "none");
-        
-        let newActivePhases = [...asset.activePhaseIds];
-        if (isActive && !newActivePhases.includes(phaseId)) {
-          newActivePhases.push(phaseId);
-        } else if (!isActive && newActivePhases.includes(phaseId)) {
-          newActivePhases = newActivePhases.filter(id => id !== phaseId);
-        }
-
-        return {
-          ...asset,
-          scopeMode: "custom_split",
-          archPhaseScope: newArch,
-          idPhaseScope: newId,
-          otherPhaseScope: newOther,
-          activePhaseIds: newActivePhases
-        };
-      })
-    );
-  };
-
-  const applyPresetScope = (assetId: string, presetType: "rfp_hybrid" | "arch_only" | "interior_only" | "arch_concept_only" | "full_all") => {
-    setAssets(
-      assets.map((asset) => {
-        if (asset.id !== assetId) return asset;
-
-        const archScope: AssetPhaseDisciplineScope = {};
-        const idScope: AssetPhaseDisciplineScope = {};
-        const otherScope: AssetPhaseDisciplineScope = {};
-        const activeIds: string[] = [];
-
-        phases.forEach((p) => {
-          const pId = p.id.toLowerCase();
-          const pName = p.name.toLowerCase();
-          const isEarly = pId === "sa" || pId === "pc" || pId === "cd" || pId === "sd" || pName.includes("concept") || pName.includes("schematic");
-
-          if (presetType === "rfp_hybrid") {
-            archScope[p.id] = isEarly ? "full" : "review";
-            idScope[p.id] = "full";
-            otherScope[p.id] = isEarly ? "full" : "review";
-            activeIds.push(p.id);
-          } else if (presetType === "arch_only") {
-            archScope[p.id] = "full";
-            idScope[p.id] = "none";
-            otherScope[p.id] = "none";
-            activeIds.push(p.id);
-          } else if (presetType === "interior_only") {
-            archScope[p.id] = "none";
-            idScope[p.id] = "full";
-            otherScope[p.id] = "none";
-            activeIds.push(p.id);
-          } else if (presetType === "arch_concept_only") {
-            archScope[p.id] = isEarly ? "full" : "none";
-            idScope[p.id] = "none";
-            otherScope[p.id] = "none";
-            if (isEarly) activeIds.push(p.id);
-          } else if (presetType === "full_all") {
-            archScope[p.id] = "full";
-            idScope[p.id] = "full";
-            otherScope[p.id] = "full";
-            activeIds.push(p.id);
-          }
-        });
-
-        const newScopeMode: AssetScopeMode = 
-          presetType === "arch_only" ? "architecture" :
-          presetType === "interior_only" ? "interior" :
-          presetType === "full_all" ? "full" : "custom_split";
-
-        return {
-          ...asset,
-          scopeMode: newScopeMode,
-          archPhaseScope: archScope,
-          idPhaseScope: idScope,
-          otherPhaseScope: otherScope,
-          activePhaseIds: activeIds
-        };
-      })
-    );
-    showNotification("Applied preset scope configuration successfully!", "success");
   };
 
   // Perform All Core Top Down Fee Calculations
@@ -782,75 +597,26 @@ export function TopDownCalc() {
     let totalConstructionCost = 0;
     let totalDesignFee = 0;
 
-    const totalDisciplineSum = disciplines.reduce((sum, d) => sum + d.percentage, 0) || 100;
-    const archDiscipline = disciplines.find(d => d.name.toLowerCase().startsWith("arch"));
-    const idDiscipline = disciplines.find(d => d.name.toLowerCase().includes("interior"));
-    
-    const archWeight = archDiscipline ? archDiscipline.percentage : 45;
-    const idWeight = idDiscipline ? idDiscipline.percentage : 9;
-    const otherWeight = Math.max(0, totalDisciplineSum - archWeight - idWeight);
-
     // Calculate details per asset
     const assetDetails = assets.map((asset) => {
       const assetCost = asset.quantity * asset.gfa * asset.constructionRate;
       totalConstructionCost += assetCost;
 
-      const scopeMode: AssetScopeMode = asset.scopeMode || "full";
-      const reviewFactor = (asset.reviewFeeFactor !== undefined ? asset.reviewFeeFactor : 25) / 100;
+      // Sum weights of active phases for this asset
+      const activePhasesSumWeight = phases
+        .filter((p) => asset.activePhaseIds.includes(p.id))
+        .reduce((sum, p) => sum + p.weight, 0);
 
-      let assetDesignFee = 0;
-      let activePhasesSumWeight = 0;
-
-      phases.forEach((phase) => {
-        let phaseMultiplier = 0;
-        let isPhaseActive = false;
-
-        if (scopeMode === "full") {
-          if (asset.activePhaseIds.includes(phase.id)) {
-            phaseMultiplier = 1.0;
-            isPhaseActive = true;
-          }
-        } else if (scopeMode === "architecture") {
-          if (asset.activePhaseIds.includes(phase.id)) {
-            phaseMultiplier = archWeight / totalDisciplineSum;
-            isPhaseActive = true;
-          }
-        } else if (scopeMode === "interior") {
-          if (asset.activePhaseIds.includes(phase.id)) {
-            phaseMultiplier = idWeight / totalDisciplineSum;
-            isPhaseActive = true;
-          }
-        } else if (scopeMode === "custom_split") {
-          const archStatus = asset.archPhaseScope?.[phase.id] ?? (asset.activePhaseIds.includes(phase.id) ? "full" : "none");
-          const idStatus = asset.idPhaseScope?.[phase.id] ?? (asset.activePhaseIds.includes(phase.id) ? "full" : "none");
-          const otherStatus = asset.otherPhaseScope?.[phase.id] ?? (asset.activePhaseIds.includes(phase.id) ? "full" : "none");
-
-          const archF = archStatus === "full" ? 1.0 : archStatus === "review" ? reviewFactor : 0.0;
-          const idF = idStatus === "full" ? 1.0 : idStatus === "review" ? reviewFactor : 0.0;
-          const otherF = otherStatus === "full" ? 1.0 : otherStatus === "review" ? reviewFactor : 0.0;
-
-          phaseMultiplier = ((archWeight * archF) + (idWeight * idF) + (otherWeight * otherF)) / totalDisciplineSum;
-          if (archStatus !== "none" || idStatus !== "none" || otherStatus !== "none") {
-            isPhaseActive = true;
-          }
-        }
-
-        if (isPhaseActive) {
-          activePhasesSumWeight += phase.weight;
-        }
-
-        const phaseContribution = assetCost * (globalDesignFeePercentage / 100) * (phase.weight / 100) * phaseMultiplier;
-        assetDesignFee += phaseContribution;
-      });
-
-      totalDesignFee += assetDesignFee;
+      // Design fee contribution: Cost * Global % * (Sum of relative phase weights out of 100)
+      const designFee =
+        assetCost * (globalDesignFeePercentage / 100) * (activePhasesSumWeight / 100);
+      totalDesignFee += designFee;
 
       return {
         ...asset,
         cost: assetCost,
         activePhasesWeight: activePhasesSumWeight,
-        designFee: assetDesignFee,
-        scopeMode
+        designFee
       };
     });
 
@@ -858,38 +624,15 @@ export function TopDownCalc() {
     const phaseBreakdown = phases.map((phase) => {
       let phaseTotalFee = 0;
 
+      // Add contribution to this phase from each asset where this phase is active
       assets.forEach((asset) => {
-        const assetCost = asset.quantity * asset.gfa * asset.constructionRate;
-        const scopeMode: AssetScopeMode = asset.scopeMode || "full";
-        const reviewFactor = (asset.reviewFeeFactor !== undefined ? asset.reviewFeeFactor : 25) / 100;
-
-        let phaseMultiplier = 0;
-        if (scopeMode === "full") {
-          if (asset.activePhaseIds.includes(phase.id)) {
-            phaseMultiplier = 1.0;
-          }
-        } else if (scopeMode === "architecture") {
-          if (asset.activePhaseIds.includes(phase.id)) {
-            phaseMultiplier = archWeight / totalDisciplineSum;
-          }
-        } else if (scopeMode === "interior") {
-          if (asset.activePhaseIds.includes(phase.id)) {
-            phaseMultiplier = idWeight / totalDisciplineSum;
-          }
-        } else if (scopeMode === "custom_split") {
-          const archStatus = asset.archPhaseScope?.[phase.id] ?? (asset.activePhaseIds.includes(phase.id) ? "full" : "none");
-          const idStatus = asset.idPhaseScope?.[phase.id] ?? (asset.activePhaseIds.includes(phase.id) ? "full" : "none");
-          const otherStatus = asset.otherPhaseScope?.[phase.id] ?? (asset.activePhaseIds.includes(phase.id) ? "full" : "none");
-
-          const archF = archStatus === "full" ? 1.0 : archStatus === "review" ? reviewFactor : 0.0;
-          const idF = idStatus === "full" ? 1.0 : idStatus === "review" ? reviewFactor : 0.0;
-          const otherF = otherStatus === "full" ? 1.0 : otherStatus === "review" ? reviewFactor : 0.0;
-
-          phaseMultiplier = ((archWeight * archF) + (idWeight * idF) + (otherWeight * otherF)) / totalDisciplineSum;
+        if (asset.activePhaseIds.includes(phase.id)) {
+          const assetCost = asset.quantity * asset.gfa * asset.constructionRate;
+          // Asset's contribution to this phase = Asset Cost * Global Design Feed % * Phase Weight
+          const contribution =
+            assetCost * (globalDesignFeePercentage / 100) * (phase.weight / 100);
+          phaseTotalFee += contribution;
         }
-
-        const contribution = assetCost * (globalDesignFeePercentage / 100) * (phase.weight / 100) * phaseMultiplier;
-        phaseTotalFee += contribution;
       });
 
       return {
@@ -906,7 +649,7 @@ export function TopDownCalc() {
       assetDetails,
       phaseBreakdown
     };
-  }, [assets, phases, globalDesignFeePercentage, disciplines]);
+  }, [assets, phases, globalDesignFeePercentage]);
 
   // Average fee per area calculation
   const avgFeePerAreaElement = useMemo(() => {
@@ -1097,28 +840,15 @@ export function TopDownCalc() {
       }),
       [],
       ["4. SPECIFIED BUILDING ASSETS & ACTIVE PHASE SCOPE MAPPING"],
-      ["Asset Block Name", "Design Scope Mode", "Unit Quantity", `${areaMode} per Unit (SqM)`, "Est. Construction Rate / SqM", "Calculated Total Construction Cost", "Applicable Design Phases Mapped (Included Scope)"],
+      ["Asset Block Name", "Unit Quantity", `${areaMode} per Unit (SqM)`, "Est. Construction Rate / SqM", "Calculated Total Construction Cost", "Applicable Design Phases Mapped (Included Scope)"],
       ...assets.map(a => {
-        const scopeLabel = 
-          a.scopeMode === "architecture" ? "Architecture Only" :
-          a.scopeMode === "interior" ? "Interior Design Only" :
-          a.scopeMode === "custom_split" ? "Custom / Split Scope (RFP)" : "Full Design (All Disciplines)";
-
         const activePhs = phases
           .filter(p => a.activePhaseIds.includes(p.id))
-          .map(p => {
-            if (a.scopeMode === "custom_split") {
-              const archSt = a.archPhaseScope?.[p.id] || "none";
-              const idSt = a.idPhaseScope?.[p.id] || "none";
-              return `${p.name} [Arch: ${archSt}, ID: ${idSt}]`;
-            }
-            return p.name;
-          })
+          .map(p => p.name)
           .join("; ");
 
         return [
           a.name,
-          scopeLabel,
           a.quantity,
           a.gfa,
           a.constructionRate,
@@ -1382,28 +1112,15 @@ export function TopDownCalc() {
     doc.setTextColor(30, 41, 59); // slate-800
     doc.text("3. SPECIFIED BUILDING ASSETS & ESTIMATED COSTS", 14, tableStartY);
 
-    const assetHead = [['Asset Block / Building Name', 'Scope', 'Qty', `${areaMode}/Unit`, 'Rate / SqM', 'Construction Cost', 'Active Phase Scope']];
+    const assetHead = [['Asset Block / Building Name', 'Qty', `${areaMode}/Unit`, 'Rate / SqM', 'Construction Cost', 'Active Phase Scope']];
     const assetBody = calculatedMetrics.assetDetails.map(asset => {
-      const scopeTag = 
-        asset.scopeMode === "architecture" ? "Arch Only" :
-        asset.scopeMode === "interior" ? "ID Only" :
-        asset.scopeMode === "custom_split" ? "Split (RFP)" : "Full";
-
       const activePhInitials = phases
         .filter(p => asset.activePhaseIds.includes(p.id))
-        .map(p => {
-          if (asset.scopeMode === "custom_split") {
-            const archSt = asset.archPhaseScope?.[p.id] || "none";
-            const idSt = asset.idPhaseScope?.[p.id] || "none";
-            return `${shortName(p.name)} (${archSt === "review" ? "Rev" : archSt}/${idSt})`;
-          }
-          return shortName(p.name);
-        })
+        .map(p => shortName(p.name))
         .join(", ");
 
       return [
         asset.name,
-        scopeTag,
         asset.quantity.toString(),
         `${asset.gfa.toLocaleString()} SqM`,
         `${asset.constructionRate.toLocaleString()} ${currency}`,
@@ -1420,13 +1137,12 @@ export function TopDownCalc() {
       styles: { fontSize: 7.5, cellPadding: 2.5, font: "Helvetica", textColor: [30, 41, 59] },
       headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold' },
       columnStyles: {
-        0: { cellWidth: 48 },
-        1: { cellWidth: 20, halign: 'center' },
-        2: { cellWidth: 10, halign: 'center' },
-        3: { cellWidth: 24, halign: 'right' },
-        4: { cellWidth: 24, halign: 'right' },
-        5: { cellWidth: 28, halign: 'right' },
-        6: { cellWidth: 'auto', fontSize: 6.5 }
+        0: { cellWidth: 52 },
+        1: { cellWidth: 12, halign: 'center' },
+        2: { cellWidth: 26, halign: 'right' },
+        3: { cellWidth: 26, halign: 'right' },
+        4: { cellWidth: 32, halign: 'right' },
+        5: { cellWidth: 'auto', fontSize: 6.5 }
       }
     });
 
@@ -2569,16 +2285,15 @@ export function TopDownCalc() {
                 <div className="space-y-6 pt-4">
                   {/* Table of active buildings */}
                   <div className="border border-slate-200/80 rounded-xl overflow-hidden bg-white overflow-x-auto shadow-sm">
-                    <table className="w-full text-left text-xs min-w-[1100px]">
+                    <table className="w-full text-left text-xs min-w-[950px]">
                       <thead className="bg-slate-50/90 border-b border-slate-200 font-mono text-[10px] uppercase text-slate-500">
                         <tr>
                           <th className="px-4 py-3 text-left min-w-[280px]">Building / Asset Name</th>
-                          <th className="px-4 py-3 text-left w-[180px]">Design Scope</th>
                           <th className="px-3 py-3 text-center w-14">Qty</th>
-                          <th className="px-4 py-3 text-right w-24">Unit Area ({areaMode})</th>
-                          <th className="px-4 py-3 text-right w-24">Rate / SqM ({currency})</th>
-                          <th className="px-4 py-3 text-right w-28">Construction Cost ({currency})</th>
-                          <th className="px-4 py-3 text-center min-w-[230px]">Scope Phases & Review</th>
+                          <th className="px-4 py-3 text-right w-28">Unit Area ({areaMode})</th>
+                          <th className="px-4 py-3 text-right w-28">Rate / SqM ({currency})</th>
+                          <th className="px-4 py-3 text-right w-32">Construction Cost ({currency})</th>
+                          <th className="px-4 py-3 text-center min-w-[200px]">Active Scope Phases</th>
                           <th className="px-4 py-3 text-right w-32">Design Fee ({currency})</th>
                           <th className="px-3 py-3 text-center w-16">Actions</th>
                         </tr>
@@ -2586,7 +2301,7 @@ export function TopDownCalc() {
                       <tbody className="divide-y divide-slate-100 bg-white">
                         {assets.length === 0 ? (
                           <tr>
-                            <td colSpan={9} className="px-4 py-8 text-center text-xs text-slate-400 font-mono">
+                            <td colSpan={8} className="px-4 py-8 text-center text-xs text-slate-400 font-mono">
                               No specified building assets. Click "+ Add New Building Asset Row" below to begin.
                             </td>
                           </tr>
@@ -2595,7 +2310,6 @@ export function TopDownCalc() {
                             const cost = asset.quantity * asset.gfa * asset.constructionRate;
                             const assetCalculated = calculatedMetrics.assetDetails.find(a => a.id === asset.id);
                             const assetDesignFee = assetCalculated ? assetCalculated.designFee : 0;
-                            const scopeMode: AssetScopeMode = asset.scopeMode || "full";
 
                             return (
                               <tr key={asset.id} className="hover:bg-slate-50/70 transition-all">
@@ -2614,47 +2328,6 @@ export function TopDownCalc() {
                                       <span>{asset.quantity} unit{asset.quantity > 1 ? 's' : ''}</span>
                                       <span>•</span>
                                       <span>{(asset.quantity * asset.gfa).toLocaleString()} SqM total</span>
-                                    </div>
-                                  </div>
-                                </td>
-
-                                {/* Design Scope Selector */}
-                                <td className="px-4 py-3 w-[180px]">
-                                  <div className="space-y-1">
-                                    <select
-                                      value={scopeMode}
-                                      onChange={(e) => setAssetScopeMode(asset.id, e.target.value as AssetScopeMode)}
-                                      className="w-full bg-white border border-slate-200 hover:border-slate-300 focus:border-indigo-500 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-800 focus:outline-none cursor-pointer shadow-xs transition-colors"
-                                    >
-                                      <option value="full">🏢 Full Design (100%)</option>
-                                      <option value="architecture">🏛️ Architecture Only</option>
-                                      <option value="interior">🛋️ Interior Design Only</option>
-                                      <option value="custom_split">⚙️ Custom / Split Scope</option>
-                                    </select>
-                                    
-                                    <div className="flex items-center gap-1 pt-0.5">
-                                      {scopeMode === "architecture" ? (
-                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                          Arch Only (~{disciplines.find(d => d.name.toLowerCase().startsWith("arch"))?.percentage ?? 45}%)
-                                        </span>
-                                      ) : scopeMode === "interior" ? (
-                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
-                                          ID Only (~{disciplines.find(d => d.name.toLowerCase().includes("interior"))?.percentage ?? 9}%)
-                                        </span>
-                                      ) : scopeMode === "custom_split" ? (
-                                        <button
-                                          type="button"
-                                          onClick={() => setEditingScopeAssetId(asset.id)}
-                                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-300 hover:bg-amber-100 transition-colors cursor-pointer"
-                                          title="Click to configure Arch vs Interior stages & design review scopes"
-                                        >
-                                          <Sliders size={10} /> Configured RFP Scope
-                                        </button>
-                                      ) : (
-                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                                          Full Package (All Trades)
-                                        </span>
-                                      )}
                                     </div>
                                   </div>
                                 </td>
@@ -2699,72 +2372,29 @@ export function TopDownCalc() {
                                   {cost.toLocaleString()}
                                 </td>
 
-                                {/* Scope Phases & Review Allocation */}
+                                {/* Active Scope Phases */}
                                 <td className="px-4 py-3">
-                                  {scopeMode === "custom_split" ? (
-                                    <div className="flex flex-col items-center gap-1.5">
-                                      <div className="flex flex-wrap gap-1 justify-center max-w-[240px]">
-                                        {phases.map((phase) => {
-                                          const archSt = asset.archPhaseScope?.[phase.id] ?? (asset.activePhaseIds.includes(phase.id) ? "full" : "none");
-                                          const idSt = asset.idPhaseScope?.[phase.id] ?? (asset.activePhaseIds.includes(phase.id) ? "full" : "none");
-                                          const isReview = archSt === "review" || idSt === "review";
-                                          const isFull = archSt === "full" || idSt === "full";
-
-                                          return (
-                                            <button
-                                              key={phase.id}
-                                              type="button"
-                                              onClick={() => setEditingScopeAssetId(asset.id)}
-                                              className={cn(
-                                                "px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider transition-colors border cursor-pointer",
-                                                isFull
-                                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                                                  : isReview
-                                                  ? "bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100"
-                                                  : "bg-slate-50 text-slate-400 border-slate-200/60 hover:bg-slate-100"
-                                              )}
-                                              title={`${phase.name}: Arch(${archSt}) / ID(${idSt})`}
-                                            >
-                                              {shortName(phase.name)}{isReview ? " (Rev)" : ""}
-                                            </button>
-                                          );
-                                        })}
-                                      </div>
-                                      <button
-                                        type="button"
-                                        onClick={() => setEditingScopeAssetId(asset.id)}
-                                        className="text-[10px] text-indigo-600 hover:text-indigo-700 font-bold underline flex items-center gap-1 cursor-pointer"
-                                      >
-                                        <Sliders size={11} /> Edit Review & Scope Details
-                                      </button>
-                                    </div>
-                                  ) : (
-                                    <div className="flex flex-wrap gap-1 justify-center max-w-[230px] mx-auto">
-                                      {phases.map((phase) => {
-                                        const isActive = asset.activePhaseIds.includes(phase.id);
-                                        return (
-                                          <button
-                                            key={phase.id}
-                                            type="button"
-                                            onClick={() => toggleAssetPhaseScope(asset.id, phase.id)}
-                                            className={cn(
-                                              "px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider transition-colors border cursor-pointer",
-                                              isActive
-                                                ? scopeMode === "architecture"
-                                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                                                  : scopeMode === "interior"
-                                                  ? "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100"
-                                                  : "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
-                                                : "bg-slate-50 text-slate-400 border-slate-200/60 hover:bg-slate-100"
-                                            )}
-                                            title={`Toggle phase: ${phase.name} (${phase.weight}%)`}
-                                          >
-                                            {shortName(phase.name)}
-                                          </button>
-                                        );
-                                      })}
-                                    </div>
-                                  )}
+                                  <div className="flex flex-wrap gap-1 justify-center max-w-[220px] mx-auto">
+                                    {phases.map((phase) => {
+                                      const isActive = asset.activePhaseIds.includes(phase.id);
+                                      return (
+                                        <button
+                                          key={phase.id}
+                                          type="button"
+                                          onClick={() => toggleAssetPhaseScope(asset.id, phase.id)}
+                                          className={cn(
+                                            "px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider transition-colors border cursor-pointer",
+                                            isActive
+                                              ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                                              : "bg-slate-50 text-slate-400 border-slate-200/60 hover:bg-slate-100"
+                                          )}
+                                          title={`Toggle phase: ${phase.name} (${phase.weight}%)`}
+                                        >
+                                          {shortName(phase.name)}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
                                 </td>
 
                                 {/* Calculated Asset Design Fee */}
@@ -2774,24 +2404,14 @@ export function TopDownCalc() {
 
                                 {/* Actions */}
                                 <td className="px-3 py-3 text-center">
-                                  <div className="flex items-center justify-center gap-1">
-                                    <button
-                                      type="button"
-                                      onClick={() => setEditingScopeAssetId(asset.id)}
-                                      className="text-slate-400 hover:text-indigo-600 p-1.5 rounded-lg hover:bg-indigo-50 transition-colors cursor-pointer"
-                                      title="Open Detailed Scope & Review Settings Modal"
-                                    >
-                                      <Sliders size={14} />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => removeAsset(asset.id)}
-                                      className="text-slate-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
-                                      title="Remove Asset"
-                                    >
-                                      <Trash2 size={14} />
-                                    </button>
-                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeAsset(asset.id)}
+                                    className="text-slate-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
+                                    title="Remove Asset"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
                                 </td>
                               </tr>
                             );
@@ -3443,352 +3063,6 @@ export function TopDownCalc() {
 
         </div>
       )}
-
-      {/* DETAILED SCOPE & STAGE REVIEW CONFIGURATOR MODAL */}
-      {editingScopeAssetId && (() => {
-        const editingAsset = assets.find(a => a.id === editingScopeAssetId);
-        if (!editingAsset) return null;
-        const assetCalculated = calculatedMetrics.assetDetails.find(a => a.id === editingAsset.id);
-
-        return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-              
-              {/* Modal Header */}
-              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/90">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl border border-indigo-100">
-                    <Sliders size={20} />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
-                      Scope & Stage Review Configurator
-                      <span className="text-xs font-normal px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
-                        {editingAsset.name || "Untitled Asset"}
-                      </span>
-                    </h3>
-                    <p className="text-xs text-slate-500">
-                      Customize Architecture vs. Interior Design scopes, full design phases, and peer review discounts
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setEditingScopeAssetId(null)}
-                  className="p-2 hover:bg-slate-200/60 rounded-full text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              {/* Modal Body */}
-              <div className="p-6 overflow-y-auto space-y-6">
-                
-                {/* Asset Financial Metrics Strip */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200/70">
-                  <div>
-                    <span className="text-[10px] uppercase font-mono text-slate-400 block font-bold">Total Area</span>
-                    <span className="font-mono text-xs font-bold text-slate-700">
-                      {(editingAsset.quantity * editingAsset.gfa).toLocaleString()} SqM
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] uppercase font-mono text-slate-400 block font-bold">Construction Rate</span>
-                    <span className="font-mono text-xs font-bold text-slate-700">
-                      {editingAsset.constructionRate.toLocaleString()} {currency}/SqM
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] uppercase font-mono text-slate-400 block font-bold">Construction Cost</span>
-                    <span className="font-mono text-xs font-bold text-slate-900">
-                      {(editingAsset.quantity * editingAsset.gfa * editingAsset.constructionRate).toLocaleString()} {currency}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] uppercase font-mono text-emerald-600 block font-bold">Calculated Design Fee</span>
-                    <span className="font-mono text-xs font-extrabold text-emerald-600">
-                      {assetCalculated ? assetCalculated.designFee.toLocaleString(undefined, { maximumFractionDigits: 0 }) : 0} {currency}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Quick 1-Click RFP Scope Presets */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                      <Sparkles size={14} className="text-amber-500" /> Quick RFP Scope Templates (1-Click)
-                    </span>
-                    <span className="text-[11px] text-slate-500">Industry standard practice templates</span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                    <button
-                      type="button"
-                      onClick={() => applyPresetScope(editingAsset.id, "rfp_hybrid")}
-                      className="p-3 text-left rounded-xl border border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100/60 hover:border-indigo-300 transition-all cursor-pointer shadow-xs group"
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-bold text-indigo-900">
-                          🌟 Arch SD + Review / ID Full
-                        </span>
-                        <span className="text-[9px] bg-indigo-200 text-indigo-800 font-bold px-1.5 py-0.5 rounded">RFP Hybrid</span>
-                      </div>
-                      <p className="text-[10px] text-slate-600 leading-snug">
-                        Architecture: Full to SD, then Design Review (DD-IFC). Interior: 100% full stages.
-                      </p>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => applyPresetScope(editingAsset.id, "arch_only")}
-                      className="p-3 text-left rounded-xl border border-emerald-200 bg-emerald-50/40 hover:bg-emerald-100/60 hover:border-emerald-300 transition-all cursor-pointer shadow-xs"
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-bold text-emerald-900">🏛️ Architecture Only</span>
-                        <span className="text-[9px] bg-emerald-200 text-emerald-800 font-bold px-1.5 py-0.5 rounded">Arch</span>
-                      </div>
-                      <p className="text-[10px] text-slate-600 leading-snug">
-                        Only Architecture discipline included across all active design stages.
-                      </p>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => applyPresetScope(editingAsset.id, "interior_only")}
-                      className="p-3 text-left rounded-xl border border-purple-200 bg-purple-50/40 hover:bg-purple-100/60 hover:border-purple-300 transition-all cursor-pointer shadow-xs"
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-bold text-purple-900">🛋️ Interior Design Only</span>
-                        <span className="text-[9px] bg-purple-200 text-purple-800 font-bold px-1.5 py-0.5 rounded">Interior</span>
-                      </div>
-                      <p className="text-[10px] text-slate-600 leading-snug">
-                        Only Interior Design discipline included across all active design stages.
-                      </p>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => applyPresetScope(editingAsset.id, "arch_concept_only")}
-                      className="p-3 text-left rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-slate-100 hover:border-slate-300 transition-all cursor-pointer shadow-xs"
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-bold text-slate-800">📐 Arch Concept & SD Only</span>
-                        <span className="text-[9px] bg-slate-200 text-slate-700 font-bold px-1.5 py-0.5 rounded">Early Stages</span>
-                      </div>
-                      <p className="text-[10px] text-slate-600 leading-snug">
-                        Architecture limited strictly to Concept & Schematic Design (SA, PC, CD, SD).
-                      </p>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => applyPresetScope(editingAsset.id, "full_all")}
-                      className="p-3 text-left rounded-xl border border-blue-200 bg-blue-50/40 hover:bg-blue-100/60 hover:border-blue-300 transition-all cursor-pointer shadow-xs sm:col-span-2"
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-bold text-blue-900">🏢 Full Multi-Disciplinary Design</span>
-                        <span className="text-[9px] bg-blue-200 text-blue-800 font-bold px-1.5 py-0.5 rounded">100% Full</span>
-                      </div>
-                      <p className="text-[10px] text-slate-600 leading-snug">
-                        All disciplines (Arch, Interior, Structure, MEP, etc.) in 100% full design production.
-                      </p>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Review Fee Multiplier Discount Factor */}
-                <div className="p-4 bg-amber-50/50 border border-amber-200/80 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div className="space-y-0.5">
-                    <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
-                      <Sliders size={14} className="text-amber-600" /> Design Review / Peer Review Fee Factor
-                    </span>
-                    <p className="text-[11px] text-amber-800/80">
-                      When a stage is set to "Review", fee is calculated as a percentage of standard production fee (industry benchmark: 20% - 30%).
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-amber-300 shadow-sm shrink-0">
-                    <input
-                      type="number"
-                      min="5"
-                      max="100"
-                      step="5"
-                      value={editingAsset.reviewFeeFactor !== undefined ? editingAsset.reviewFeeFactor : 25}
-                      onChange={(e) => updateAssetField(editingAsset.id, "reviewFeeFactor", Math.max(1, Math.min(100, Number(e.target.value) || 25)))}
-                      className="w-14 text-right font-mono font-bold text-amber-900 text-xs focus:outline-none"
-                    />
-                    <span className="text-xs font-bold text-amber-700">% of phase fee</span>
-                  </div>
-                </div>
-
-                {/* Interactive Discipline Scope Matrix */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider font-mono">
-                      Stage-by-Stage Discipline Scope Matrix
-                    </h4>
-                    <div className="flex items-center gap-3 text-[10px] text-slate-500">
-                      <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-emerald-500 inline-block"></span> Full (100%)</span>
-                      <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-amber-400 inline-block"></span> Review ({editingAsset.reviewFeeFactor ?? 25}%)</span>
-                      <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-slate-200 inline-block"></span> Excluded (0%)</span>
-                    </div>
-                  </div>
-
-                  <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm overflow-x-auto">
-                    <table className="w-full text-left text-xs min-w-[700px]">
-                      <thead className="bg-slate-50 font-mono text-[10px] uppercase text-slate-500 border-b border-slate-200">
-                        <tr>
-                          <th className="px-4 py-2.5 w-44">Discipline</th>
-                          <th className="px-3 py-2.5 w-20 text-center">Share %</th>
-                          {phases.map(p => (
-                            <th key={p.id} className="px-2 py-2.5 text-center font-bold text-slate-700">
-                              <div>{shortName(p.name)}</div>
-                              <div className="text-[8px] font-normal text-slate-400">{p.weight}%</div>
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 bg-white">
-                        
-                        {/* Architecture Row */}
-                        <tr className="hover:bg-slate-50/50">
-                          <td className="px-4 py-3 font-bold text-slate-800">
-                            <div className="flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Architecture
-                            </div>
-                          </td>
-                          <td className="px-3 py-3 text-center font-mono font-bold text-emerald-600">
-                            {disciplines.find(d => d.name.toLowerCase().startsWith("arch"))?.percentage ?? 45}%
-                          </td>
-                          {phases.map(p => {
-                            const currentStatus = editingAsset.archPhaseScope?.[p.id] ?? (editingAsset.activePhaseIds.includes(p.id) ? "full" : "none");
-                            return (
-                              <td key={p.id} className="px-1 py-2 text-center">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const nextStatus: PhaseScopeType = currentStatus === "full" ? "review" : currentStatus === "review" ? "none" : "full";
-                                    updateAssetDisciplinePhaseScope(editingAsset.id, "arch", p.id, nextStatus);
-                                  }}
-                                  className={cn(
-                                    "px-2 py-1 rounded text-[9px] font-bold uppercase transition-all border cursor-pointer w-full text-center shadow-xs",
-                                    currentStatus === "full" 
-                                      ? "bg-emerald-500 text-white border-emerald-600 hover:bg-emerald-600" 
-                                      : currentStatus === "review"
-                                      ? "bg-amber-400 text-slate-900 border-amber-500 hover:bg-amber-500"
-                                      : "bg-slate-100 text-slate-400 border-slate-200 hover:bg-slate-200"
-                                  )}
-                                  title="Click to toggle Full -> Review -> Excluded"
-                                >
-                                  {currentStatus === "full" ? "Full" : currentStatus === "review" ? "Review" : "None"}
-                                </button>
-                              </td>
-                            );
-                          })}
-                        </tr>
-
-                        {/* Interior Design Row */}
-                        <tr className="hover:bg-slate-50/50">
-                          <td className="px-4 py-3 font-bold text-slate-800">
-                            <div className="flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full bg-purple-500"></span> Interior Design
-                            </div>
-                          </td>
-                          <td className="px-3 py-3 text-center font-mono font-bold text-purple-600">
-                            {disciplines.find(d => d.name.toLowerCase().includes("interior"))?.percentage ?? 9}%
-                          </td>
-                          {phases.map(p => {
-                            const currentStatus = editingAsset.idPhaseScope?.[p.id] ?? (editingAsset.activePhaseIds.includes(p.id) ? "full" : "none");
-                            return (
-                              <td key={p.id} className="px-1 py-2 text-center">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const nextStatus: PhaseScopeType = currentStatus === "full" ? "review" : currentStatus === "review" ? "none" : "full";
-                                    updateAssetDisciplinePhaseScope(editingAsset.id, "id", p.id, nextStatus);
-                                  }}
-                                  className={cn(
-                                    "px-2 py-1 rounded text-[9px] font-bold uppercase transition-all border cursor-pointer w-full text-center shadow-xs",
-                                    currentStatus === "full" 
-                                      ? "bg-purple-500 text-white border-purple-600 hover:bg-purple-600" 
-                                      : currentStatus === "review"
-                                      ? "bg-amber-400 text-slate-900 border-amber-500 hover:bg-amber-500"
-                                      : "bg-slate-100 text-slate-400 border-slate-200 hover:bg-slate-200"
-                                  )}
-                                  title="Click to toggle Full -> Review -> Excluded"
-                                >
-                                  {currentStatus === "full" ? "Full" : currentStatus === "review" ? "Review" : "None"}
-                                </button>
-                              </td>
-                            );
-                          })}
-                        </tr>
-
-                        {/* Other Allied Disciplines Row */}
-                        <tr className="hover:bg-slate-50/50">
-                          <td className="px-4 py-3 font-bold text-slate-800">
-                            <div className="flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full bg-blue-500"></span> Other Disciplines (MEP/Struct)
-                            </div>
-                          </td>
-                          <td className="px-3 py-3 text-center font-mono font-bold text-blue-600">
-                            {Math.max(0, 100 - (disciplines.find(d => d.name.toLowerCase().startsWith("arch"))?.percentage ?? 45) - (disciplines.find(d => d.name.toLowerCase().includes("interior"))?.percentage ?? 9))}%
-                          </td>
-                          {phases.map(p => {
-                            const currentStatus = editingAsset.otherPhaseScope?.[p.id] ?? (editingAsset.activePhaseIds.includes(p.id) ? "full" : "none");
-                            return (
-                              <td key={p.id} className="px-1 py-2 text-center">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const nextStatus: PhaseScopeType = currentStatus === "full" ? "review" : currentStatus === "review" ? "none" : "full";
-                                    updateAssetDisciplinePhaseScope(editingAsset.id, "other", p.id, nextStatus);
-                                  }}
-                                  className={cn(
-                                    "px-2 py-1 rounded text-[9px] font-bold uppercase transition-all border cursor-pointer w-full text-center shadow-xs",
-                                    currentStatus === "full" 
-                                      ? "bg-blue-500 text-white border-blue-600 hover:bg-blue-600" 
-                                      : currentStatus === "review"
-                                      ? "bg-amber-400 text-slate-900 border-amber-500 hover:bg-amber-500"
-                                      : "bg-slate-100 text-slate-400 border-slate-200 hover:bg-slate-200"
-                                  )}
-                                  title="Click to toggle Full -> Review -> Excluded"
-                                >
-                                  {currentStatus === "full" ? "Full" : currentStatus === "review" ? "Review" : "None"}
-                                </button>
-                              </td>
-                            );
-                          })}
-                        </tr>
-
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-              </div>
-
-              {/* Modal Footer */}
-              <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
-                <div className="text-xs text-slate-600">
-                  <span className="font-semibold text-slate-700">Calculated Asset Fee:</span>{" "}
-                  <span className="font-mono font-bold text-emerald-600">
-                    {assetCalculated ? assetCalculated.designFee.toLocaleString(undefined, { maximumFractionDigits: 0 }) : 0} {currency}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setEditingScopeAssetId(null)}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer"
-                  >
-                    Apply & Close Configurator
-                  </button>
-                </div>
-              </div>
-
-            </div>
-          </div>
-        );
-      })()}
 
     </div>
   );
