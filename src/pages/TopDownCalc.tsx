@@ -840,19 +840,22 @@ export function TopDownCalc() {
       }),
       [],
       ["4. SPECIFIED BUILDING ASSETS & ACTIVE PHASE SCOPE MAPPING"],
-      ["Asset Block Name", "Unit Quantity", `${areaMode} per Unit (SqM)`, "Est. Construction Rate / SqM", "Calculated Total Construction Cost", "Applicable Design Phases Mapped (Included Scope)"],
-      ...assets.map(a => {
+      ["Asset Block Name", "Unit Quantity", `${areaMode} per Unit (SqM)`, "Est. Construction Rate / SqM", "Calculated Total Construction Cost", "Design Fee Contribution", "% Share of Design Fee", "Applicable Design Phases Mapped (Included Scope)"],
+      ...calculatedMetrics.assetDetails.map(a => {
         const activePhs = phases
           .filter(p => a.activePhaseIds.includes(p.id))
           .map(p => p.name)
           .join("; ");
+        const feeShare = calculatedMetrics.totalDesignFee > 0 ? (a.designFee / calculatedMetrics.totalDesignFee) : 0;
 
         return [
           a.name,
           a.quantity,
           a.gfa,
           a.constructionRate,
-          a.quantity * a.gfa * a.constructionRate,
+          a.cost,
+          a.designFee,
+          feeShare,
           activePhs || "None"
         ];
       }),
@@ -1110,14 +1113,18 @@ export function TopDownCalc() {
     doc.setFont("Helvetica", "bold");
     doc.setFontSize(9.5);
     doc.setTextColor(30, 41, 59); // slate-800
-    doc.text("3. SPECIFIED BUILDING ASSETS & ESTIMATED COSTS", 14, tableStartY);
+    doc.text("3. SPECIFIED BUILDING ASSETS & FEE CONTRIBUTION BREAKDOWN", 14, tableStartY);
 
-    const assetHead = [['Asset Block / Building Name', 'Qty', `${areaMode}/Unit`, 'Rate / SqM', 'Construction Cost', 'Active Phase Scope']];
+    const assetHead = [['Asset Block / Building Name', 'Qty', `${areaMode}/Unit`, 'Rate / SqM', 'Construction Cost', 'Design Fee Contribution', 'Fee Share', 'Active Scope Phases']];
     const assetBody = calculatedMetrics.assetDetails.map(asset => {
       const activePhInitials = phases
         .filter(p => asset.activePhaseIds.includes(p.id))
         .map(p => shortName(p.name))
         .join(", ");
+
+      const feeSharePercent = calculatedMetrics.totalDesignFee > 0
+        ? `${((asset.designFee / calculatedMetrics.totalDesignFee) * 100).toFixed(1)}%`
+        : "0.0%";
 
       return [
         asset.name,
@@ -1125,24 +1132,42 @@ export function TopDownCalc() {
         `${asset.gfa.toLocaleString()} SqM`,
         `${asset.constructionRate.toLocaleString()} ${currency}`,
         `${asset.cost.toLocaleString()} ${currency}`,
+        `${asset.designFee.toLocaleString(undefined, { maximumFractionDigits: 0 })} ${currency}`,
+        feeSharePercent,
         activePhInitials || 'None'
       ];
     });
 
+    const totalQty = assets.reduce((sum, a) => sum + a.quantity, 0);
+    const assetFoot = [[
+      'Total Portfolio Summary',
+      totalQty.toString(),
+      `${totalGfa.toLocaleString()} SqM`,
+      '-',
+      `${calculatedMetrics.totalConstructionCost.toLocaleString()} ${currency}`,
+      `${calculatedMetrics.totalDesignFee.toLocaleString(undefined, { maximumFractionDigits: 0 })} ${currency}`,
+      '100.0%',
+      '-'
+    ]];
+
     autoTable(doc, {
       head: assetHead,
       body: assetBody,
+      foot: assetFoot,
       startY: tableStartY + 3,
       theme: 'grid',
-      styles: { fontSize: 7.5, cellPadding: 2.5, font: "Helvetica", textColor: [30, 41, 59] },
+      styles: { fontSize: 7, cellPadding: 2.2, font: "Helvetica", textColor: [30, 41, 59] },
       headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold' },
+      footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' },
       columnStyles: {
-        0: { cellWidth: 52 },
-        1: { cellWidth: 12, halign: 'center' },
-        2: { cellWidth: 26, halign: 'right' },
-        3: { cellWidth: 26, halign: 'right' },
-        4: { cellWidth: 32, halign: 'right' },
-        5: { cellWidth: 'auto', fontSize: 6.5 }
+        0: { cellWidth: 40 },
+        1: { cellWidth: 10, halign: 'center' },
+        2: { cellWidth: 20, halign: 'right' },
+        3: { cellWidth: 22, halign: 'right' },
+        4: { cellWidth: 28, halign: 'right' },
+        5: { cellWidth: 28, halign: 'right', fontStyle: 'bold', textColor: [16, 185, 129] },
+        6: { cellWidth: 14, halign: 'center', fontStyle: 'bold' },
+        7: { cellWidth: 'auto', fontSize: 6.5 }
       }
     });
 
