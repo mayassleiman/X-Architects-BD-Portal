@@ -303,31 +303,35 @@ export function Registrations({ isReportView = false, currentDateOnly = false, l
     <ReportLayout title="Registrations Report" subtitle="Reg Status & Follow-Ups" isReportView={isReportView}>
       <div className="space-y-6">
         {!isReportView && (
-          <div className="flex items-center justify-between print:hidden">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 print:hidden">
             <div>
-              <h1 className="text-4xl font-light tracking-tight text-[var(--text-primary)] mb-2">REGISTRATIONS</h1>
-              <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Reg Status & Follow-Ups</p>
+              <span className="text-[11px] font-mono uppercase tracking-[0.05em] text-[var(--color-ink)]/70 block mb-1">
+                VENDOR QUALIFICATION & CLIENT ONBOARDING
+              </span>
+              <h1 className="text-4xl sm:text-5xl font-normal uppercase leading-[0.85] tracking-tight text-[var(--color-ink)]">
+                REGISTRATIONS
+              </h1>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="flex bg-[var(--card-bg)] border border-[var(--border)] rounded-lg p-1">
+            <div className="flex items-center gap-3">
+              <div className="flex bg-[var(--color-paper)] border border-[var(--color-ash)] rounded-[10px] p-1">
                 <button 
                   onClick={() => setViewMode('list')}
-                  className={cn("p-2 rounded transition-colors", viewMode === 'list' ? "bg-[var(--text-primary)] text-[var(--bg-primary)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]")}
+                  className={cn("p-1.5 rounded-[6px] transition-colors", viewMode === 'list' ? "bg-[var(--color-ink)] text-[var(--color-parchment)]" : "text-[var(--color-ink)]/70 hover:text-[var(--color-ink)]")}
                 >
                   <List size={16} />
                 </button>
                 <button 
                   onClick={() => setViewMode('grid')}
-                  className={cn("p-2 rounded transition-colors", viewMode === 'grid' ? "bg-[var(--text-primary)] text-[var(--bg-primary)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]")}
+                  className={cn("p-1.5 rounded-[6px] transition-colors", viewMode === 'grid' ? "bg-[var(--color-ink)] text-[var(--color-parchment)]" : "text-[var(--color-ink)]/70 hover:text-[var(--color-ink)]")}
                 >
                   <Grid size={16} />
                 </button>
               </div>
               <button 
                 onClick={handleExportPDF}
-                className="flex items-center gap-2 px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--border)] transition-colors border border-[var(--border)]"
+                className="off-button"
               >
-                <Download size={16} /> Print Report
+                <Download size={14} /> Print Report
               </button>
               <button 
                 onClick={() => {
@@ -344,28 +348,28 @@ export function Registrations({ isReportView = false, currentDateOnly = false, l
                   });
                   setIsModalOpen(true);
                 }}
-                className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors"
+                className="off-button-primary"
               >
-                <Plus size={16} /> New Registration
+                <Plus size={14} /> New Registration
               </button>
             </div>
           </div>
         )}
 
       {!isReportView && (
-        <div className="flex flex-wrap gap-4 items-center pl-1">
-          <div className="flex items-center gap-4">
-            <span className="text-xs font-mono uppercase text-[var(--text-secondary)]">Filter:</span>
+        <div className="flex flex-wrap gap-4 items-center">
+          <div className="flex items-center gap-3">
+            <span className="text-[11px] font-mono uppercase tracking-[0.05em] text-[var(--color-ink)]/70">Filter:</span>
             <div className="flex gap-2">
               {["Pending", "Ongoing", "Completed"].map(status => (
                 <button
                   key={status}
                   onClick={() => toggleStatus(status)}
                   className={cn(
-                    "px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider border transition-colors rounded-full",
+                    "px-3 py-1 text-[11px] font-mono uppercase tracking-[0.05em] border transition-colors rounded-[10px]",
                     selectedStatuses.includes(status)
-                      ? "bg-[var(--text-primary)] text-[var(--bg-primary)] border-[var(--text-primary)]"
-                      : "bg-transparent text-[var(--text-secondary)] border-[var(--border)] hover:border-[var(--text-primary)] hover:text-[var(--text-primary)]"
+                      ? "bg-[var(--color-ink)] text-[var(--color-parchment)] border-[var(--color-ink)]"
+                      : "bg-[var(--color-paper)] text-[var(--color-ink)]/80 border-[var(--color-ash)] hover:border-[var(--color-ink)] hover:text-[var(--color-ink)]"
                   )}
                 >
                   {status}
@@ -375,17 +379,17 @@ export function Registrations({ isReportView = false, currentDateOnly = false, l
           </div>
           
           <div className="flex items-center gap-2">
-            <span className="text-xs font-mono uppercase text-[var(--text-secondary)]">Reg Date:</span>
+            <span className="text-[11px] font-mono uppercase tracking-[0.05em] text-[var(--color-ink)]/70">Reg Date:</span>
             <input 
               type="date" 
-              className="bg-[var(--bg-tertiary)] border border-[var(--border)] px-2 py-1 text-xs rounded focus:outline-none focus:border-[var(--text-primary)] text-[var(--text-primary)]"
+              className="bg-[var(--color-paper)] border border-[var(--color-ash)] px-2.5 py-1 text-xs rounded-[10px] focus:outline-none focus:border-[var(--color-ink)] text-[var(--color-ink)] font-mono"
               value={startDateFilter}
               onChange={(e) => setStartDateFilter(e.target.value)}
             />
-            <span className="text-[var(--text-secondary)]">-</span>
+            <span className="text-[var(--color-ink)]/50">-</span>
             <input 
               type="date" 
-              className="bg-[var(--bg-tertiary)] border border-[var(--border)] px-2 py-1 text-xs rounded focus:outline-none focus:border-[var(--text-primary)] text-[var(--text-primary)]"
+              className="bg-[var(--color-paper)] border border-[var(--color-ash)] px-2.5 py-1 text-xs rounded-[10px] focus:outline-none focus:border-[var(--color-ink)] text-[var(--color-ink)] font-mono"
               value={endDateFilter}
               onChange={(e) => setEndDateFilter(e.target.value)}
             />

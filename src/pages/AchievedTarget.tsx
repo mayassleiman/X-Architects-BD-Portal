@@ -34,22 +34,22 @@ const CustomTrendTooltip = ({ active, payload, currency }: any) => {
     const deficiency = Math.max(0, target - achieved);
     
     return (
-      <div className="bg-[#111] border border-[#333] p-3 shadow-xl">
-        <p className="text-[var(--text-secondary)] text-[10px] font-mono mb-2 uppercase tracking-wider">
+      <div className="bg-[var(--color-paper)] border border-[var(--color-ash)] p-3 text-[var(--color-ink)]">
+        <p className="text-[var(--color-ink)]/70 text-[10px] font-mono mb-2 uppercase tracking-wider">
           {data.fullDate}{data.name && data.name !== 'Start of Year' && data.name !== 'End of Year' && data.name !== 'Today' ? ` - ${data.name}` : ''}
         </p>
         <div className="space-y-1.5">
           <div className="flex justify-between gap-8">
-            <span className="text-amber-400 text-[11px] uppercase font-bold">Target:</span>
-            <span className="text-white text-[11px] font-mono">{target.toLocaleString()} {currency}</span>
+            <span className="text-[var(--color-ink)] text-[11px] uppercase font-bold">Target:</span>
+            <span className="text-[var(--color-ink)] text-[11px] font-mono">{target.toLocaleString()} {currency}</span>
           </div>
           <div className="flex justify-between gap-8">
-            <span className="text-emerald-400 text-[11px] uppercase font-bold">Achieved:</span>
-            <span className="text-white text-[11px] font-mono">{achieved.toLocaleString()} {currency}</span>
+            <span className="text-[var(--color-ink)] text-[11px] uppercase font-bold">Achieved:</span>
+            <span className="text-[var(--color-ink)] text-[11px] font-mono">{achieved.toLocaleString()} {currency}</span>
           </div>
-          <div className="flex justify-between gap-8 pt-1.5 border-t border-[#333]">
-            <span className="text-rose-400 text-[11px] uppercase font-bold">Deficiency:</span>
-            <span className="text-rose-400 text-[11px] font-mono font-bold">{deficiency.toLocaleString()} {currency}</span>
+          <div className="flex justify-between gap-8 pt-1.5 border-t border-[var(--color-ash)]">
+            <span className="text-rose-600 text-[11px] uppercase font-bold">Deficiency:</span>
+            <span className="text-rose-600 text-[11px] font-mono font-bold">{deficiency.toLocaleString()} {currency}</span>
           </div>
         </div>
       </div>
@@ -853,18 +853,22 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
   return (
     <div className="space-y-8">
       {!isReportView && (
-        <div className="flex justify-between items-end">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
-            <h1 className="text-4xl font-light tracking-tight text-[var(--text-primary)] mb-2">YEARLY TARGET</h1>
-            <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Performance & Goals Analysis</p>
+            <span className="text-[11px] font-mono uppercase tracking-[0.05em] text-[var(--color-ink)]/70 block mb-1">
+              COMMERCIAL PERFORMANCE & QUARTERLY BENCHMARKS
+            </span>
+            <h1 className="text-4xl sm:text-5xl font-normal uppercase leading-[0.85] tracking-tight text-[var(--color-ink)]">
+              YEARLY TARGET
+            </h1>
           </div>
-          <div className="flex items-center gap-4">
-             <div className="flex items-center gap-2 bg-[var(--card-bg)] border border-[var(--border)] rounded px-3 py-2">
-               <span className="text-xs font-mono uppercase text-[var(--text-secondary)]">Year:</span>
+          <div className="flex items-center gap-3">
+             <div className="flex items-center gap-2 bg-[var(--color-paper)] border border-[var(--color-ash)] rounded-[10px] px-3 py-1.5">
+               <span className="text-[11px] font-mono uppercase tracking-[0.05em] text-[var(--color-ink)]/70">Year:</span>
                <select 
                  value={year} 
                  onChange={(e) => setYear(Number(e.target.value))}
-                 className="bg-transparent text-sm font-bold text-[var(--text-primary)] focus:outline-none"
+                 className="bg-transparent text-xs font-mono font-bold text-[var(--color-ink)] focus:outline-none cursor-pointer"
                >
                  {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map(y => (
                    <option key={y} value={y}>{y}</option>
@@ -873,9 +877,9 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
              </div>
              <button 
                 onClick={handleExportPDF}
-                className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors rounded"
+                className="off-button-primary"
               >
-                <Download size={16} />
+                <Download size={14} />
                 Export Report
               </button>
           </div>
@@ -883,7 +887,7 @@ export function AchievedTarget({ isReportView = false }: { isReportView?: boolea
       )}
 
       {/* Target Setting */}
-      <div className="bg-[var(--card-bg)] border border-[var(--border)] p-6 rounded-lg">
+      <div className="bg-[var(--color-paper)] border border-[var(--color-ash)] p-6 md:p-8 rounded-none">
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-emerald-500/10 rounded-full text-emerald-500">

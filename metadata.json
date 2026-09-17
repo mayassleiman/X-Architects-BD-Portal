@@ -1,5 +1,6 @@
 {
   "name": "X Architects BD Portal",
   "description": "Business Development Portal for X Architects - Managing actions, registrations, and meetings.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

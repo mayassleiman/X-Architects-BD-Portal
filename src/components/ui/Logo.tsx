@@ -26,17 +26,17 @@ export function Logo({ className, collapsed = false, showText = true }: LogoProp
           className="h-10 w-auto object-contain max-w-[180px]" 
         />
       ) : (
-        <div className="relative flex items-center justify-center w-8 h-8 bg-[var(--bg-tertiary)] border border-[var(--border)] shrink-0">
-          <span className="text-[var(--text-primary)] font-bold text-xl leading-none">X</span>
+        <div className="relative flex items-center justify-center w-8 h-8 bg-[var(--color-ink)] text-[var(--color-parchment)] border border-[var(--color-ink)] shrink-0">
+          <span className="font-bold text-base leading-none tracking-tighter">X</span>
         </div>
       )}
 
       {!collapsed && showText && (
         <div className="flex flex-col justify-center">
-          <span className="text-[var(--text-primary)] font-bold tracking-[0.2em] text-xs leading-none whitespace-nowrap">
+          <span className="text-[var(--color-ink)] font-bold tracking-[0.22em] text-[11px] leading-none whitespace-nowrap">
             ARCHITECTS
           </span>
-          <span className="text-gray-500 tracking-[0.1em] text-[10px] leading-none whitespace-nowrap mt-0.5">
+          <span className="text-[var(--color-ink)]/60 tracking-[0.14em] text-[9px] uppercase font-mono leading-none whitespace-nowrap mt-1">
             BD Portal
           </span>
         </div>

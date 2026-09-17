@@ -1072,7 +1072,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                   return (
                     <div 
                       key={item.id} 
-                      className="relative overflow-hidden rounded-xl border border-[var(--border)] bg-neutral-900/40 print:break-inside-avoid"
+                      className="relative overflow-hidden rounded-none border border-[var(--color-ash)] bg-[var(--color-paper)] print:break-inside-avoid"
                     >
                       {/* Action Buttons Background Container (iOS-Style swipe actions) */}
                       {!isReportView && (
@@ -1255,7 +1255,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                                       style={{ borderColor: color, color: color, backgroundColor: `${color}1A` }}>
                                         {getDisciplineShortName(d)}
                                       </span>
-                                      <div className="absolute bottom-full right-0 mb-2 px-2 py-1 bg-neutral-900 border border-neutral-800 text-white text-[10px] rounded shadow-xl opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 whitespace-nowrap z-50 font-mono">
+                                      <div className="absolute bottom-full right-0 mb-2 px-2 py-1 bg-[var(--color-ink)] border border-[var(--color-ink)] text-[var(--color-parchment)] text-[10px] rounded-[6px] opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 whitespace-nowrap z-50 font-mono">
                                         <span className="font-sans text-neutral-400 mr-1">{d}:</span>
                                         {val.toLocaleString()} {currency}
                                       </div>
@@ -1316,7 +1316,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                         {...provided.draggableProps}
                         className={cn(
                           "relative transition-all duration-300 group/sector mb-10 last:mb-0 pb-4",
-                          snapshot.isDragging && "bg-neutral-900/30 border border-[var(--border)] rounded-2xl p-4 shadow-2xl scale-[1.01] z-50"
+                          snapshot.isDragging && "bg-[var(--color-paper)] border border-[var(--color-ink)] rounded-none p-4 scale-[1.01] z-50"
                         )}
                       >
                         <div 
@@ -1358,8 +1358,8 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                                         ref={provided.innerRef}
                                         {...provided.draggableProps}
                                         className={cn(
-                                          "relative overflow-hidden rounded-xl border border-[var(--border)] transition-all duration-300 hover:shadow-md hover:border-[var(--text-secondary)] hover:z-30 group print:break-inside-avoid bg-neutral-900/40",
-                                          snapshot.isDragging && "shadow-lg border-[var(--text-primary)] z-50 scale-[1.02]"
+                                          "relative overflow-hidden rounded-none border border-[var(--color-ash)] transition-all duration-300 hover:border-[var(--color-ink)] hover:z-30 group print:break-inside-avoid bg-[var(--color-paper)]",
+                                          snapshot.isDragging && "border-[var(--color-ink)] z-50 scale-[1.02]"
                                         )}
                                       >
                                         {/* Action Buttons Background Container (iOS-Style swipe actions) */}
@@ -1554,7 +1554,7 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
                                                         style={{ borderColor: color, color: color, backgroundColor: `${color}1A` }}>
                                                           {getDisciplineShortName(d)}
                                                         </span>
-                                                        <div className="absolute bottom-full right-0 mb-2 px-2 py-1 bg-neutral-900 border border-neutral-800 text-white text-[10px] rounded shadow-xl opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 whitespace-nowrap z-50 font-mono">
+                                                        <div className="absolute bottom-full right-0 mb-2 px-2 py-1 bg-[var(--color-ink)] border border-[var(--color-ink)] text-[var(--color-parchment)] text-[10px] rounded-[6px] opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 whitespace-nowrap z-50 font-mono">
                                                           <span className="font-sans text-neutral-400 mr-1">{d}:</span>
                                                           {val.toLocaleString()} {currency}
                                                         </div>
@@ -2429,20 +2429,20 @@ export function Pipeline({ isReportView = false }: { isReportView?: boolean }) {
       {/* Archiving Modal */}
       {archivingItem && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6 max-w-md w-full shadow-2xl space-y-4">
+          <div className="bg-[var(--color-paper)] border border-[var(--color-ash)] rounded-[10px] p-6 max-w-md w-full space-y-4">
             <div className="flex justify-between items-start">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-amber-500/10 text-amber-400 rounded-lg border border-amber-500/20">
+                <div className="p-2.5 bg-[var(--color-stone)]/40 text-[var(--color-ink)] rounded-[8px] border border-[var(--color-ash)]">
                   <Archive size={20} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-medium text-white">Archive RFP</h3>
-                  <p className="text-xs text-neutral-400">Move un-won or canceled RFP to Archived section</p>
+                  <h3 className="text-lg font-medium text-[var(--color-ink)]">Archive RFP</h3>
+                  <p className="text-xs text-[var(--color-ink)]/70">Move un-won or canceled RFP to Archived section</p>
                 </div>
               </div>
               <button 
                 onClick={() => setArchivingItem(null)} 
-                className="text-neutral-400 hover:text-white p-1 rounded-lg transition-colors"
+                className="text-[var(--color-ink)]/60 hover:text-[var(--color-ink)] p-1 rounded-[6px] transition-colors"
               >
                 <X size={18} />
               </button>

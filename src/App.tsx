@@ -24,12 +24,12 @@ import { TopDownCalc } from "./pages/TopDownCalc";
 
 // Placeholder components for other routes
 const Placeholder = ({ title }: { title: string }) => (
-  <div className="flex flex-col items-center justify-center h-[60vh] text-neutral-500 space-y-4">
-    <div className="w-16 h-16 border border-dashed border-neutral-700 rounded-full flex items-center justify-center">
-      <span className="text-2xl font-mono text-neutral-700">X</span>
+  <div className="flex flex-col items-center justify-center h-[60vh] text-[var(--color-ink)]/60 space-y-4">
+    <div className="w-16 h-16 border border-dashed border-[var(--color-ash)] rounded-full flex items-center justify-center">
+      <span className="text-xl font-mono text-[var(--color-ink)]/40">×</span>
     </div>
-    <h2 className="text-xl font-light tracking-widest uppercase">{title}</h2>
-    <p className="text-sm font-mono text-neutral-600">Module under construction</p>
+    <h2 className="text-xl font-normal tracking-[0.05em] uppercase text-[var(--color-ink)]">{title}</h2>
+    <p className="text-xs font-mono uppercase tracking-[0.05em] text-[var(--color-ink)]/50">Module under construction</p>
   </div>
 );
 

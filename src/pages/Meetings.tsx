@@ -513,24 +513,28 @@ export function Meetings({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between no-print">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 no-print">
         {!isReportView && (
           <div>
-            <h1 className="text-4xl font-light tracking-tight text-[var(--text-primary)] mb-2">MEETINGS</h1>
+            <span className="text-[11px] font-mono uppercase tracking-[0.05em] text-[var(--color-ink)]/70 block mb-1">
+              CLIENT COORDINATION & DIARY
+            </span>
+            <h1 className="text-4xl sm:text-5xl font-normal uppercase leading-[0.85] tracking-tight text-[var(--color-ink)] mb-2">
+              MEETINGS
+            </h1>
             <div className="flex items-center gap-4">
-              <p className="text-[var(--text-secondary)] font-mono text-sm uppercase tracking-wider">Schedule & Coordination</p>
               {viewMode === 'calendar' && (
-                <div className="flex items-center gap-2 ml-4 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg p-1">
-                  <button onClick={handlePrevWeek} className="p-1 hover:bg-[var(--bg-tertiary)] rounded transition-colors">
-                    <ChevronLeft size={14} className="text-[var(--text-secondary)]" />
+                <div className="flex items-center gap-2 bg-[var(--color-paper)] border border-[var(--color-ash)] rounded-[10px] p-1">
+                  <button onClick={handlePrevWeek} className="p-1 hover:bg-[var(--color-stone)]/40 rounded-[6px] transition-colors">
+                    <ChevronLeft size={14} className="text-[var(--color-ink)]" />
                   </button>
-                  <span className="text-xs font-mono text-[var(--text-primary)] px-2 min-w-[140px] text-center">
+                  <span className="text-xs font-mono text-[var(--color-ink)] px-2 min-w-[140px] text-center">
                     {new Date(weekDates[0]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(weekDates[6]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                   </span>
-                  <button onClick={handleNextWeek} className="p-1 hover:bg-[var(--bg-tertiary)] rounded transition-colors">
-                    <ChevronRight size={14} className="text-[var(--text-secondary)]" />
+                  <button onClick={handleNextWeek} className="p-1 hover:bg-[var(--color-stone)]/40 rounded-[6px] transition-colors">
+                    <ChevronRight size={14} className="text-[var(--color-ink)]" />
                   </button>
-                  <button onClick={handleToday} className="text-[10px] font-bold uppercase px-2 py-1 hover:bg-[var(--bg-tertiary)] rounded text-[var(--text-secondary)] ml-1">
+                  <button onClick={handleToday} className="text-[10px] font-mono uppercase px-2 py-1 hover:bg-[var(--color-stone)]/40 rounded-[6px] text-[var(--color-ink)] ml-1">
                     Today
                   </button>
                 </div>
@@ -541,41 +545,41 @@ export function Meetings({
         
         {isReportView && viewMode === 'calendar' && (
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg p-0.5">
-              <button onClick={handlePrevWeek} className="p-1 hover:bg-[var(--bg-tertiary)] rounded transition-colors">
-                <ChevronLeft size={14} className="text-[var(--text-secondary)]" />
+            <div className="flex items-center gap-1 bg-[var(--color-paper)] border border-[var(--color-ash)] rounded-[10px] p-0.5">
+              <button onClick={handlePrevWeek} className="p-1 hover:bg-[var(--color-stone)]/40 rounded-[6px] transition-colors">
+                <ChevronLeft size={14} className="text-[var(--color-ink)]" />
               </button>
-              <button onClick={handleNextWeek} className="p-1 hover:bg-[var(--bg-tertiary)] rounded transition-colors">
-                <ChevronRight size={14} className="text-[var(--text-secondary)]" />
+              <button onClick={handleNextWeek} className="p-1 hover:bg-[var(--color-stone)]/40 rounded-[6px] transition-colors">
+                <ChevronRight size={14} className="text-[var(--color-ink)]" />
               </button>
             </div>
-            <span className="text-xs font-mono text-[var(--text-primary)] px-2 min-w-[140px] text-center border border-[var(--border)] rounded py-1">
+            <span className="text-xs font-mono text-[var(--color-ink)] px-2 min-w-[140px] text-center border border-[var(--color-ash)] rounded-[10px] py-1 bg-[var(--color-paper)]">
               {new Date(weekDates[0]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(weekDates[6]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </span>
-            <button onClick={handleToday} className="text-[10px] font-bold uppercase px-2 py-1 hover:bg-[var(--bg-tertiary)] rounded text-[var(--text-secondary)]">
+            <button onClick={handleToday} className="text-[10px] font-mono uppercase px-2.5 py-1 hover:bg-[var(--color-stone)]/40 rounded-[10px] text-[var(--color-ink)] border border-[var(--color-ash)] bg-[var(--color-paper)]">
               Today
             </button>
           </div>
         )}
 
         {!isReportView && (
-          <div className="flex items-center gap-4">
-            <div className="flex bg-[var(--card-bg)] border border-[var(--border)] rounded-lg p-1">
+          <div className="flex items-center gap-3">
+            <div className="flex bg-[var(--color-paper)] border border-[var(--color-ash)] rounded-[10px] p-1">
               <button 
                 onClick={() => setViewMode('list')}
-                className={cn("p-2 rounded transition-colors", viewMode === 'list' ? "bg-[var(--text-primary)] text-[var(--bg-primary)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]")}
+                className={cn("p-1.5 rounded-[6px] transition-colors", viewMode === 'list' ? "bg-[var(--color-ink)] text-[var(--color-parchment)]" : "text-[var(--color-ink)]/70 hover:text-[var(--color-ink)]")}
               >
                 <List size={16} />
               </button>
               <button 
                 onClick={() => setViewMode('calendar')}
-                className={cn("p-2 rounded transition-colors", viewMode === 'calendar' ? "bg-[var(--text-primary)] text-[var(--bg-primary)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]")}
+                className={cn("p-1.5 rounded-[6px] transition-colors", viewMode === 'calendar' ? "bg-[var(--color-ink)] text-[var(--color-parchment)]" : "text-[var(--color-ink)]/70 hover:text-[var(--color-ink)]")}
               >
                 <Grid size={16} />
               </button>
               <button 
                 onClick={() => setViewMode('stats')}
-                className={cn("p-2 rounded transition-colors", viewMode === 'stats' ? "bg-[var(--text-primary)] text-[var(--bg-primary)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]")}
+                className={cn("p-1.5 rounded-[6px] transition-colors", viewMode === 'stats' ? "bg-[var(--color-ink)] text-[var(--color-parchment)]" : "text-[var(--color-ink)]/70 hover:text-[var(--color-ink)]")}
               >
                 <BarChart2 size={16} />
               </button>
@@ -586,9 +590,9 @@ export function Meetings({
                 setFormData({ title: "", date: new Date().toISOString().split('T')[0], time: "10:00", attendees: "", level: 1, minutes: "", location: "" });
                 setIsModalOpen(true);
               }}
-              className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-colors"
+              className="off-button-primary"
             >
-              <Plus size={16} /> Schedule
+              <Plus size={14} /> Schedule Meeting
             </button>
           </div>
         )}
@@ -596,21 +600,21 @@ export function Meetings({
 
       {/* Meetings Trend Dashboard */}
       {!isReportView && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-[var(--card-bg)] border border-[var(--border)] p-4 rounded-xl shadow-sm no-print">
-          <div className="p-3 bg-neutral-500/5 rounded-lg flex flex-col justify-between">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-[var(--color-paper)] border border-[var(--color-ash)] p-6 rounded-none no-print">
+          <div className="p-4 border border-[var(--color-ash)]/60 rounded-none flex flex-col justify-between">
             <div>
-              <span className="text-[10px] font-mono uppercase text-slate-400 font-bold tracking-wider">Total Scheduled</span>
-              <h2 className="text-3xl font-light text-[var(--text-primary)] mt-1">{meetings.length}</h2>
+              <span className="text-[11px] font-mono uppercase text-[var(--color-ink)]/70 tracking-[0.05em]">Total Scheduled</span>
+              <h2 className="text-3xl font-light text-[var(--color-ink)] mt-1">{meetings.length}</h2>
             </div>
-            <p className="text-[10px] text-emerald-500 flex items-center gap-1 mt-2 font-mono">
-              <span>↑ Active Pipeline Meetings</span>
+            <p className="text-[11px] text-[var(--color-ink)]/60 flex items-center gap-1 mt-3 font-mono">
+              <span>Active Pipeline Meetings</span>
             </p>
           </div>
 
-          <div className="p-3 bg-neutral-500/5 rounded-lg flex flex-col justify-between">
+          <div className="p-4 border border-[var(--color-ash)]/60 rounded-none flex flex-col justify-between">
             <div>
-              <span className="text-[10px] font-mono uppercase text-slate-400 font-bold tracking-wider">This Month</span>
-              <h2 className="text-3xl font-light text-[var(--text-primary)] mt-1">
+              <span className="text-[11px] font-mono uppercase text-[var(--color-ink)]/70 tracking-[0.05em]">This Month</span>
+              <h2 className="text-3xl font-light text-[var(--color-ink)] mt-1">
                 {meetings.filter(m => {
                   const d = new Date(m.date);
                   const now = new Date();

@@ -24,35 +24,41 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--bg-primary)] flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl shadow-2xl p-8 animate-in fade-in zoom-in-95 duration-500">
-        <div className="flex flex-col items-center mb-8">
-          <div className="scale-150 mb-6">
+    <div className="min-h-screen bg-[var(--color-parchment)] flex flex-col items-center justify-center p-4">
+      <div className="w-full max-w-md bg-[var(--color-paper)] border border-[var(--color-ash)] p-8 sm:p-10 relative">
+        <div className="flex flex-col items-center mb-8 text-center">
+          <div className="mb-6">
             <Logo collapsed={false} />
           </div>
-          <h1 className="text-2xl font-light text-[var(--text-primary)] tracking-wide">BD Portal Login</h1>
-          <p className="text-sm text-[var(--text-secondary)] mt-2">Enter your credentials to access the portal</p>
+          <span className="text-[11px] font-mono uppercase tracking-[0.05em] text-[var(--color-ink)]/70 mb-1">
+            PORTAL ACCESS & CREDENTIAL VERIFICATION
+          </span>
+          <h1 className="text-3xl font-normal uppercase leading-[0.85] tracking-tight text-[var(--color-ink)]">
+            SIGN IN
+          </h1>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-5">
           {error && (
-            <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-sm p-3 rounded-lg text-center">
+            <div className="bg-[var(--color-stone)] border border-[var(--color-ash)] text-[var(--color-ink)] text-xs p-3 rounded-[10px] text-center font-mono">
               {error}
             </div>
           )}
 
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-mono uppercase text-[var(--text-secondary)] mb-2">Username</label>
+              <label className="block text-[11px] font-mono uppercase tracking-[0.05em] text-[var(--color-ink)]/70 mb-1.5">
+                Username
+              </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User size={16} className="text-[var(--text-secondary)]" />
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                  <User size={15} className="text-[var(--color-ink)]/50" />
                 </div>
                 <input
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-lg py-2.5 pl-10 pr-4 text-[var(--text-primary)] focus:outline-none focus:border-[var(--text-primary)] transition-colors"
+                  className="w-full bg-[var(--color-paper)] border border-[var(--color-ash)] rounded-[10px] py-2.5 pl-10 pr-4 text-sm text-[var(--color-ink)] font-mono focus:outline-none focus:border-[var(--color-ink)] transition-colors"
                   placeholder="admin"
                   required
                 />
@@ -60,16 +66,18 @@ export function Login() {
             </div>
 
             <div>
-              <label className="block text-xs font-mono uppercase text-[var(--text-secondary)] mb-2">Password</label>
+              <label className="block text-[11px] font-mono uppercase tracking-[0.05em] text-[var(--color-ink)]/70 mb-1.5">
+                Password
+              </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock size={16} className="text-[var(--text-secondary)]" />
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                  <Lock size={15} className="text-[var(--color-ink)]/50" />
                 </div>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-lg py-2.5 pl-10 pr-4 text-[var(--text-primary)] focus:outline-none focus:border-[var(--text-primary)] transition-colors"
+                  className="w-full bg-[var(--color-paper)] border border-[var(--color-ash)] rounded-[10px] py-2.5 pl-10 pr-4 text-sm text-[var(--color-ink)] font-mono focus:outline-none focus:border-[var(--color-ink)] transition-colors"
                   placeholder="••••••••"
                   required
                 />
@@ -79,9 +87,9 @@ export function Login() {
 
           <button
             type="submit"
-            className="w-full bg-[var(--text-primary)] text-[var(--bg-primary)] py-3 rounded-lg text-sm font-bold uppercase tracking-wider hover:bg-[var(--text-secondary)] transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-md"
+            className="w-full off-button-primary justify-center py-2.5 text-xs font-mono"
           >
-            Sign In
+            Authenticate
           </button>
         </form>
       </div>
